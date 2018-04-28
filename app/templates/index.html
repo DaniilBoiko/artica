@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <section class="jumbotron text-center">
+        <div class="container">
+            <h1 class="jumbotron-heading">Bringing AI and science together</h1>
+            <p class="lead text-muted">We made a system, which can change whole scientific process. Just try.</p>
+
+            <form class="form-inline justify-content-center" action="/search" method="get">
+                <input name="query" type="text" class="form-control mb-2 mr-sm-2 col-md-6"  placeholder="Palladium–complex" />
+             <button type="submit" class="btn btn-primary mb-2">Search</button>
+            </form>
+
+        </div>
+    </section>
+
+{% endblock %}
