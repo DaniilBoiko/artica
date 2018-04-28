@@ -11,10 +11,9 @@ class Article(db.Model):
     journal = db.Column(db.Text)
     journalabbr = db.Column(db.Text)
     authors = db.Column(JSON)
-    language = db.Column(db.Text)
+    language = db.Column(db.String)
     issn = db.Column(db.Text)
-    keyword = db.Column(ARRAY)
-    doc2vec = db.Column(ARRAY)
+    keyword = db.Column(ARRAY(db.String))
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)

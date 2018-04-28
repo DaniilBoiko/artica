@@ -3,9 +3,9 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 POSTGRES = {
     'user': 'artica',
-    'pw': 'password',
+    'pw': '21219025',
     'db': 'artica',
-    'host': 'localhost',
+    'host': 'articadb.caur5thdijuo.us-east-2.rds.amazonaws.com',
     'port': '5432',
 }
 
