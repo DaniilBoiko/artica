@@ -11,6 +11,7 @@ application = Flask(__name__)
 app = application
 app.config.from_object(Config)
 db = SQLAlchemy(app)
+db.configure_mappers()
 migrate = Migrate(app, db)
 bootstrap = Bootstrap(app)
 q = Queue(connection=conn)

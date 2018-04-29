@@ -1,5 +1,9 @@
 from app import db
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
+from sqlalchemy_searchable import make_searchable
+from sqlalchemy_utils import TSVectorType
+
+make_searchable()
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -14,6 +18,7 @@ class Article(db.Model):
     language = db.Column(db.String)
     issn = db.Column(db.Text)
     keyword = db.Column(ARRAY(db.String))
+    search_vector = db.Column(TSVectorType('title','abstract'))
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
