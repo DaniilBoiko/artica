@@ -3,8 +3,10 @@ from app import app
 from app import db
 from app import q, Job, conn
 from app.models import Article
+import math
 import xmltodict, datetime, json, collections
 from sqlalchemy_searchable import search
+
 
 def parseXMLs():
     for i in range(1, 2):
@@ -13,14 +15,15 @@ def parseXMLs():
             doc = xmltodict.parse(fd.read())
             for article in doc['PubmedArticleSet']['PubmedArticle']:
                 try:
-                    title = article['MedlineCitation']['Article']['ArticleTitle'].encode(encoding="UTF-8")
+                    title = str(article['MedlineCitation']['Article']['ArticleTitle'].encode(encoding="UTF-8"))
                 except:
                     title = None
 
                 try:
-                    abstract = article['MedlineCitation']['Article']['Abstract']['AbstractText'].encode(encoding="UTF-8")
+                    abstract = str(
+                        article['MedlineCitation']['Article']['Abstract']['AbstractText'].encode(encoding="UTF-8"))
                     if type(abstract[0]) is collections.OrderedDict:
-                        abstract = abstract['#text'].encode(encoding="UTF-8")
+                        abstract = str(abstract['#text'].encode(encoding="UTF-8"))
                 except:
                     abstract = None
 
@@ -92,9 +95,30 @@ def index():
 def search():
     query = request.args.get('query')
     print(query)
-    answer = Article.query.search(query).limit(5).all()
-    print(answer)
-    return render_template('search.html', title='Home', query=answer)
+    answers = Article.query.search(query,sort=True).limit(5).all()
+    counts = Article.query.search(query,sort=True).count()
+    npages = int(math.ceil(counts/10))
+    for answer in answers:
+        if answer.title is not None:
+            answer.title = answer.title[2:]
+            answer.title = answer.title[:-1]
+            if answer.title[0] == '[':
+                answer.title = answer.title[1:]
+                answer.title = str(answer.title[:-2]) + '.'
+        else:
+            answer.title = ''
+
+        if answer.abstract is not None:
+            answer.abstract = answer.abstract[2:]
+            answer.abstract = answer.abstract[:-1]
+        else:
+            answer.abstract = ''
+        if answer.pubdate is not None:
+            answer.pubdate = answer.pubdate.strftime('Published at %d, %b %Y')
+        else:
+            answer.pubdate = ''
+
+    return render_template('search.html', title='Home', answers=answers,query=query,counts=counts,npages=npages)
 
 
 @app.route('/admin', methods=['GET'])
