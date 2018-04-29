@@ -3,8 +3,8 @@ from app import app
 from app import db
 from app import q, Job, conn
 from app.models import Article
-import xmltodict, datetime, json,collections
-
+import xmltodict, datetime, json, collections
+from sqlalchemy_searchable import search
 
 def parseXMLs():
     for i in range(1, 11):
@@ -91,7 +91,10 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     query = request.args.get('query')
-    return render_template('search.html', title='Home', query=query)
+    sq = db.session.query(Article)
+    sq1 = search(sq,query)
+    answer = sq1.first().title
+    return render_template('search.html', title='Home', query=answer)
 
 
 @app.route('/admin', methods=['GET'])
@@ -101,12 +104,11 @@ def admin():
         return redirect(url_for('index'))
 
     if request.args.get('task') is not None:
-		if request.args.get('task') == 'parseXML':
+        if request.args.get('task') == 'parseXML':
             job = q.enqueue_call(
-                func=parseXMLs, args=(), result_ttl=50000
+                func=parseXMLs, args=(), result_ttl=50000, timeout=360000
             )
-            print(job.get_id())
-
+    print(job.get_id())
     return render_template('admin.html', title='admin')
 
 

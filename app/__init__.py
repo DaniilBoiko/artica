@@ -1,11 +1,12 @@
 from flask import Flask
 from flask_bootstrap import Bootstrap
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from config import Config
+from flask_sqlalchemy import SQLAlchemy
 from rq import Queue
-from rq.job import Job
-from app.worker import conn
+
+from config import Config
+from ..worker import conn
+
 
 application = Flask(__name__)
 app = application

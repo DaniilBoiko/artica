@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import JSON, ARRAY
 from sqlalchemy_searchable import make_searchable
 from sqlalchemy_utils import TSVectorType
 
-make_searchable()
+make_searchable(db.metadata)
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
