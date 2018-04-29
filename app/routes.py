@@ -13,14 +13,14 @@ def parseXMLs():
             doc = xmltodict.parse(fd.read())
             for article in doc['PubmedArticleSet']['PubmedArticle']:
                 try:
-                    title = article['MedlineCitation']['Article']['ArticleTitle']
+                    title = article['MedlineCitation']['Article']['ArticleTitle'].encode(encoding="UTF-8")
                 except:
                     title = None
 
                 try:
-                    abstract = article['MedlineCitation']['Article']['Abstract']['AbstractText']
+                    abstract = article['MedlineCitation']['Article']['Abstract']['AbstractText'].encode(encoding="UTF-8")
                     if type(abstract[0]) is collections.OrderedDict:
-                        abstract = abstract['#text']
+                        abstract = abstract['#text'].encode(encoding="UTF-8")
                 except:
                     abstract = None
 
