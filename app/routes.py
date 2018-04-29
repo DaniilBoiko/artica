@@ -101,8 +101,11 @@ def admin():
         return redirect(url_for('index'))
 
     if request.args.get('task') is not None:
-        if request.args.get('task') == 'parseXML':
-            parseXMLs()
+		if request.args.get('task') == 'parseXML':
+            job = q.enqueue_call(
+                func=parseXMLs, args=(), result_ttl=50000
+            )
+            print(job.get_id())
 
     return render_template('admin.html', title='admin')
 
