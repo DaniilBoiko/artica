@@ -1,75 +1,86 @@
-from flask import render_template, request, redirect, url_for, jsonify
+from flask import render_template, request, redirect, url_for, jsonify, make_response
 from app import app
 from app import db
 from app import q, Job, conn
+from app.models import Article
+import xmltodict, datetime, json,collections
+
 
 def parseXMLs():
-    result = []
-	def parseXML():
-    for i in range(1, 2):
-        with open('/data/ftp.ncbi.nlm.nih.gov/pubmed/baseline/pubmed18n{0}.xml'.format(str('{:04d}'.format(i)))) as fobj:
+    for i in range(1, 11):
+        print(i)
+        with open('/data/ftp.ncbi.nlm.nih.gov/pubmed/baseline/pubmed18n{0}.xml'.format(str('{:04d}'.format(i)))) as fd:
             doc = xmltodict.parse(fd.read())
             for article in doc['PubmedArticleSet']['PubmedArticle']:
                 try:
                     title = article['MedlineCitation']['Article']['ArticleTitle']
-                except KeyError:
-                    title = None  
-                ##########################################
+                except:
+                    title = None
+
                 try:
                     abstract = article['MedlineCitation']['Article']['Abstract']['AbstractText']
-                except KeyError:
+                    if type(abstract[0]) is collections.OrderedDict:
+                        abstract = abstract['#text']
+                except:
                     abstract = None
-                ##########################################
+
                 try:
                     year = int(article['MedlineCitation']['DateCompleted']['Year'])
                     month = int(article['MedlineCitation']['DateCompleted']['Month'])
                     day = int(article['MedlineCitation']['DateCompleted']['Day'])
                     pubdate = datetime.date(year=year, month=month, day=day)
-                except KeyError:
+                except:
                     pubdate = None
-                ##########################################
+
                 try:
-                    volume = int(article['MedlineCitation']['Article']['Journal']['JournalIssue']['Volume'])
-                except KeyError:
+                    volume = article['MedlineCitation']['Article']['Journal']['JournalIssue']['Volume']
+                except:
                     volume = None
-                ##########################################
+
                 try:
-                    issue = int(article['MedlineCitation']['Article']['Journal']['JournalIssue']['Issue'])
-                except KeyError:
+                    issue = article['MedlineCitation']['Article']['Journal']['JournalIssue']['Issue']
+                except:
                     issue = None
-                ##########################################
+
                 try:
                     journal = article['MedlineCitation']['Article']['Journal']['Title']
-                except KeyError:
+                except:
                     journal = None
-                ##########################################    
+
                 try:
                     journalabbr = article['MedlineCitation']['Article']['Journal']['ISOAbbreviation']
-                except KeyError:
+                except:
                     journalabbr = None
-                ##########################################    
+
                 try:
-                    authors = article['MedlineCitation']['Article']['Journal']['Title']
-                except KeyError:
+                    authors = json.dumps(article['MedlineCitation']['Article']['AuthorList'])
+                except:
                     authors = None
-                ##########################################
+
                 try:
                     language = article['MedlineCitation']['Article']['Language']
-                except KeyError:
+                except:
                     language = None
-                ##########################################
+
                 try:
                     keywords = []
                     for topic in article['MedlineCitation']['MeshHeadingList']['MeshHeading']:
                         keywords.append(topic['DescriptorName']['#text'])
-                except KeyError:
+                except:
                     keywords = None
-                ##########################################
+
                 try:
                     issn = article['MedlineCitation']['Article']['Journal']['ISSN']['#text']
-                except KeyError:
+                except:
                     issn = None
-    return result
+
+                article = Article(title=title, abstract=abstract, pubdate=pubdate, volume=volume, issue=issue,
+                                  journal=journal, journalabbr=journalabbr, authors=authors, language=language,
+                                  keyword=keywords, issn=issn)
+                db.session.add(article)
+                db.session.commit()
+    return 'success'
+
 
 @app.route('/')
 @app.route('/index')
@@ -80,7 +91,7 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     query = request.args.get('query')
-    return render_template('search.html', title='Home',query=query)
+    return render_template('search.html', title='Home', query=query)
 
 
 @app.route('/admin', methods=['GET'])
@@ -91,20 +102,16 @@ def admin():
 
     if request.args.get('task') is not None:
         if request.args.get('task') == 'parseXML':
-            job = q.enqueue_call(
-                func=parseXMLs, args=(), result_ttl=50000
-            )
-            print(job.get_id())
+            parseXMLs()
 
     return render_template('admin.html', title='admin')
 
 
 @app.route("/results/<job_key>", methods=['GET'])
 def get_results(job_key):
-
     job = Job.fetch(job_key, connection=conn)
 
     if job.is_finished:
-        return str(job.result), 200
+        return "Yep!", 200
     else:
         return "Nay!", 202

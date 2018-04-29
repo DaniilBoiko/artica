@@ -7,7 +7,8 @@ from rq import Queue
 from rq.job import Job
 from app.worker import conn
 
-app = Flask(__name__)
+application = Flask(__name__)
+app = application
 app.config.from_object(Config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
