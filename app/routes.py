@@ -7,7 +7,7 @@ import xmltodict, datetime, json, collections
 from sqlalchemy_searchable import search
 
 def parseXMLs():
-    for i in range(1, 11):
+    for i in range(1, 2):
         print(i)
         with open('/data/ftp.ncbi.nlm.nih.gov/pubmed/baseline/pubmed18n{0}.xml'.format(str('{:04d}'.format(i)))) as fd:
             doc = xmltodict.parse(fd.read())
@@ -91,9 +91,9 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     query = request.args.get('query')
-    sq = db.session.query(Article)
-    sq1 = search(sq,query)
-    answer = sq1.first().title
+    print(query)
+    answer = Article.query.search(query).limit(5).all()
+    print(answer)
     return render_template('search.html', title='Home', query=answer)
 
 
