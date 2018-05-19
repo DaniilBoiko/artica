@@ -1,0 +1,22 @@
+{% extends "base_mendeley.html" %}
+
+{% block app_content %}
+<h2 class="mt-5 mb-3">This is your library</h2>
+
+<table class="table">
+    {% for doc in docs %}
+    <tr>
+        <td><a href="/document?document_id={{doc['id']}}">{{doc.title}}</a></td>
+        {% if doc.file_attached %}
+            <td><a href="/download?document_id={{doc['id']}}" class="btn btn-light">Download</a></td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+
+<form action="/metadataLookup" method="GET" class="mt-5 form-inline">
+    <label class="my-1">DOI lookup:</label>
+    <input class="form-control ml-2 mr-2" type="text" name="doi">
+    <input class="btn btn-primary" type="submit">
+</form>
+{% endblock %}

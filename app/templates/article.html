@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <style>
+        .container {
+            margin-left: 150px;
+        }
+    </style>
+    <nav class="navbar navbar-light bg-light">
+        <a class="navbar-brand" href="/" style="position:absolute;margin-left: 40px">
+            <img src="{{ url_for('static', filename='images/logo.svg') }}" height="30" alt="">
+        </a>
+        <div class="container">
+            <div class="col-md-12 pl-0">
+                <form class="form-inline" action="/search" method="get">
+                    <input name="query" type="text" class="form-control mb-0 mr-sm-2 col-md-6"
+                           value="{{ query }}"/>
+                    <button type="submit" class="btn btn-primary mb-0">Search</button>
+                </form>
+            </div>
+        </div>
+
+    </nav>
+    <div class="container" style="margin-top: 20px">
+
+        <div class="col-md-12">
+            <div class="mt-4">
+                <h2>{{ article.title }}</h2>
+                <p class="text-muted">
+                    {% if article.doctype %}
+                    <span class="badge badge-secondary mr-2">{{ article.doctype }}</span>
+                    {% endif %}
+                    {% for author in article.authorlist %}
+                        {{ author }}
+                        {{ "," if not loop.last }}
+                    {% endfor %}
+                </p>
+                <p class="text-secondary mb-0">
+                    <small>{{ article.pubdate }}{% if article.journal %} in <b>{{ article.journal }}</b>{% endif %}</small>
+                </p>
+                {% if article.abstract == '' %}
+                {% else %}
+                    <div id="summary{{ article.id }}">
+                        <p>
+                            {{ article.abstract }}
+                        </p>
+                    </div>
+                {% endif %}
+                {% if article.doi %}
+                    <a href="http://dx.doi.org/{{ article.doi }}">{{ article.doi }}</a>
+                {% else %}
+                    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+                    <script>
+                        (function () {
+                            'use strict';
+                            angular.module('DOIApp', [])
+
+
+                                .controller('DOIController', ['$scope', '$log', '$http',
+                                    function ($scope, $log, $http) {
+                                        $scope.buttontext = 'Get DOI';
+                                        $scope.loading = false;
+                                        $scope.hide = false;
+
+                                        $scope.getResults = function () {
+                                            $scope.loading = true;
+                                            $scope.buttontext = 'Loading...';
+
+                                            var url = 'https://api.crossref.org/works';
+                                            var title = angular.element(document.getElementsByName('article_title')[0]).val();
+                                            var authors = angular.element(document.getElementsByName('article_authors')[0]).val();
+
+                                            $http({
+                                                url: url,
+                                                method: "GET",
+                                                params: {
+                                                    "query.title": title,
+                                                    "query.author": authors,
+                                                    "mailto": "daniel.boyko.al@gmail.com",
+                                                    "rows":1
+                                                }
+                                            }).success(function (results) {
+                                                $scope.doi = results['message']['items'][0]['DOI'];
+                                                $scope.hide = true;
+                                                $http({
+                                                    url: '/add_data',
+                                                    method: "GET",
+                                                    params: {
+                                                        'id': {{ article.id }},
+                                                        'title': results['message']['items'][0]['title'][0],
+                                                        'doi': results['message']['items'][0]['DOI'],
+                                                        'doctype': results['message']['items'][0]['type'],
+                                                        'crossref': results['message']['items'][0]
+                                                    }
+                                                })
+                                            }).error(function (error) {
+                                                $log.log(error);
+                                            });
+
+                                        };
+                                    }
+                                ]);
+
+                        }());
+                    </script>
+                    <div ng-app="DOIApp" ng-controller="DOIController">
+                        <div id="bla">
+                            <input type="hidden" value="{{ article.title }}" name="article_title"
+                                   ng-model="article_title">
+                            <input type="hidden" value="{{ article.authorlist }}" name="article_authors"
+                                   ng-model="article_authors">
+                            {% raw %}
+                            <button class="btn btn-secondary btn-sm"
+                                    ng-disabled="loading" ng-hide="hide" ng-click="getResults()">{{ buttontext }}
+                            </button>
+                            {% endraw %}
+                            {% raw %}
+                            <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a>
+                            {% endraw %}
+
+                        </div>
+                    </div>
+
+                    </div>
+                {% endif %}
+        </div>
+    </div>
+{% endblock %}

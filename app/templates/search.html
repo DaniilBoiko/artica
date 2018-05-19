@@ -1,16 +1,29 @@
 {% extends "base.html" %}
 
 {% block app_content %}
-    <div class="container" style="margin-top: 20px">
-        <div class="col-md-12 mt-3">
-            <form class="form-inline" action="/search" method="get">
-                <input name="query" type="text" class="form-control mb-2 mr-sm-2 col-md-6"
-                       value="{{ query }}"/>
-                <button type="submit" class="btn btn-primary mb-2">Search</button>
-            </form>
+    <style>
+        .container {
+            margin-left: 150px;
+        }
+    </style>
+    <nav class="navbar navbar-light bg-light">
+        <a class="navbar-brand" href="/" style="position:absolute;margin-left: 40px">
+            <img src="{{ url_for('static', filename='images/logo.svg') }}" height="30" alt="">
+        </a>
+        <div class="container">
+            <div class="col-md-12 pl-0">
+                <form class="form-inline" action="/search" method="get">
+                    <input name="query" type="text" class="form-control mb-0 mr-sm-2 col-md-6"
+                           value="{{ query }}"/>
+                    <button type="submit" class="btn btn-primary mb-0">Search</button>
+                </form>
+            </div>
         </div>
 
-        <div class="col-md-10">
+    </nav>
+    <div class="container" style="margin-top: 20px">
+
+        <div class="col-md-12">
             <p class="mt-3">
                 <small>Found: {{ counts }} articles</small>
             </p>
@@ -43,38 +56,74 @@
                     }
                 </style>
                 <div class="mt-4">
-                    <h3>{{ res.title }}</h3>
-                    <p class="text-secondary">{{ res.pubdate }}</p>
+                    <a href="{{ url_for('article',id=res.id,query=query) }}"><h3>{{ res.title }}</h3></a>
+                    <p class="text-muted">
+                        {% for author in res.authorlist %}
+                            {{ author }}
+                            {{ "," if not loop.last }}
+                        {% endfor %}
+                    </p>
+                    <p class="text-secondary mb-0">
+                        <small>{{ res.pubdate }}</small>
+                    </p>
                     {% if res.abstract == '' %}
                     {% else %}
-                    <div id="summary{{ res.id }}">
-                        <p class="collapse" id="collapseSummary{{ res.id }}">
-                            {{ res.abstract }}</p>
-                        <a class="collapsed" data-toggle="collapse" href="#collapseSummary{{ res.id }}" aria-expanded="false"
-                           aria-controls="collapseSummary"></a>
-                    </div>
+                        <div id="summary{{ res.id }}">
+                            <p class="collapse" id="collapseSummary{{ res.id }}">
+                                {{ res.abstract }}</p>
+                            <a class="collapsed" data-toggle="collapse" href="#collapseSummary{{ res.id }}"
+                               aria-expanded="false"
+                               aria-controls="collapseSummary"></a>
+                        </div>
                     {% endif %}
 
                 </div>
             {% endfor %}
             <nav>
-                <ul class="pagination">
+                <ul class="pagination mt-4">
                     {% set pagend = 0 %}
-                    <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+                    {% if page != 1 %}
+                        <li class="page-item"><a class="page-link"
+                                                 href="/search?query={{ query }}&page={{ (page - 1) }}">Previous</a>
+                        </li>
+                    {% endif %}
                     {% if npages > 6 %}
                         {% for i in range(6) %}
-                            <li class="page-item"><a class="page-link" href="#">{{ loop.index }}</a></li>
+                            <li class="page-item
+                            {% if loop.index == page %}
+                            active
+                            {% endif %}
+"><a class="page-link" href="/search?query={{ query }}&page={{ loop.index }}">{{ loop.index }}</a></li>
                         {% endfor %}
-                        <li class="page-item"><a class="page-link" href="#">...</a></li>
-                        <li class="page-item"><a class="page-link" href="#">{{ npages }}</a></li>
+                        {% if page == 7 %}
+                            {% if npages != 7 %}
+                                <li class="page-item active"><a class="page-link" href="">7</a></li>
+                                <li class="page-item"><a class="page-link" href="">...</a></li>
+                            {% else %}
+                                <li class="page-item active"><a class="page-link" href="#">7</a></li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="#">...</a></li>
+                            {% if page > 7 %}
+                                <li class="page-item active"><a class="page-link" href="">{{ page }}</a></li>
+                                {% if npages != 8 %}
+                                    <li class="page-item"><a class="page-link" href="#">...</a></li>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
                     {% else %}
                         {% for i in range(npages) %}
-                            <li class="page-item"><a class="page-link" href="#">{{ loop.index }}</a></li>
-
+                            <li class="page-item
+                            {% if loop.index == page %}
+                            active
+                            {% endif %}
+"><a class="page-link" href="/search?query={{ query }}&page={{ loop.index }}">{{ loop.index }}</a></li>
                         {% endfor %}
                     {% endif %}
-
-                    <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                    {% if page != npages %}
+                        <li class="page-item"><a class="page-link"
+                                                 href="/search?query={{ query }}&page={{ (page + 1) }}">Next</a></li>
+                    {% endif %}
 
                 </ul>
             </nav>

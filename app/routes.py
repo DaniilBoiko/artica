@@ -1,11 +1,68 @@
-from flask import render_template, request, redirect, url_for, jsonify, make_response
+from flask import render_template, request, redirect, url_for, jsonify, make_response, session
 from app import app
 from app import db
 from app import q, Job, conn
 from app.models import Article
+
+from mendeley import Mendeley
+from mendeley.session import MendeleySession
+
 import math
 import xmltodict, datetime, json, collections
 from sqlalchemy_searchable import search
+from sqlalchemy import func
+
+import re
+
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
+
+count_pattern = re.compile(r'rows=(\d+)')
+
+
+def extract_analyze_count(rows):
+    for row in rows:
+        match = count_pattern.search(row[0])
+        if match:
+            return int(match.groups()[0])
+
+
+def count_estimate(query, session, threshold=None):
+    rows = session.execute(explain(query)).fetchall()
+    count = extract_analyze_count(rows)
+    if threshold is not None and count < threshold:
+        return query.count()
+    return count
+
+
+def get_session_from_cookies():
+    return MendeleySession(mendeley, session['token'])
+
+
+mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
+
+
+class explain(Executable, ClauseElement):
+    def __init__(self, stmt, analyze=False):
+        self.statement = _literal_as_text(stmt)
+        self.analyze = analyze
+        # helps with INSERT statements
+        self.inline = getattr(stmt, 'inline', None)
+
+
+def get_count(q):
+    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    count = q.session.execute(count_q).scalar()
+    return count
+
+
+@compiles(explain, 'postgresql')
+def pg_explain(element, compiler, **kw):
+    text = 'EXPLAIN '
+    if element.analyze:
+        text += 'ANALYZE '
+    text += compiler.process(element.statement, **kw)
+    return text
 
 
 def parseXMLs():
@@ -85,6 +142,26 @@ def parseXMLs():
     return 'success'
 
 
+def distance(a, b):
+    "Calculates the Levenshtein distance between a and b."
+    n, m = len(a), len(b)
+    if n > m:
+        # Make sure n <= m, to use O(min(n,m)) space
+        a, b = b, a
+        n, m = m, n
+
+    current_row = range(n + 1)  # Keep current and previous row, not entire matrix
+    for i in range(1, m + 1):
+        previous_row, current_row = current_row, [i] + [0] * n
+        for j in range(1, n + 1):
+            add, delete, change = previous_row[j] + 1, current_row[j - 1] + 1, previous_row[j - 1]
+            if a[j - 1] != b[i - 1]:
+                change += 1
+            current_row[j] = min(add, delete, change)
+
+    return current_row[n]
+
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -94,10 +171,17 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     query = request.args.get('query')
-    print(query)
-    answers = Article.query.search(query,sort=True).limit(5).all()
-    counts = Article.query.search(query,sort=True).count()
-    npages = int(math.ceil(counts/10))
+    page = int(request.args.get('page', 1))
+
+    q = Article.query.search(query, sort=True)
+    answers = q.paginate(page, 10, False).items
+    counts = count_estimate(q, db.session)
+    if counts < 20000:
+        counts = get_count(q)
+    else:
+        counts = 10000 * (counts // 10000)
+
+    npages = int(math.ceil(counts / 10))
     for answer in answers:
         if answer.title is not None:
             answer.title = answer.title[2:]
@@ -118,7 +202,15 @@ def search():
         else:
             answer.pubdate = ''
 
-    return render_template('search.html', title='Home', answers=answers,query=query,counts=counts,npages=npages)
+        answer.authorlist = []
+        try:
+            for author in json.loads(answer.authors)['Author']:
+                answer.authorlist.append(author['LastName'] + ' ' + author['ForeName'])
+        except:
+            answer.authorlist.append('')
+
+    return render_template('search.html', title=query, answers=answers, query=query, counts=counts, npages=npages,
+                           page=page)
 
 
 @app.route('/admin', methods=['GET'])
@@ -136,11 +228,193 @@ def admin():
     return render_template('admin.html', title='admin')
 
 
+@app.route('/article', methods=['GET'])
+def article():
+    id = request.args.get('id')
+
+    if id is None:
+        return redirect(url_for('index'))
+
+    query = request.args.get('query', '')
+
+    article = Article.query.get_or_404(id)
+    if article.title is not None:
+        article.title = article.title[2:]
+        article.title = article.title[:-1]
+        if article.title[0] == '[':
+            article.title = article.title[1:]
+            article.title = str(article.title[:-2]) + '.'
+    else:
+        article.title = ''
+
+    if article.abstract is not None:
+        article.abstract = article.abstract[2:]
+        article.abstract = article.abstract[:-1]
+    else:
+        article.abstract = ''
+    if article.pubdate is not None:
+        article.pubdate = article.pubdate.strftime('Published at %d, %b %Y')
+    else:
+        article.pubdate = ''
+
+    article.authorlist = []
+    try:
+        for author in json.loads(article.authors)['Author']:
+            article.authorlist.append(author['LastName'] + ' ' + author['ForeName'])
+    except:
+        article.authorlist.append('')
+
+    return render_template('article.html', title=article.title, article=article, query=query)
+
+
 @app.route("/results/<job_key>", methods=['GET'])
 def get_results(job_key):
     job = Job.fetch(job_key, connection=conn)
 
     if job.is_finished:
-        return "Yep!", 200
+        return "Success/failure", 200
     else:
-        return "Nay!", 202
+        return "No", 202
+
+
+@app.route("/add_data", methods=['GET'])
+def add_data():
+    id = request.args.get('id')
+
+    if id is None:
+        return "ERROR", 202
+
+    doi = request.args.get('doi', '')
+    doctype = request.args.get('doctype', '')
+    crossref = request.args.get('crossref', '')
+    title = request.args.get('title', '')
+
+    article = Article.query.get_or_404(int(id))
+
+    if article.title is not None:
+        title1 = article.title[2:]
+        title1 = article.title[:-1]
+        if article.title[0] == '[':
+            title1 = article.title[1:]
+            title1 = str(article.title[:-2]) + '.'
+    else:
+        title1 = ' '
+
+    if distance(title1[0:-1].lower(), title.lower()) < 6:
+        article.doi = doi
+        article.doctype = doctype
+        article.crossref = crossref
+
+        db.session.commit()
+
+    return "OK", 200
+
+
+# Mendeley
+
+@app.route('/login')
+def login():
+    if 'token' in session:
+        return redirect('/listDocuments')
+
+    auth = mendeley.start_authorization_code_flow()
+    session['state'] = auth.state
+
+    return render_template('login.html', login_url=(auth.get_login_url()))
+
+
+@app.route('/oauth')
+def auth_return():
+    auth = mendeley.start_authorization_code_flow(state=session['state'])
+    mendeley_session = auth.authenticate(request.url)
+
+    session.clear()
+    session['token'] = mendeley_session.token
+
+    return redirect('/listDocuments')
+
+
+@app.route('/listDocuments')
+def list_documents():
+    if 'token' not in session:
+        return redirect('/')
+
+    try:
+        mendeley_session = get_session_from_cookies()
+        name = mendeley_session.profiles.me.display_name
+    except:
+        return redirect('/logout')
+
+    docs = mendeley_session.documents.list(view='client').items
+
+    return render_template('library.html', name=name, docs=docs,title='Library')
+
+
+@app.route('/download')
+def download():
+    if 'token' not in session:
+        return redirect('/')
+
+    mendeley_session = get_session_from_cookies()
+
+    document_id = request.args.get('document_id')
+    doc = mendeley_session.documents.get(document_id)
+    doc_file = doc.files.list().items[0]
+
+    return redirect(doc_file.download_url)
+
+
+@app.route('/document')
+def get_document():
+    if 'token' not in session:
+        return redirect('/')
+
+    try:
+        mendeley_session = get_session_from_cookies()
+        name = mendeley_session.profiles.me.display_name
+    except:
+        return redirect('/logout')
+
+    document_id = request.args.get('document_id')
+    doc = mendeley_session.documents.get(document_id)
+
+    return render_template('metadata.html', doc=doc,name=name,title=doc['title'])
+
+
+@app.route('/metadataLookup')
+def metadata_lookup():
+    if 'token' not in session:
+        return redirect('/')
+
+    try:
+        mendeley_session = get_session_from_cookies()
+        name = mendeley_session.profiles.me.display_name
+    except:
+        return redirect('/logout')
+
+    doi = request.args.get('doi')
+    doc = mendeley_session.catalog.by_identifier(doi=doi)
+
+    return render_template('metadata.html', doc=doc,name=name, title=doc['title'])
+
+
+@app.route('/account')
+def account():
+    if 'token' not in session:
+        return redirect('/')
+
+    try:
+        mendeley_session = get_session_from_cookies()
+        name = mendeley_session.profiles.me.display_name
+    except:
+        return redirect('/logout')
+
+    email = mendeley_session.profiles.me.email
+
+    return render_template('account.html', name=name, email=email)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('token', None)
+    return redirect('/')
