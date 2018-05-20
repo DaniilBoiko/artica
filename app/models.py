@@ -13,28 +13,30 @@ class ArticleQuery(BaseQuery, SearchQueryMixin):
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    mendeley_id = db.Column(db.String)
     first_name = db.Column(db.String)
     last_name = db.Column(db.String)
+    display_name = db.Column(db.String)
     email = db.Column(db.String)
-    last_sync = db.Column(db.Date)
-    created = db.Column(db.Date)
+    last_sync = db.Column(db.DateTime)
+    created = db.Column(db.DateTime)
 
     def __repr__(self):
         return '<User {}>'.format(self.last_name)
 
 
-class UserDocuments(db.model()):
+class UserDocument(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    mendeley_id = db.Column(db.String)
     title = db.Column(db.Text)
     type = db.Column(db.Text)
     source = db.Column(db.Text)
     year = db.Column(db.Text)
-    identifiers = db.Column(db.Text)
-    keywords = db.Column(db.Text)
+    identifiers = db.Column(db.JSON)
+    keywords = db.Column(db.JSON)
     abstract = db.Column(db.Text)
-    authors = db.Column(db.Text)
+    authors = db.Column(db.JSON)
     user = db.Column(db.Integer)
-
 
     def __repr__(self):
         return '<User document {}>'.format(self.title)

@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, jsonify, make_res
 from app import app
 from app import db
 from app import q, Job, conn
-from app.models import Article
+from app.models import Article, User, UserDocument
 
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
@@ -13,6 +13,7 @@ from sqlalchemy_searchable import search
 from sqlalchemy import func
 
 import re
+
 
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
@@ -331,6 +332,35 @@ def auth_return():
     session.clear()
     session['token'] = mendeley_session.token
 
+    if User.query.filter_by(email=mendeley_session.profiles.me.email).first() is None:
+        new_user = User(mendeley_id=mendeley_session.profiles.me.id,
+                        first_name=mendeley_session.profiles.me.first_name,
+                        last_name=mendeley_session.profiles.me.last_name,
+                        display_name=mendeley_session.profiles.me.display_name,
+                        email=mendeley_session.profiles.me.email,
+                        created=datetime.datetime.today())
+        db.session.add(new_user)
+        db.session.commit()
+        if mendeley_session.documents.list(view='client').items is not None:
+            for document in mendeley_session.documents.list(view='client').items:
+
+                authors = []
+                if document.authors is not None:
+                    for author in document.authors:
+                        authors.append(author.first_name + ' ' + author.last_name)
+
+                user_doc = UserDocument(mendeley_id=document.id,
+                                        title=document.title,
+                                        type=document.type,
+                                        source=document.source,
+                                        year=document.year,
+                                        identifiers=document.identifiers,
+                                        keywords=document.keywords,
+                                        abstract=document.abstract,
+                                        authors=authors,
+                                        user=User.query.filter_by(email=mendeley_session.profiles.me.email).first().id)
+                db.session.add(user_doc)
+                db.session.commit()
     return redirect('/listDocuments')
 
 
@@ -347,7 +377,7 @@ def list_documents():
 
     docs = mendeley_session.documents.list(view='client').items
 
-    return render_template('library.html', name=name, docs=docs,title='Library')
+    return render_template('library.html', name=name, docs=docs, title='Library')
 
 
 @app.route('/download')
@@ -378,7 +408,7 @@ def get_document():
     document_id = request.args.get('document_id')
     doc = mendeley_session.documents.get(document_id)
 
-    return render_template('metadata.html', doc=doc,name=name,title=doc['title'])
+    return render_template('metadata.html', doc=doc, name=name, title=doc['title'])
 
 
 @app.route('/metadataLookup')
@@ -395,7 +425,7 @@ def metadata_lookup():
     doi = request.args.get('doi')
     doc = mendeley_session.catalog.by_identifier(doi=doi)
 
-    return render_template('metadata.html', doc=doc,name=name, title=doc['title'])
+    return render_template('metadata.html', doc=doc, name=name, title=doc['title'])
 
 
 @app.route('/account')
