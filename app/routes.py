@@ -229,9 +229,9 @@ def admin():
         return redirect(url_for('index'))
 
     if request.args.get('task') is not None:
-        if request.args.get('task') == 'parseXML':
+        if request.args.get('task') == 'parse':
             job = q.enqueue_call(
-                func=parseXMLs, args=(), result_ttl=50000, timeout=360000
+                func=parse_them_all, args=(), result_ttl=50000, timeout=360000
             )
     print(job.get_id())
     return render_template('admin.html', title='admin')
@@ -458,9 +458,10 @@ def logout():
     return redirect('/')
 
 def parse_them_all ():
-    url = 'https://pubs.acs.org/'
+    url = 'https://pubs.acs.org/loi/achre4'
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
+
     journals = soup.find(id="journal-az-layer").find_all('a')
     for journal in journals:
         url = journal['href']
@@ -487,9 +488,13 @@ def parse_issue (url, volume, issue, journal_name):
 
     months_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
     article_groups = soup.find_all("div", class_="articleGroup")
-    print("JN: "+journal_name+" volume: "+volume+" issue: "+issue)
+
+    print("JN: "+str(journal_name)+" volume: "+str(volume)+" issue: "+str(issue))
     for article_group in article_groups:
-        article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
+        try:
+            article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
+        except:
+            article_group_name = "error"
 
         articles = article_group.find_all("div", class_="articleBox")
 
@@ -503,14 +508,74 @@ def parse_issue (url, volume, issue, journal_name):
 
             page_range = article.find_all('span', class_='articlePageRange')[0].text
 
-            pub_date = article.find_all('div', class_='epubdate')[0].text
-            pub_date = pub_date.split(' ')
-            month = pub_date[3]
-            month = int(months_dict[month])
-            day = int(pub_date[4][:-1])
-            year = int(pub_date[5])
-            pub_date = datetime.date(year = year, month = month, day = day)
+            try:
+                pub_date = article.find_all('div', class_='epubdate')[0].text
+                pub_date = pub_date.split(' ')
 
+                if pub_date[2]=='(Web):':
+                    month = pub_date[3]
+                    month = int(months_dict[month])
+                    day = int(pub_date[4][:-1])
+                    year = int(pub_date[5])
+                    pub_date = datetime.date(year = year, month = month, day = day)
+                else:
+                    month = pub_date[2]
+                    month = int(months_dict[month])
+                    day = int(pub_date[3][:-1])
+                    year = int(pub_date[4])
+                    pub_date = datetime.date(year = year, month = month, day = day)
+            except:
+                try:
+
+                    pub_date = article.find_all('div', class_='epubdate')[0].text
+                    pub_date = pub_date.split(' ')
+
+                    if pub_date[2]=='(Web):':
+                        month = pub_date[3]
+                        month = int(months_dict[month])
+                        day = 1
+                        year = int(pub_date[4])
+                        pub_date = datetime.date(year = year, month = month, day = day)
+                    else:
+                        month = pub_date[2]
+                        month = int(months_dict[month])
+                        day = 1
+                        year = int(pub_date[3])
+                        pub_date = datetime.date(year = year, month = month, day = day)
+                except:
+                    try:
+                        pub_date = article.find_all('div', class_='coverdate')[0].text
+                        pub_date = pub_date.split(' ')
+
+                        if pub_date[2] == '(Web):':
+                            month = pub_date[3]
+                            month = int(months_dict[month])
+                            day = int(pub_date[4][:-1])
+                            year = int(pub_date[5])
+                            pub_date = datetime.date(year=year, month=month, day=day)
+                        else:
+                            month = pub_date[2]
+                            month = int(months_dict[month])
+                            day = int(pub_date[3][:-1])
+                            year = int(pub_date[4])
+                            pub_date = datetime.date(year=year, month=month, day=day)
+                    except:
+                        pub_date = article.find_all('div', class_='coverdate')[0].text
+                        pub_date = pub_date.split(' ')
+                        if pub_date[2] == '(Web):':
+                            month = pub_date[3]
+                            month = int(months_dict[month])
+                            day = 1
+                            year = int(pub_date[4])
+                            pub_date = datetime.date(year=year, month=month, day=day)
+                        else:
+                            month = pub_date[2]
+                            month = int(months_dict[month])
+                            day = 1
+                            year = int(pub_date[3])
+                            pub_date = datetime.date(year=year, month=month, day=day)
+
+            print(pub_date)
             doi = ''
             doi = (article.find_all('div', class_='DOI')[0].text).replace('DOI: ', '')
 
@@ -520,10 +585,10 @@ def parse_issue (url, volume, issue, journal_name):
                 src = article.find_all('div', class_='articleFigure')[0].img['src']
                 src = 'https://pubs.acs.org/' + src
 
-            article = Article(title=title, pubdate=pub_date, volume=volume, issue=issue,
+            article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
                               journal=journal_name, authors=authors, language='english',
-                              doi = doi, doc_type = article_group_name, source='acs site',
-                              technical_info=str(datetime.now))
+                              doi = doi, doctype = article_group_name, source='acs site',
+                              technical_info=str(datetime.datetime.now()))
             db.session.add(article)
             db.session.commit()
 
