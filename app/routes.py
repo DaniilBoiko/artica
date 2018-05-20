@@ -134,9 +134,14 @@ def parseXMLs():
                 except:
                     issn = None
 
+                try:
+                    pubmed_id = article['MedlineCitation']['PMID']
+                except:
+                    pubmed_id = None
+
                 article = Article(title=title, abstract=abstract, pubdate=pubdate, volume=volume, issue=issue,
                                   journal=journal, journalabbr=journalabbr, authors=authors, language=language,
-                                  keyword=keywords, issn=issn)
+                                  keyword=keywords, issn=issn, source = 'pubmed', pubmed_id = pubmed_id, technical_info = i)
                 db.session.add(article)
                 db.session.commit()
     return 'success'

@@ -44,6 +44,9 @@ class Article(db.Model):
     query_class = ArticleQuery
 
     id = db.Column(db.Integer, primary_key=True)
+    source = db.Column(db.String)
+    pubmed_id = db.Column(db.Integer)
+    arxiv_id = db.Column(db.String)
     title = db.Column(db.UnicodeText)
     abstract = db.Column(db.UnicodeText)
     pubdate = db.Column(db.Date)
@@ -54,6 +57,8 @@ class Article(db.Model):
     authors = db.Column(JSON)
     language = db.Column(db.String)
     issn = db.Column(db.Text)
+    isbn = db.Column(db.Text)
+    technical_info = db.Column(db.String)
     keyword = db.Column(ARRAY(db.String))
     search_vector = db.Column(TSVectorType('title', 'abstract'))
     doi = db.Column(db.String)
