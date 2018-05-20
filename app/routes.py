@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, jsonify, make_res
 from app import app
 from app import db
 from app import q, Job, conn
-from app.models import Article
+from app.models import Article, User, UserDocument
 
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
@@ -13,6 +13,7 @@ from sqlalchemy_searchable import search
 from sqlalchemy import func
 
 import re
+
 
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
@@ -336,6 +337,35 @@ def auth_return():
     session.clear()
     session['token'] = mendeley_session.token
 
+    if User.query.filter_by(email=mendeley_session.profiles.me.email).first() is None:
+        new_user = User(mendeley_id=mendeley_session.profiles.me.id,
+                        first_name=mendeley_session.profiles.me.first_name,
+                        last_name=mendeley_session.profiles.me.last_name,
+                        display_name=mendeley_session.profiles.me.display_name,
+                        email=mendeley_session.profiles.me.email,
+                        created=datetime.datetime.today())
+        db.session.add(new_user)
+        db.session.commit()
+        if mendeley_session.documents.list(view='client').items is not None:
+            for document in mendeley_session.documents.list(view='client').items:
+
+                authors = []
+                if document.authors is not None:
+                    for author in document.authors:
+                        authors.append(author.first_name + ' ' + author.last_name)
+
+                user_doc = UserDocument(mendeley_id=document.id,
+                                        title=document.title,
+                                        type=document.type,
+                                        source=document.source,
+                                        year=document.year,
+                                        identifiers=document.identifiers,
+                                        keywords=document.keywords,
+                                        abstract=document.abstract,
+                                        authors=authors,
+                                        user=User.query.filter_by(email=mendeley_session.profiles.me.email).first().id)
+                db.session.add(user_doc)
+                db.session.commit()
     return redirect('/listDocuments')
 
 
@@ -352,7 +382,7 @@ def list_documents():
 
     docs = mendeley_session.documents.list(view='client').items
 
-    return render_template('library.html', name=name, docs=docs,title='Library')
+    return render_template('library.html', name=name, docs=docs, title='Library')
 
 
 @app.route('/download')
@@ -383,7 +413,7 @@ def get_document():
     document_id = request.args.get('document_id')
     doc = mendeley_session.documents.get(document_id)
 
-    return render_template('metadata.html', doc=doc,name=name,title=doc['title'])
+    return render_template('metadata.html', doc=doc, name=name, title=doc['title'])
 
 
 @app.route('/metadataLookup')
@@ -400,7 +430,7 @@ def metadata_lookup():
     doi = request.args.get('doi')
     doc = mendeley_session.catalog.by_identifier(doi=doi)
 
-    return render_template('metadata.html', doc=doc,name=name, title=doc['title'])
+    return render_template('metadata.html', doc=doc, name=name, title=doc['title'])
 
 
 @app.route('/account')
@@ -423,3 +453,70 @@ def account():
 def logout():
     session.pop('token', None)
     return redirect('/')
+
+def parse_them_all ():
+    url = 'https://pubs.acs.org/'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    journals = soup.find(id="journal-az-layer").find_all('a')
+    for journal in journals:
+        url = journal['href']
+        journal_name = journal.text
+        url = url.split('/')[2]
+        url = 'https://pubs.acs.org/loi/' + url
+        parse_journal(url, journal_name = journal_name)
+
+def parse_journal (url, journal_name):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    volumes = soup.find_all("div", class_="slider")
+    for volume in volumes:
+        issues = volume.find_all('div', class_='row')
+        issue_number = 0
+        for issue in issues:
+            issue_number += 1
+            url_is = issue.a['href']
+            parse_issue(url = url_is, volume = volume['id'][6:], issue = issue_number, journal_name = journal_name)
+
+def parse_issue (url, volume, issue, journal_name):
+    months_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
+    article_groups = soup.find_all("div", class_="articleGroup")
+    for article_group in article_groups:
+        article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
+
+        articles = article_group.find_all("div", class_="articleBox")
+
+        for article in articles:
+            title = ''
+            title = article.find_all('div', class_='art_title linkable')[0].a.text
+
+            authors = []
+            for author in article.find_all('span', class_ ='entryAuthor normal hlFld-ContribAuthor'):
+                authors.append(author.text.replace('\n','').replace('\r', ' '))
+
+            page_range = article.find_all('span', class_='articlePageRange')[0].text
+
+            pub_date = article.find_all('div', class_='epubdate')[0].text
+            pub_date = pub_date.split(' ')
+            month = pub_date[3]
+            month = int(months_dict[month])
+            day = int(pub_date[4][:-1])
+            year = int(pub_date[5])
+            pub_date = datetime.date(year = year, month = month, day = day)
+
+            doi = ''
+            doi = (article.find_all('div', class_='DOI')[0].text).replace('DOI: ', '')
+
+            src = ''
+            img = article.find_all('div', class_='articleFigure')[0].img
+            if not(img['class'][0] == 'emptyImg'):
+                src = article.find_all('div', class_='articleFigure')[0].img['src']
+                src = 'https://pubs.acs.org/' + src
+
+            article = Article(title=title, pubdate=pub_date, volume=volume, issue=issue,
+                              journal=journal_name, authors=authors, language='english',
+                              doi = doi, doc_type = article_group_name, source='acs site',
+                              technical_info=str(datetime.now))
+            db.session.add(article)
+            db.session.commit()
+
