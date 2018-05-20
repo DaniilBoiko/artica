@@ -7,6 +7,9 @@ from app.models import Article, User, UserDocument
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
 
+from bs4 import BeautifulSoup
+import requests
+
 import math
 import xmltodict, datetime, json, collections
 from sqlalchemy_searchable import search
@@ -479,8 +482,12 @@ def parse_journal (url, journal_name):
             parse_issue(url = url_is, volume = volume['id'][6:], issue = issue_number, journal_name = journal_name)
 
 def parse_issue (url, volume, issue, journal_name):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
     months_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
     article_groups = soup.find_all("div", class_="articleGroup")
+    print("JN: "+journal_name+" volume: "+volume+" issue: "+issue)
     for article_group in article_groups:
         article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
 
@@ -488,7 +495,7 @@ def parse_issue (url, volume, issue, journal_name):
 
         for article in articles:
             title = ''
-            title = article.find_all('div', class_='art_title linkable')[0].a.text
+            title = str(article.find_all('div', class_='art_title linkable')[0].a.text.encode(encoding="UTF-8"))
 
             authors = []
             for author in article.find_all('span', class_ ='entryAuthor normal hlFld-ContribAuthor'):
