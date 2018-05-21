@@ -460,7 +460,7 @@ def logout():
 def parse_them_all ():
     try:
         parsing = False
-        journal = 'ACS Pharmacology & Translational Science - New in 2018'
+        journal_inp = 'ACS Pharmacology & Translational Science - New in 2018'
         url = 'https://pubs.acs.org/'
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -468,7 +468,7 @@ def parse_them_all ():
         for journal in journals:
             url = journal['href']
             journal_name = journal.text
-            if (journal_name == journal):
+            if (journal_name == journal_inp):
                 parsing = True
             if (parsing):
                 url = url.split('/')[2]
