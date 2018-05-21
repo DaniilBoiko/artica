@@ -484,6 +484,7 @@ def parse_journal(url, journal_name, start_volume):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
+    parsing = False
     for volume in volumes:
         if ((int(volume['id'][6:]) == start_volume) or (start_volume == -1)):
             parsing = True
