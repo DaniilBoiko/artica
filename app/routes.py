@@ -461,6 +461,7 @@ def parse_them_all():
     parsing = False
     journal_inp = 'ACS Pharmacology & Translational Science - New in 2018'
     url = 'https://pubs.acs.org/loi/achre4'
+    start_volume = 58
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     journals = soup.find(id="journal-az-layer").find_all('a')
@@ -475,18 +476,22 @@ def parse_them_all():
         if (parsing):
             url = url.split('/')[2]
             url = 'https://pubs.acs.org/loi/' + url
-            parse_journal(url, journal_name=journal_name)
+            parse_journal(url, journal_name=journal_name, start_volume = start_volume)
+            start_volume = -1
 
 
-def parse_journal(url, journal_name):
+def parse_journal(url, journal_name, start_volume):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
     for volume in volumes:
-        issues = volume.find_all('div', class_='row')
-        for issue in issues:
-            url_is = issue.a['href']
-            parse_issue(url=url_is, volume=volume['id'][6:], journal_name=journal_name)
+        if ((int(volume['id'][6:]) == start_volume) or (start_volume == -1)):
+            parsing = True
+        if (parsing):
+            issues = volume.find_all('div', class_='row')
+            for issue in issues:
+                url_is = issue.a['href']
+                parse_issue(url=url_is, volume=volume['id'][6:], journal_name=journal_name)
 
 
 def parse_issue(url, volume, journal_name):
