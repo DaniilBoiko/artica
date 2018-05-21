@@ -17,7 +17,6 @@ from sqlalchemy import func
 
 import re
 
-
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
 
@@ -145,7 +144,7 @@ def parseXMLs():
 
                 article = Article(title=title, abstract=abstract, pubdate=pubdate, volume=volume, issue=issue,
                                   journal=journal, journalabbr=journalabbr, authors=authors, language=language,
-                                  keyword=keywords, issn=issn, source = 'pubmed', pubmed_id = pubmed_id, technical_info = i)
+                                  keyword=keywords, issn=issn, source='pubmed', pubmed_id=pubmed_id, technical_info=i)
                 db.session.add(article)
                 db.session.commit()
     return 'success'
@@ -457,28 +456,29 @@ def logout():
     session.pop('token', None)
     return redirect('/')
 
-def parse_them_all ():
-    try:
-        parsing = False
-        journal_inp = 'ACS Pharmacology & Translational Science - New in 2018'
-        url = 'https://pubs.acs.org/'
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        journals = soup.find(id="journal-az-layer").find_all('a')
-        for journal in journals:
-            url = journal['href']
-            journal_name = journal.text
-            if (journal_name == journal_inp):
-                parsing = True
-            if (parsing):
-                url = url.split('/')[2]
-                url = 'https://pubs.acs.org/loi/' + url
-                parse_journal(url, journal_name = journal_name)
-    except:
-        article = Article(title='Attention, fire alarm! Everyone, leave the building immediately!')
-        db.session.add(article)
-        db.session.commit()
-def parse_journal (url, journal_name):
+
+def parse_them_all():
+    parsing = False
+    journal_inp = 'ACS Pharmacology & Translational Science - New in 2018'
+    url = 'https://pubs.acs.org/loi/achre4'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    journals = soup.find(id="journal-az-layer").find_all('a')
+    print(url)
+    for journal in journals:
+        url = journal['href']
+        journal_name = journal.text
+        print(journal_name)
+        if (journal_name == journal_inp):
+            parsing = True
+            print('Success')
+        if (parsing):
+            url = url.split('/')[2]
+            url = 'https://pubs.acs.org/loi/' + url
+            parse_journal(url, journal_name=journal_name)
+
+
+def parse_journal(url, journal_name):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
@@ -486,17 +486,19 @@ def parse_journal (url, journal_name):
         issues = volume.find_all('div', class_='row')
         for issue in issues:
             url_is = issue.a['href']
-            parse_issue(url = url_is, volume = volume['id'][6:], journal_name = journal_name)
+            parse_issue(url=url_is, volume=volume['id'][6:], journal_name=journal_name)
 
-def parse_issue (url, volume, journal_name):
+
+def parse_issue(url, volume, journal_name):
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    months_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
+    months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                   'September': 9, 'October': 10, 'November': 11, 'December': 12}
     article_groups = soup.find_all("div", class_="articleGroup")
 
-    print("JN: "+str(journal_name)+" volume: "+str(volume)+" issue: "+str(issue))
+    print("JN: " + str(journal_name) + " volume: " + str(volume) + " issue: " + str(issue))
     for article_group in article_groups:
         try:
             article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
@@ -510,8 +512,8 @@ def parse_issue (url, volume, journal_name):
             title = str(article.find_all('div', class_='art_title linkable')[0].a.text.encode(encoding="UTF-8"))
 
             authors = []
-            for author in article.find_all('span', class_ ='entryAuthor normal hlFld-ContribAuthor'):
-                authors.append(author.text.replace('\n','').replace('\r', ' '))
+            for author in article.find_all('span', class_='entryAuthor normal hlFld-ContribAuthor'):
+                authors.append(author.text.replace('\n', '').replace('\r', ' '))
 
             page_range = article.find_all('span', class_='articlePageRange')[0].text
 
@@ -519,36 +521,36 @@ def parse_issue (url, volume, journal_name):
                 pub_date = article.find_all('div', class_='epubdate')[0].text
                 pub_date = pub_date.split(' ')
 
-                if pub_date[2]=='(Web):':
+                if pub_date[2] == '(Web):':
                     month = pub_date[3]
                     month = int(months_dict[month])
                     day = int(pub_date[4][:-1])
                     year = int(pub_date[5])
-                    pub_date = datetime.date(year = year, month = month, day = day)
+                    pub_date = datetime.date(year=year, month=month, day=day)
                 else:
                     month = pub_date[2]
                     month = int(months_dict[month])
                     day = int(pub_date[3][:-1])
                     year = int(pub_date[4])
-                    pub_date = datetime.date(year = year, month = month, day = day)
+                    pub_date = datetime.date(year=year, month=month, day=day)
             except:
                 try:
 
                     pub_date = article.find_all('div', class_='epubdate')[0].text
                     pub_date = pub_date.split(' ')
 
-                    if pub_date[2]=='(Web):':
+                    if pub_date[2] == '(Web):':
                         month = pub_date[3]
                         month = int(months_dict[month])
                         day = 1
                         year = int(pub_date[4])
-                        pub_date = datetime.date(year = year, month = month, day = day)
+                        pub_date = datetime.date(year=year, month=month, day=day)
                     else:
                         month = pub_date[2]
                         month = int(months_dict[month])
                         day = 1
                         year = int(pub_date[3])
-                        pub_date = datetime.date(year = year, month = month, day = day)
+                        pub_date = datetime.date(year=year, month=month, day=day)
                 except:
                     try:
                         pub_date = article.find_all('div', class_='coverdate')[0].text
@@ -588,14 +590,13 @@ def parse_issue (url, volume, journal_name):
 
             src = ''
             img = article.find_all('div', class_='articleFigure')[0].img
-            if not(img['class'][0] == 'emptyImg'):
+            if not (img['class'][0] == 'emptyImg'):
                 src = article.find_all('div', class_='articleFigure')[0].img['src']
                 src = 'https://pubs.acs.org/' + src
 
             article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
                               journal=journal_name, authors=authors, language='english',
-                              doi = doi, doctype = article_group_name, source='acs site',
+                              doi=doi, doctype=article_group_name, source='acs site',
                               technical_info=str(datetime.datetime.now()))
             db.session.add(article)
             db.session.commit()
-
