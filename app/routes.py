@@ -476,14 +476,13 @@ def parse_journal (url, journal_name):
     volumes = soup.find_all("div", class_="slider")
     for volume in volumes:
         issues = volume.find_all('div', class_='row')
-        issue_number = 0
         for issue in issues:
-            issue_number += 1
             url_is = issue.a['href']
-            parse_issue(url = url_is, volume = volume['id'][6:], issue = issue_number, journal_name = journal_name)
+            parse_issue(url = url_is, volume = volume['id'][6:], journal_name = journal_name)
 
-def parse_issue (url, volume, issue, journal_name):
+def parse_issue (url, volume, journal_name):
     response = requests.get(url)
+    issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
 
     months_dict = {'January':1, 'February':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'October':10, 'November':11, 'December':12}
