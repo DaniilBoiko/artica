@@ -459,7 +459,7 @@ def logout():
 
 def parse_them_all():
     parsing = False
-    journal_inp = 'ACS Pharmacology & Translational Science - New in 2018'
+    journal_inp = 'Analytical Chemistry'
     url = 'https://pubs.acs.org/loi/achre4'
     start_volume = 58
     response = requests.get(url)
