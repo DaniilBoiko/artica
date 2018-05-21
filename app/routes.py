@@ -458,18 +458,26 @@ def logout():
     return redirect('/')
 
 def parse_them_all ():
-    url = 'https://pubs.acs.org/loi/achre4'
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-
-    journals = soup.find(id="journal-az-layer").find_all('a')
-    for journal in journals:
-        url = journal['href']
-        journal_name = journal.text
-        url = url.split('/')[2]
-        url = 'https://pubs.acs.org/loi/' + url
-        parse_journal(url, journal_name = journal_name)
-
+    try:
+        parsing = False
+        journal = 'ACS Pharmacology & Translational Science - New in 2018'
+        url = 'https://pubs.acs.org/'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        journals = soup.find(id="journal-az-layer").find_all('a')
+        for journal in journals:
+            url = journal['href']
+            journal_name = journal.text
+            if (journal_name == journal):
+                parsing = True
+            if (parsing):
+                url = url.split('/')[2]
+                url = 'https://pubs.acs.org/loi/' + url
+                parse_journal(url, journal_name = journal_name)
+    except:
+        article = Article(title='Attention, fire alarm! Everyone, leave the building immediately!')
+        db.session.add(article)
+        db.session.commit()
 def parse_journal (url, journal_name):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
