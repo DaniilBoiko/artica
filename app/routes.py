@@ -515,7 +515,10 @@ def parse_issue(url, volume, journal_name):
 
         for article in articles:
             title = ''
-            title = str(article.find_all('div', class_='art_title linkable')[0].a.text.encode(encoding="UTF-8"))
+            try:
+                title = str(article.find_all('div', class_='art_title linkable')[0].a.text.encode(encoding="UTF-8"))
+            except:
+                title = 'artica-technical:notitle'
 
             authors = []
             for author in article.find_all('span', class_='entryAuthor normal hlFld-ContribAuthor'):
