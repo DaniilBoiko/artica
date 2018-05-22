@@ -461,7 +461,7 @@ def parse_them_all():
     parsing = False
     journal_inp = 'Analytical Chemistry'
     url = 'https://pubs.acs.org/loi/achre4'
-    start_volume = 58
+    start_volume = 18
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     journals = soup.find(id="journal-az-layer").find_all('a')
@@ -594,8 +594,12 @@ def parse_issue(url, volume, journal_name):
                             pub_date = datetime.date(year=year, month=month, day=day)
 
             print(pub_date)
+
             doi = ''
-            doi = (article.find_all('div', class_='DOI')[0].text).replace('DOI: ', '')
+            try:
+                doi = (article.find_all('div', class_='DOI')[0].text).replace('DOI: ', '')
+            except:
+                doi = 'artica-technical:nodoi'
 
             src = ''
             img = article.find_all('div', class_='articleFigure')[0].img
