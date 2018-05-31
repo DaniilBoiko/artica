@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, jsonify, make_res
 from app import app
 from app import db
 from app import q, Job, conn
-from app.models import Article, User, UserDocument
+from app.models import Article, User, UserDocument, Journal
 
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
@@ -234,6 +234,64 @@ def admin():
             )
     print(job.get_id())
     return render_template('admin.html', title='admin')
+
+
+@app.route('/update_journals', methods=['GET'])
+def update_journals():
+    # Token check
+    token = request.args.get('token')
+    if token != '64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0':
+        return redirect(url_for('index'))
+
+    # ACS
+    #   Some basic start in parsing
+    parsing = False
+    url = 'https://pubs.acs.org/loi/achre4'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    journals = soup.find(id="journal-az-layer").find_all('a')
+    print(url)
+
+    # Specified input
+    if request.args.get('journal') is not None:
+        journal_inp = request.args.get('journal')
+    else:
+        journal_inp = ''
+    if request.args.get('volume') is not None:
+        start_volume = request.args.get('volume')
+    else:
+        start_volume = -1
+
+    # Journal-by-journal
+    acs = []
+    for journal in journals:
+
+        url = journal['href']
+        journal_name = journal.text
+        print(journal_name)
+
+        #   Check for journal specification
+        if (journal_name == journal_inp) or (journal_inp == ''):
+            parsing = True
+            print('Success')
+
+        # Start parsing
+        if parsing:
+            url = url.split('/')[2]
+            url = 'https://pubs.acs.org/loi/' + url
+
+            #   Start queue
+            job = q.enqueue_call(
+                func=parse_journal, args=(), result_ttl=50000, timeout=360000
+            )
+
+            #   Some cool thing for online monitoring (see in update.html)
+            acs.append({'name': journal_name, 'job_id': job.get_id()})
+
+            parse_journal(url, journal_name=journal_name, start_volume=start_volume)
+            start_volume = -1
+
+    return render_template('update.html', title='Database update', acs=acs)
 
 
 @app.route('/article', methods=['GET'])
@@ -476,11 +534,19 @@ def parse_them_all():
         if (parsing):
             url = url.split('/')[2]
             url = 'https://pubs.acs.org/loi/' + url
-            parse_journal(url, journal_name=journal_name, start_volume = start_volume)
+            parse_journal(url, journal_name=journal_name, start_volume=start_volume)
             start_volume = -1
 
 
 def parse_journal(url, journal_name, start_volume):
+    # Check for journal existence / add if not exist
+    if Journal.query.filter(name='journal_name').first() is None:
+        journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now())
+        db.session.add(journal)
+        db.session.commit()
+    journal = Journal.query.filter(name='journal_name').first()
+
+    # Start parsing
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
@@ -492,10 +558,10 @@ def parse_journal(url, journal_name, start_volume):
             issues = volume.find_all('div', class_='row')
             for issue in issues:
                 url_is = issue.a['href']
-                parse_issue(url=url_is, volume=volume['id'][6:], journal_name=journal_name)
+                parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
 
 
-def parse_issue(url, volume, journal_name):
+def parse_issue(url, volume, journal_id):
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -504,7 +570,7 @@ def parse_issue(url, volume, journal_name):
                    'September': 9, 'October': 10, 'November': 11, 'December': 12}
     article_groups = soup.find_all("div", class_="articleGroup")
 
-    print("JN: " + str(journal_name) + " volume: " + str(volume) + " issue: " + str(issue))
+    print("JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
     for article_group in article_groups:
         try:
             article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
@@ -608,7 +674,7 @@ def parse_issue(url, volume, journal_name):
                 src = 'https://pubs.acs.org/' + src
 
             article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
-                              journal=journal_name, authors=authors, language='english',
+                              journal_id=journal_id, authors=authors, language='english',
                               doi=doi, doctype=article_group_name, source='acs site',
                               technical_info=str(datetime.datetime.now()))
             db.session.add(article)

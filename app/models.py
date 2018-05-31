@@ -51,10 +51,12 @@ class Article(db.Model):
     arxiv_id = db.Column(db.String)
     title = db.Column(db.UnicodeText)
     abstract = db.Column(db.UnicodeText)
+    src = db.Column(db.String)
+    pages = db.Column(db.String)
     pubdate = db.Column(db.Date)
     volume = db.Column(db.String)
     issue = db.Column(db.String)
-    journal = db.Column(db.Text)
+    journal_id = db.Column(db.Integer)
     journalabbr = db.Column(db.Text)
     authors = db.Column(JSON)
     language = db.Column(db.String)
@@ -69,3 +71,24 @@ class Article(db.Model):
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
+
+
+class Journal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    description = db.Column(db.Text)
+    subject = db.Column(db.String)
+    url = db.Column(db.Text)
+    last_fetched = db.Column(db.DateTime)
+    last_volume = db.Column(db.String)
+    last_issue = db.Column(db.String)
+    language = db.Column(db.String)
+    issn = db.Column(db.Text)
+    isbn = db.Column(db.Text)
+    technical_info = db.Column(db.String)
+    keyword = db.Column(ARRAY(db.String))
+
+    def __repr__(self):
+        return '<Journal {}>'.format(self.name)
+
+
