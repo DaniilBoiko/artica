@@ -284,20 +284,11 @@ def update_journals():
             #   Start queue
 
             job = q.enqueue_call(
-<<<<<<< HEAD
-                func=parse_journal, args=(url, journal_name, start_volume), result_ttl=50000, timeout=360000
-=======
                 func=parse_journal, args=(url,journal_name,start_volume), result_ttl=50000, timeout=360000
->>>>>>> 1b06a8d290c435ace1bf542507a7f9a281562abb
             )
             #   Some cool thing for online monitoring (see in update.html)
             acs.append({'name': journal_name, 'job_id': job.get_id()})
 
-<<<<<<< HEAD
-=======
-            start_volume = -1
-
->>>>>>> 1b06a8d290c435ace1bf542507a7f9a281562abb
     return render_template('update.html', title='Database update', acs=acs)
 
 
