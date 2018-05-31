@@ -282,13 +282,11 @@ def update_journals():
 
             #   Start queue
             job = q.enqueue_call(
-                func=parse_journal, args=(), result_ttl=50000, timeout=360000
+                func=parse_journal, args=(url,journal_name,start_volume), result_ttl=50000, timeout=360000
             )
-
             #   Some cool thing for online monitoring (see in update.html)
             acs.append({'name': journal_name, 'job_id': job.get_id()})
 
-            parse_journal(url, journal_name=journal_name, start_volume=start_volume)
             start_volume = -1
 
     return render_template('update.html', title='Database update', acs=acs)
@@ -514,7 +512,7 @@ def logout():
     session.pop('token', None)
     return redirect('/')
 
-
+'''
 def parse_them_all():
     parsing = False
     journal_inp = 'Analytical Chemistry'
@@ -536,7 +534,7 @@ def parse_them_all():
             url = 'https://pubs.acs.org/loi/' + url
             parse_journal(url, journal_name=journal_name, start_volume=start_volume)
             start_volume = -1
-
+'''
 
 def parse_journal(url, journal_name, start_volume):
     # Check for journal existence / add if not exist
