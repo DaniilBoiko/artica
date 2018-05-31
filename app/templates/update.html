@@ -19,37 +19,33 @@
 
             'use strict';
 
-            angular.module('WordcountApp', [])
+            angular.module('App', [])
 
-                .controller('WordcountController', ['$scope', '$log', '$http', '$timeout',
+                .controller('Controller', ['$scope', '$log', '$http', '$timeout',
                     function ($scope, $log, $http, $timeout) {
 
-                        $scope.submitButtonText = 'Submit';
-                        $scope.loading = false;
+                        $scope.statustext = 'Waiting';
                         $scope.urlerror = false;
+                        $scope.ids = [
+                            {% for journal in acs %}
+                                '{{ journal.job_id }}'
+                                {{ "," if not loop.last }}
+                            {% endfor %}
+                        ];
 
-                        $scope.getResults = function () {
+                        $scope.init = function () {
 
                             $log.log('test');
 
-                            // get the URL from the input
-                            var userInput = $scope.url;
-
-                            // fire the API request
-                            $http.post('/start', {'url': userInput}).success(function (results) {
-                                $log.log(results);
-                                getWordCount(results);
-                                $scope.wordcounts = null;
-                                $scope.loading = true;
-                                $scope.submitButtonText = 'Loading...';
-                                $scope.urlerror = false;
-                            }).error(function (error) {
-                                $log.log(error);
+                            angular.forEach($scope.ids,function(id) {
+                                get_status(id);
                             });
+
+                            $scope.statustext = 'Loading...';
 
                         };
 
-                        function getWordCount(jobID) {
+                        function get_status(jobID) {
 
                             var timeout = '';
 
@@ -60,9 +56,8 @@
                                         $log.log(data, status);
                                     } else if (status === 200) {
                                         $log.log(data);
-                                        $scope.loading = false;
-                                        $scope.submitButtonText = "Submit";
-                                        $scope.wordcounts = data;
+                                        var elementbyid = angular.element(document.querySelector('#'+jobID));
+                                        elementbyid.html('Done');
                                         $timeout.cancel(timeout);
                                         return false;
                                     }
@@ -71,10 +66,9 @@
                                     timeout = $timeout(poller, 2000);
                                 }).error(function (error) {
                                     $log.log(error);
-                                    $scope.loading = false;
-                                    $scope.submitButtonText = "Submit";
-                                    $scope.urlerror = true;
-                                });
+                                        var elementbyid = angular.element(document.querySelector('#'+jobID));
+                                        elementbyid.html('Error');
+                                })
                             };
 
                             poller();
@@ -88,6 +82,7 @@
 
     </script>
     <div class="container text-center">
+        <div data-ng-controller="myCtrl" data-ng-init="init('%some_backend_value%')"></div>
         <h1>American chemical society</h1>
         <table class="table">
             <th>
@@ -97,7 +92,7 @@
             {% for journal in acs %}
                 <th>
                     <tr>{{ journal.name }}</tr>
-                    <tr>{{ journal.job_id }}</tr>
+                    <tr id="{{ journal.job_id }}">{% raw %} {{ statustext }} {% endraw %}</tr>
                 </th>
             {% endfor %}
         </table>
