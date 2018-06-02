@@ -289,6 +289,8 @@ def update_journals():
             #   Some cool thing for online monitoring (see in update.html)
             acs.append({'name': journal_name, 'job_id': job.get_id()})
 
+        start_volume = 0
+
     return render_template('update.html', title='Database update', acs=acs)
 
 
@@ -556,21 +558,17 @@ def parse_journal(url, journal_name, start_volume):
                 url_is = issue.a['href']
                 parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
 
-        if (int(volume['id'][6:]) > last_volume):
+        elif (int(volume['id'][6:]) > last_volume):
             for issue in issues:
                 url_is = issue.a['href']
                 parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
 
-        if (int(volume['id'][6:]) == last_volume):
+        elif (int(volume['id'][6:]) == last_volume):
             for issue in issues:
                 url_is = issue.a['href']
                 issue = int((url_is.split('/'))[-1])
                 if (issue >= last_issue):
                     parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
-
-
-
-
 
 def parse_issue(url, volume, journal_id):
     response = requests.get(url)
