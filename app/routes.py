@@ -501,6 +501,7 @@ def logout():
     session.pop('token', None)
     return redirect('/')
 
+
 '''
 def parse_them_all():
     parsing = False
@@ -525,13 +526,16 @@ def parse_them_all():
             start_volume = -1
 '''
 
+
 def parse_journal(url, journal_name):
+
     # Check for journal existence / add if not exist
-    if Journal.query.filter(name='journal_name').first() is None:
-        journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_volume = 0)
+    if Journal.query.filter_by(name=journal_name).first() is None:
+        journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now())
         db.session.add(journal)
         db.session.commit()
-    journal = Journal.query.filter(name='journal_name').first()
+
+    journal = Journal.query.filter_by(name=journal_name).first()
     # Start parsing
     is_first_parsing = True
     response = requests.get(url)
@@ -545,22 +549,27 @@ def parse_journal(url, journal_name):
                                            is_first_parsing = is_first_parsing, force_parsing=False)
 
 def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
+
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    articles = Article.query.filter(journal_id = journal_id, volume = volume, issue = issue)
+    articles = Article.query.filter_by(journal_id = journal_id, volume = volume, issue = issue)
     if (articles is None) and is_first_parsing:
         url_to_list = url.split('/')
         url_to_list[-1] = str(int(issue)+1)
         new_url = '/'.join(url_to_list)
-        is_first_parsing = False
         try:
             parse_issue(new_url, volume, journal_id, False, True)
         except:
             print ('It is first issue in list, there is not issue upper')
+        is_first_parsing = False
 
     elif (articles is None) or (force_parsing):
+        if force_parsing:
+            for delarticle in articles:
+                delarticle.delete()
+                db.session.commit()
         months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
                        'September': 9, 'October': 10, 'November': 11, 'December': 12}
         article_groups = soup.find_all("div", class_="articleGroup")
@@ -680,7 +689,6 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
                                   technical_info=str(datetime.datetime.now()))
                 db.session.add(article)
                 db.session.commit()
-
     else:
         is_first_parsing = True
 

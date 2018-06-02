@@ -56,7 +56,7 @@
                                         $log.log(data, status);
                                     } else if (status === 200) {
                                         $log.log(data);
-                                        var elementbyid = angular.element(document.querySelector('#'+jobID));
+                                        var elementbyid = angular.element(document.querySelector('#a'+jobID));
                                         elementbyid.html('Done');
                                         $timeout.cancel(timeout);
                                         return false;
@@ -66,7 +66,7 @@
                                     timeout = $timeout(poller, 2000);
                                 }).error(function (error) {
                                     $log.log(error);
-                                        var elementbyid = angular.element(document.querySelector('#'+jobID));
+                                        var elementbyid = angular.element(document.querySelector('#a'+jobID));
                                         elementbyid.html('Error');
                                 })
                             };
@@ -82,19 +82,18 @@
 
     </script>
     <div class="container text-center">
-        <div data-ng-controller="myCtrl" data-ng-init="init('%some_backend_value%')"></div>
         <h1>American chemical society</h1>
-        <div ng-app="App" ng-controller="Controller">
+        <div ng-app="App" ng-controller="Controller" ng-init="init()">
         <table class="table">
-            <th>
-                <tr>Journal</tr>
-                <tr>Status</tr>
-            </th>
+            <tr>
+                <th>Journal</th>
+                <th>Status</th>
+            </tr>
             {% for journal in acs %}
-                <th>
-                    <tr>{{ journal.name }}</tr>
-                    <tr id="{{ journal.job_id }}">{% raw %} {{ statustext }} {% endraw %}</tr>
-                </th>
+                <tr>
+                    <td>{{ journal.name }}</td>
+                    <td id="a{{ journal.job_id }}">{% raw %} {{ statustext }} {% endraw %}</td>
+                </tr>
             {% endfor %}
         </table>
         </div>
