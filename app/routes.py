@@ -545,8 +545,8 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    articles = Article.query.filter_by(journal_id=journal_id, volume=volume, issue=issue)
-    if (articles is None) and is_first_parsing:
+    articles_db = Article.query.filter_by(journal_id=journal_id, volume=volume, issue=issue)
+    if (articles_db.first() is None) and is_first_parsing:
         url_to_list = url.split('/')
         url_to_list[-1] = str(int(issue) + 1)
         new_url = '/'.join(url_to_list)
@@ -556,9 +556,9 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
             print ('It is first issue in list, there is not issue upper')
         is_first_parsing = False
 
-    elif (articles is None) or (force_parsing):
+    if (articles_db.first() is None) or (force_parsing):
         if force_parsing:
-            for delarticle in articles:
+            for delarticle in articles_db:
                 delarticle.delete()
                 db.session.commit()
         months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
