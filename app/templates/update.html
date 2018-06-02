@@ -84,6 +84,7 @@
     <div class="container text-center">
         <div data-ng-controller="myCtrl" data-ng-init="init('%some_backend_value%')"></div>
         <h1>American chemical society</h1>
+        <div ng-app="App" ng-controller="Controller">
         <table class="table">
             <th>
                 <tr>Journal</tr>
@@ -96,5 +97,6 @@
                 </th>
             {% endfor %}
         </table>
+        </div>
     </div>
 {% endblock %}
