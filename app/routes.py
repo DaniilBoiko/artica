@@ -544,7 +544,7 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
-
+    print("Enter JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
     articles_db = Article.query.filter_by(journal_id=journal_id, volume=volume, issue=issue)
     if (articles_db.first() is None) and is_first_parsing:
         url_to_list = url.split('/')
@@ -565,7 +565,7 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
                        'September': 9, 'October': 10, 'November': 11, 'December': 12}
         article_groups = soup.find_all("div", class_="articleGroup")
 
-        print("JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
+        print("Parse JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
         for article_group in article_groups:
             try:
                 article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
