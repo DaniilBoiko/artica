@@ -255,28 +255,20 @@ def update_journals():
     # Journal-by-journal
     acs = []
     for journal in journals:
-
         url = journal['href']
         journal_name = journal.text
         print(journal_name)
 
-        #   Check for journal specification
-        if (journal_name == journal_inp) or (journal_inp == ''):
-            parsing = True
-            print('Success')
+        url = url.split('/')[2]
+        url = 'https://pubs.acs.org/loi/' + url
 
-        # Start parsing
-        if parsing:
-            url = url.split('/')[2]
-            url = 'https://pubs.acs.org/loi/' + url
+        #   Start queue
 
-            #   Start queue
-
-            job = q.enqueue_call(
-                func=parse_journal, args=(url,journal_name), result_ttl=50000, timeout=360000
-            )
-            #   Some cool thing for online monitoring (see in update.html)
-            acs.append({'name': journal_name, 'job_id': job.get_id()})
+        job = q.enqueue_call(
+            func=parse_journal, args=(url, journal_name), result_ttl=50000, timeout=360000
+        )
+        #   Some cool thing for online monitoring (see in update.html)
+        acs.append({'name': journal_name, 'job_id': job.get_id()})
 
     return render_template('update.html', title='Database update', acs=acs)
 
@@ -528,7 +520,6 @@ def parse_them_all():
 
 
 def parse_journal(url, journal_name):
-
     # Check for journal existence / add if not exist
     if Journal.query.filter_by(name=journal_name).first() is None:
         journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now())
@@ -546,18 +537,18 @@ def parse_journal(url, journal_name):
         for issue in issues:
             url_is = issue.a['href']
             is_first_parsing = parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id,
-                                           is_first_parsing = is_first_parsing, force_parsing=False)
+                                           is_first_parsing=is_first_parsing, force_parsing=False)
+
 
 def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
-
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    articles = Article.query.filter_by(journal_id = journal_id, volume = volume, issue = issue)
+    articles = Article.query.filter_by(journal_id=journal_id, volume=volume, issue=issue)
     if (articles is None) and is_first_parsing:
         url_to_list = url.split('/')
-        url_to_list[-1] = str(int(issue)+1)
+        url_to_list[-1] = str(int(issue) + 1)
         new_url = '/'.join(url_to_list)
         try:
             parse_issue(new_url, volume, journal_id, False, True)
@@ -685,7 +676,7 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
 
                 article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
                                   journal_id=journal_id, authors=authors, language='english',
-                                  doi=doi, doctype=article_group_name, source='acs site', src = src, pages = page_range,
+                                  doi=doi, doctype=article_group_name, source='acs site', src=src, pages=page_range,
                                   technical_info=str(datetime.datetime.now()))
                 db.session.add(article)
                 db.session.commit()
