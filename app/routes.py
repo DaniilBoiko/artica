@@ -284,7 +284,7 @@ def update_journals():
             #   Start queue
 
             job = q.enqueue_call(
-                func=parse_journal, args=(url,journal_name,start_volume), result_ttl=50000, timeout=360000
+                func=parse_journal, args=(url, journal_name, start_volume), result_ttl=50000, timeout=360000
             )
             #   Some cool thing for online monitoring (see in update.html)
             acs.append({'name': journal_name, 'job_id': job.get_id()})
@@ -514,6 +514,7 @@ def logout():
     session.pop('token', None)
     return redirect('/')
 
+
 '''
 def parse_them_all():
     parsing = False
@@ -538,13 +539,14 @@ def parse_them_all():
             start_volume = -1
 '''
 
+
 def parse_journal(url, journal_name, start_volume):
     # Check for journal existence / add if not exist
-    if Journal.query.filter(name='journal_name').first() is None:
-        journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_volume = 0)
+    if Journal.query.filter_by(name=journal_name).first() is None:
+        journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_volume=0, last_issue=0)
         db.session.add(journal)
         db.session.commit()
-    journal = Journal.query.filter(name='journal_name').first()
+    journal = Journal.query.filter_by(name=journal_name).first()
     last_volume = journal.last_volume
     last_issue = journal.last_issue
     # Start parsing
@@ -552,33 +554,36 @@ def parse_journal(url, journal_name, start_volume):
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
     for volume in volumes:
+        issues = volume.find_all('div', class_='row')
+
         if (int(volume['id'][6:]) <= start_volume) or (start_volume == -1):
-            issues = volume.find_all('div', class_='row')
             for issue in issues:
                 url_is = issue.a['href']
                 parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
 
-        elif (int(volume['id'][6:]) > last_volume):
+        elif (int(volume['id'][6:]) > int(last_volume)):
             for issue in issues:
                 url_is = issue.a['href']
                 parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
 
-        elif (int(volume['id'][6:]) == last_volume):
+        elif (int(volume['id'][6:]) == int(last_volume)):
             for issue in issues:
                 url_is = issue.a['href']
                 issue = int((url_is.split('/'))[-1])
                 if (issue >= last_issue):
                     parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
 
+
 def parse_issue(url, volume, journal_id):
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    articles = Article.query.filter(journal_id = journal_id, volume = volume, issue = issue)
+    articles = Article.query.filter_by(journal_id=journal_id, volume=volume, issue=issue)
     if articles is not None:
-        db.session.delete(articles)
-        db.session.commit()
+        for delarticle in articles:
+            delarticle.delete()
+            db.session.commit()
 
     months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
                    'September': 9, 'October': 10, 'November': 11, 'December': 12}
@@ -695,10 +700,10 @@ def parse_issue(url, volume, journal_id):
 
             article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
                               journal_id=journal_id, authors=authors, language='english',
-                              doi=doi, doctype=article_group_name, source='acs site', src = src, pages = page_range,
+                              doi=doi, doctype=article_group_name, source='acs site', src=src, pages=page_range,
                               technical_info=str(datetime.datetime.now()))
 
-            journal = Journal.query.filter(journal_id=journal_id).first()
+            journal = Journal.query.filter_by(id=journal_id).first()
             if journal is not None:
                 if (int(journal.last_issue) <= int(issue)):
                     journal.last_issue = str(issue)
