@@ -541,7 +541,6 @@ def parse_them_all():
 
 def parse_journal(url, journal_name):
 
-
     journal = Journal.query.filter_by(name=journal_name).first()
     # Start parsing
     is_first_parsing = True
@@ -567,7 +566,7 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
         url_to_list[-1] = str(int(issue) + 1)
         new_url = '/'.join(url_to_list)
         try:
-            parse_issue(new_url, volume, journal_id, False, True)
+            parse_issue(new_url, str(int(volume)+1), str(int(journal_id)+1), False, True)
         except:
             print ('It is first issue in list, there is not issue upper')
         is_first_parsing = False
