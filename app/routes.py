@@ -243,32 +243,49 @@ def update_journals():
     if token != '64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0':
         return redirect(url_for('index'))
 
-    # ACS
-    #   Some basic start in parsing
-    parsing = False
-    url = 'https://pubs.acs.org/loi/achre4'
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    journals = soup.find(id="journal-az-layer").find_all('a')
-    print(url)
-
-    # Journal-by-journal
     acs = []
-    for journal in journals:
-        url = journal['href']
-        journal_name = journal.text
-        print(journal_name)
 
-        url = url.split('/')[2]
-        url = 'https://pubs.acs.org/loi/' + url
+    task = request.args.get('task')
 
-        #   Start queue
+    if task == 'update':
+        # ACS
+        #   Some basic start in parsing
+        parsing = False
+        url = 'https://pubs.acs.org/loi/achre4'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        journals = soup.find(id="journal-az-layer").find_all('a')
+        #print(url)
 
-        job = q.enqueue_call(
-            func=parse_journal, args=(url, journal_name), result_ttl=50000, timeout=360000
-        )
-        #   Some cool thing for online monitoring (see in update.html)
-        acs.append({'name': journal_name, 'job_id': job.get_id()})
+        # Journal-by-journal
+        for journal in journals:
+            url = journal['href']
+            journal_name = journal.text
+            #print(journal_name)
+
+            url = url.split('/')[2]
+            url = 'https://pubs.acs.org/loi/' + url
+
+            # Check for journal existence / add if not exist
+            if Journal.query.filter_by(name=journal_name).first() is None:
+                journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now())
+                db.session.add(journal)
+                db.session.commit()
+
+            #   Start queue
+
+            job = q.enqueue_call(
+                func=parse_journal, args=(url, journal_name), result_ttl=50000, timeout=360000
+            )
+
+            #   Some cool thing for online monitoring (see in update.html)
+            our_journal = Journal.query.filter_by(name=journal_name).first()
+            our_journal.job_id = job.get_id()
+
+            db.session.commit()
+
+    for journal in Journal.query.all():
+        acs.append({'name': journal.name, 'job_id': journal.job_id})
 
     return render_template('update.html', title='Database update', acs=acs)
 
@@ -317,7 +334,10 @@ def get_results(job_key):
     job = Job.fetch(job_key, connection=conn)
 
     if job.is_finished:
-        return "Success/failure", 200
+        if job.is_failed:
+            return 'failue', 403
+        else:
+            return "Success", 200
     else:
         return "No", 202
 
@@ -520,11 +540,7 @@ def parse_them_all():
 
 
 def parse_journal(url, journal_name):
-    # Check for journal existence / add if not exist
-    if Journal.query.filter_by(name=journal_name).first() is None:
-        journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now())
-        db.session.add(journal)
-        db.session.commit()
+
 
     journal = Journal.query.filter_by(name=journal_name).first()
     # Start parsing

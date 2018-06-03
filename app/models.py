@@ -87,6 +87,7 @@ class Journal(db.Model):
     isbn = db.Column(db.Text)
     technical_info = db.Column(db.String)
     keyword = db.Column(ARRAY(db.String))
+    job_id = db.Column(db.String)
 
     def __repr__(self):
         return '<Journal {}>'.format(self.name)
