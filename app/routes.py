@@ -267,7 +267,8 @@ def update_journals():
 
             # Check for journal existence / add if not exist
             if Journal.query.filter_by(name=journal_name).first() is None:
-                journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now())
+                journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_issue = '0',
+                                  last_volume = '0')
                 db.session.add(journal)
                 db.session.commit()
 
