@@ -1,24 +1,23 @@
+import collections
+import datetime
+import json
+import math
+import re
+import requests
+import xmltodict
+from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, jsonify, make_response, session
+from mendeley import Mendeley
+from mendeley.session import MendeleySession
+from sqlalchemy import func
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
+from sqlalchemy_searchable import search
+
 from app import app
 from app import db
 from app import q, Job, conn
 from app.models import Article, User, UserDocument, Journal
-
-from mendeley import Mendeley
-from mendeley.session import MendeleySession
-
-from bs4 import BeautifulSoup
-import requests
-
-import math
-import xmltodict, datetime, json, collections
-from sqlalchemy_searchable import search
-from sqlalchemy import func
-
-import re
-
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -272,7 +271,7 @@ def update_journals():
                 db.session.add(journal)
                 db.session.commit()
 
-            #   Start queue
+            # Start queue
 
             job = q.enqueue_call(
                 func=parse_journal, args=(url, journal_name), result_ttl=50000, timeout=360000
@@ -284,7 +283,8 @@ def update_journals():
 
             db.session.commit()
 
-        return redirect(url_for('update_journals',token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0'))
+        return redirect(
+            url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0'))
 
     for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
@@ -542,93 +542,115 @@ def parse_them_all():
 
 
 def parse_journal(url, journal_name):
-
     journal = Journal.query.filter_by(name=journal_name).first()
     # Start parsing
-    is_first_parsing = True
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
+    last_volume = volumes[0]['id'][6:]
+    issues = volumes[0].find_all('div', class_='row')
+    last_issue = (issues[0].a['href']).split('/')[-1]
     for volume in volumes:
         issues = volume.find_all('div', class_='row')
         for issue in issues:
             url_is = issue.a['href']
-            is_first_parsing = parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id,
-                                           is_first_parsing=is_first_parsing, force_parsing=False)
+            if (int(volume['id'][6:]) >= int(journal.last_volume)) and \
+                    (int((issue.a['href']).split('/')[-1]) >= int(journal.last_issue)):
+                parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
+    journal.last_volume = last_volume
+    journal.last_issue = last_issue
+    db.session.commit()
 
 
-def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
+def parse_issue(url, volume, journal_id):
     response = requests.get(url)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
     print("Enter JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
     articles_db = Article.query.filter_by(journal_id=journal_id, volume=volume, issue=issue)
-    if (articles_db.first() is None) and is_first_parsing:
-        url_to_list = url.split('/')
-        url_to_list[-1] = str(int(issue) + 1)
-        new_url = '/'.join(url_to_list)
+    months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                   'September': 9, 'October': 10, 'November': 11, 'December': 12}
+    article_groups = soup.find_all("div", class_="articleGroup")
+
+    print("Parse JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
+    for article_group in article_groups:
         try:
-            parse_issue(new_url, str(int(volume)+1), str(int(journal_id)+1), False, True)
+            article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
         except:
-            print ('It is first issue in list, there is not issue upper')
-        is_first_parsing = False
+            article_group_name = "error"
 
-    if (articles_db.first() is None) or (force_parsing):
-        if force_parsing:
-            for delarticle in articles_db:
-                delarticle.delete()
-                db.session.commit()
-        months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
-                       'September': 9, 'October': 10, 'November': 11, 'December': 12}
-        article_groups = soup.find_all("div", class_="articleGroup")
+        articles = article_group.find_all("div", class_="articleBox")
 
-        print("Parse JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
-        for article_group in article_groups:
+        for article in articles:
+            title = ''
             try:
-                article_group_name = article_group.find_all("div", class_="subject")[0].get_text("\n")
+                title = str(article.find_all('div', class_='art_title linkable')[0].a.text.encode(encoding="UTF-8"))
             except:
-                article_group_name = "error"
+                title = 'artica-technical:notitle'
 
-            articles = article_group.find_all("div", class_="articleBox")
+            authors = []
+            for author in article.find_all('span', class_='entryAuthor normal hlFld-ContribAuthor'):
+                authors.append(author.text.replace('\n', '').replace('\r', ' '))
 
-            for article in articles:
-                title = ''
+            try:
+                page_range = article.find_all('span', class_='articlePageRange')[0].text
+            except:
+                page_range = 'artica-technical:nopage_range'
+
+            try:
+                pub_date = article.find_all('div', class_='epubdate')[0].text
+                pub_date = pub_date.split(' ')
+
+                if pub_date[2] == '(Web):':
+                    month = pub_date[3]
+                    month = int(months_dict[month])
+                    day = int(pub_date[4][:-1])
+                    year = int(pub_date[5])
+                    pub_date = datetime.date(year=year, month=month, day=day)
+                else:
+                    month = pub_date[2]
+                    month = int(months_dict[month])
+                    day = int(pub_date[3][:-1])
+                    year = int(pub_date[4])
+                    pub_date = datetime.date(year=year, month=month, day=day)
+            except:
                 try:
-                    title = str(article.find_all('div', class_='art_title linkable')[0].a.text.encode(encoding="UTF-8"))
-                except:
-                    title = 'artica-technical:notitle'
 
-                authors = []
-                for author in article.find_all('span', class_='entryAuthor normal hlFld-ContribAuthor'):
-                    authors.append(author.text.replace('\n', '').replace('\r', ' '))
-
-                try:
-                    page_range = article.find_all('span', class_='articlePageRange')[0].text
-                except:
-                    page_range = 'artica-technical:nopage_range'
-
-                try:
                     pub_date = article.find_all('div', class_='epubdate')[0].text
                     pub_date = pub_date.split(' ')
 
                     if pub_date[2] == '(Web):':
                         month = pub_date[3]
                         month = int(months_dict[month])
-                        day = int(pub_date[4][:-1])
-                        year = int(pub_date[5])
+                        day = 1
+                        year = int(pub_date[4])
                         pub_date = datetime.date(year=year, month=month, day=day)
                     else:
                         month = pub_date[2]
                         month = int(months_dict[month])
-                        day = int(pub_date[3][:-1])
-                        year = int(pub_date[4])
+                        day = 1
+                        year = int(pub_date[3])
                         pub_date = datetime.date(year=year, month=month, day=day)
                 except:
                     try:
-
-                        pub_date = article.find_all('div', class_='epubdate')[0].text
+                        pub_date = article.find_all('div', class_='coverdate')[0].text
                         pub_date = pub_date.split(' ')
 
+                        if pub_date[2] == '(Web):':
+                            month = pub_date[3]
+                            month = int(months_dict[month])
+                            day = int(pub_date[4][:-1])
+                            year = int(pub_date[5])
+                            pub_date = datetime.date(year=year, month=month, day=day)
+                        else:
+                            month = pub_date[2]
+                            month = int(months_dict[month])
+                            day = int(pub_date[3][:-1])
+                            year = int(pub_date[4])
+                            pub_date = datetime.date(year=year, month=month, day=day)
+                    except:
+                        pub_date = article.find_all('div', class_='coverdate')[0].text
+                        pub_date = pub_date.split(' ')
                         if pub_date[2] == '(Web):':
                             month = pub_date[3]
                             month = int(months_dict[month])
@@ -641,63 +663,27 @@ def parse_issue(url, volume, journal_id, is_first_parsing, force_parsing):
                             day = 1
                             year = int(pub_date[3])
                             pub_date = datetime.date(year=year, month=month, day=day)
-                    except:
-                        try:
-                            pub_date = article.find_all('div', class_='coverdate')[0].text
-                            pub_date = pub_date.split(' ')
 
-                            if pub_date[2] == '(Web):':
-                                month = pub_date[3]
-                                month = int(months_dict[month])
-                                day = int(pub_date[4][:-1])
-                                year = int(pub_date[5])
-                                pub_date = datetime.date(year=year, month=month, day=day)
-                            else:
-                                month = pub_date[2]
-                                month = int(months_dict[month])
-                                day = int(pub_date[3][:-1])
-                                year = int(pub_date[4])
-                                pub_date = datetime.date(year=year, month=month, day=day)
-                        except:
-                            pub_date = article.find_all('div', class_='coverdate')[0].text
-                            pub_date = pub_date.split(' ')
-                            if pub_date[2] == '(Web):':
-                                month = pub_date[3]
-                                month = int(months_dict[month])
-                                day = 1
-                                year = int(pub_date[4])
-                                pub_date = datetime.date(year=year, month=month, day=day)
-                            else:
-                                month = pub_date[2]
-                                month = int(months_dict[month])
-                                day = 1
-                                year = int(pub_date[3])
-                                pub_date = datetime.date(year=year, month=month, day=day)
+            print(pub_date)
 
-                print(pub_date)
+            doi = ''
+            try:
+                doi = (article.find_all('div', class_='DOI')[0].text).replace('DOI: ', '')
+            except:
+                doi = 'artica-technical:nodoi'
 
-                doi = ''
-                try:
-                    doi = (article.find_all('div', class_='DOI')[0].text).replace('DOI: ', '')
-                except:
-                    doi = 'artica-technical:nodoi'
+            src = ''
+            try:
+                img = article.find_all('div', class_='articleFigure')[0].img
+                if not (img['class'][0] == 'emptyImg'):
+                    src = article.find_all('div', class_='articleFigure')[0].img['src']
+                    src = 'https://pubs.acs.org/' + src
+            except:
+                src = 'artica-technical:nosrc'
 
-                src = ''
-                try:
-                    img = article.find_all('div', class_='articleFigure')[0].img
-                    if not (img['class'][0] == 'emptyImg'):
-                        src = article.find_all('div', class_='articleFigure')[0].img['src']
-                        src = 'https://pubs.acs.org/' + src
-                except:
-                    src = 'artica-technical:nosrc'
-
-                article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
-                                  journal_id=journal_id, authors=authors, language='english',
-                                  doi=doi, doctype=article_group_name, source='acs site', src=src, pages=page_range,
-                                  technical_info=str(datetime.datetime.now()))
-                db.session.add(article)
-                db.session.commit()
-    else:
-        is_first_parsing = True
-
-    return is_first_parsing
+            article = Article(title=title, pubdate=pub_date, volume=str(volume), issue=str(issue),
+                              journal_id=journal_id, authors=authors, language='english',
+                              doi=doi, doctype=article_group_name, source='acs site', src=src, pages=page_range,
+                              technical_info=str(datetime.datetime.now()))
+            db.session.add(article)
+            db.session.commit()
