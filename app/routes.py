@@ -247,7 +247,7 @@ def update_journals():
 
     task = request.args.get('task')
 
-    if task == 'update':
+    if task == 'parse':
         # ACS
         #   Some basic start in parsing
         parsing = False
@@ -255,13 +255,13 @@ def update_journals():
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
         journals = soup.find(id="journal-az-layer").find_all('a')
-        #print(url)
+        print(url)
 
         # Journal-by-journal
         for journal in journals:
             url = journal['href']
             journal_name = journal.text
-            #print(journal_name)
+            print(journal_name)
 
             url = url.split('/')[2]
             url = 'https://pubs.acs.org/loi/' + url
@@ -284,7 +284,9 @@ def update_journals():
 
             db.session.commit()
 
-    for journal in Journal.query.all():
+        return redirect(url_for('update_journals',token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0'))
+
+    for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
 
     return render_template('update.html', title='Database update', acs=acs)
@@ -334,12 +336,12 @@ def get_results(job_key):
     job = Job.fetch(job_key, connection=conn)
 
     if job.is_finished:
-        if job.is_failed:
-            return 'failue', 403
-        else:
-            return "Success", 200
+        return "Success", 200
     else:
-        return "No", 202
+        if job.is_failed:
+            return 'Failure', 403
+        else:
+            return "No", 202
 
 
 @app.route("/add_data", methods=['GET'])

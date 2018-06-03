@@ -37,7 +37,7 @@
 
                             $log.log('test');
 
-                            angular.forEach($scope.ids,function(id) {
+                            angular.forEach($scope.ids, function (id) {
                                 get_status(id);
                             });
 
@@ -56,8 +56,8 @@
                                         $log.log(data, status);
                                     } else if (status === 200) {
                                         $log.log(data);
-                                        var elementbyid = angular.element(document.querySelector('#a'+jobID));
-                                        elementbyid.html('Done');
+                                        var elementbyid = angular.element(document.querySelector('#a' + jobID));
+                                        elementbyid.html('<a href class="btn btn-sm btn-success">Done</a>');
                                         $timeout.cancel(timeout);
                                         return false;
                                     }
@@ -66,8 +66,8 @@
                                     timeout = $timeout(poller, 2000);
                                 }).error(function (error) {
                                     $log.log(error);
-                                        var elementbyid = angular.element(document.querySelector('#a'+jobID));
-                                        elementbyid.html('Error');
+                                    var elementbyid = angular.element(document.querySelector('#a' + jobID));
+                                    elementbyid.html('<a href class="btn btn-sm btn-danger">Error</a>');
                                 })
                             };
 
@@ -83,19 +83,23 @@
     </script>
     <div class="container text-center">
         <h1>American chemical society</h1>
+        <br>
+        <a class="btn btn-dark btn-lg"
+           href="{{ url_for('update_journals',task='parse',token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0') }}">Start
+            update</a>
         <div ng-app="App" ng-controller="Controller" ng-init="init()">
-        <table class="table">
-            <tr>
-                <th>Journal</th>
-                <th>Status</th>
-            </tr>
-            {% for journal in acs %}
+            <table class="table">
                 <tr>
-                    <td>{{ journal.name }}</td>
-                    <td id="a{{ journal.job_id }}">{% raw %} {{ statustext }} {% endraw %}</td>
+                    <th>Journal</th>
+                    <th>Status</th>
                 </tr>
-            {% endfor %}
-        </table>
+                {% for journal in acs %}
+                    <tr>
+                        <td>{{ journal.name }}</td>
+                        <td id="a{{ journal.job_id }}">{% raw %} {{ statustext }} {% endraw %}</td>
+                    </tr>
+                {% endfor %}
+            </table>
         </div>
     </div>
 {% endblock %}
