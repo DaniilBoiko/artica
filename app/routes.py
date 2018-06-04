@@ -555,8 +555,9 @@ def parse_journal(url, journal_name):
         issues = volume.find_all('div', class_='row')
         for issue in issues:
             url_is = issue.a['href']
-            if (int(volume['id'][6:]) >= int(journal.last_volume)) and \
-                    (int((issue.a['href']).split('/')[-1]) >= int(journal.last_issue)):
+            if (int(volume['id'][6:]) > int(journal.last_volume)) or \
+                    ((int(volume['id'][6:]) == int(journal.last_volume)) and (
+                                int((issue.a['href']).split('/')[-1]) >= int(journal.last_issue))):
                 parse_issue(url=url_is, volume=volume['id'][6:], journal_id=journal.id)
     journal.last_volume = last_volume
     journal.last_issue = last_issue
