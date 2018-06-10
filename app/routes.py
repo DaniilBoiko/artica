@@ -534,7 +534,6 @@ def logout():
     return redirect('/')
 
 
-'''
 def parse_them_all():
     parsing = False
     journal_inp = 'Analytical Chemistry'
@@ -556,7 +555,6 @@ def parse_them_all():
             url = 'https://pubs.acs.org/loi/' + url
             parse_journal(url, journal_name=journal_name, start_volume=start_volume)
             start_volume = -1
-'''
 
 
 def parse_journal(url, journal_name):
@@ -718,34 +716,46 @@ def parse_abstracts(start_id=0, finish_id=0):
             response = requests.get(url)
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            try:
-                authors_div = soup.find(id='authors')
-            except:
-                author_div = ''
+            meta_data = soup.find(id='articleMeta')
 
-            try:
-                affiliations_div = soup.find("div", class_="affiliations")
-            except:
-                affiliations_div = ''
+            if (meta_data is None):
+                meta_data = ''
 
             abstract_box = soup.find(id="abstractBox")
-            try:
-                src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
-            except:
+            abstract_body = soup.find(id="articleBody")
+
+            if (abstract_box is not None):
+                try:
+                    src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
+                except:
+                    src = ''
+
+                abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
+
+                abstract = ''
+                try:
+                    for abstract_part in abstract_parts:
+                        abstract = abstract + abstract_part.text + ' '
+                except:
+                    abstract = ''
+            elif (abstract_body is not None):
+
                 src = ''
 
-            abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
+                abstract_parts = abstract_body.find_all("p")
 
-            abstract = ''
-            try:
-                for abstract_part in abstract_parts:
-                    abstract = abstract + abstract_part.text + ' '
-            except:
                 abstract = ''
+                try:
+                    for abstract_part in abstract_parts:
+                        abstract = abstract + abstract_part.text + ' '
+                except:
+                    abstract = ''
+            else:
+                abstract = ''
+                src = ''
 
             article.abstract = abstract
             article.src = src
-            article.authors_div = authors_div
-            article.affiliations_div = affiliations_div
+            article.meta_data = meta_data
 
             db.session.commit()
