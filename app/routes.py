@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, jsonify, make_response, session
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
-from sqlalchemy import func
+from sqlalchemy import func,between
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
 from sqlalchemy_searchable import search
@@ -267,8 +267,8 @@ def update_journals():
 
             # Check for journal existence / add if not exist
             if Journal.query.filter_by(name=journal_name).first() is None:
-                journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_issue = '0',
-                                  last_volume = '0')
+                journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_issue='0',
+                                  last_volume='0')
                 db.session.add(journal)
                 db.session.commit()
 
@@ -291,6 +291,23 @@ def update_journals():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
 
     return render_template('update.html', title='Database update', acs=acs)
+
+
+@app.route('/get_acs_abs', methods=['GET'])
+def get_acs_abs():
+    return render_template('get_acs_abs.html')
+
+
+@app.route('/update_acs', methods=['GET'])
+def update_abs():
+    job = q.enqueue_call(
+        func=parse_abstracts, args=(int(request.args.get('firstid')), int(request.args.get('lastid'))), result_ttl=50000,
+        timeout=360000
+    )
+
+    job_id = job.get_id()
+
+    return render_template('acs_abs.html', job_id=job_id)
 
 
 @app.route('/article', methods=['GET'])
@@ -690,30 +707,45 @@ def parse_issue(url, volume, journal_id):
             db.session.add(article)
             db.session.commit()
 
-def parse_abstracts (start_id = 0, finish_id = 0):
 
-    articles = Article.query.filter_by(id >= start_id).filter_by(id < finish_id)
+def parse_abstracts(start_id=0, finish_id=0):
+    articles = Article.query.filter(Article.id.between(start_id, finish_id)).all()
 
     for article in articles:
-
         doi = article.doi
-        url = 'http://dx.doi.org/' + doi
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        if doi != '':
+            url = 'http://pubs.acs.org/doi/' + doi
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, 'html.parser')
 
-        authors_div = soup.find(id='authors')
-        affiliations_div = soup.find("div", class_="affiliations")
-        abstract_box = soup.find(id="abstractBox")
-        src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
-        abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
+            try:
+                authors_div = soup.find(id='authors')
+            except:
+                author_div = ''
 
-        abstract = ''
-        for abstract_part in abstract_parts:
-            abstract = abstract + abstract_part.text + ' '
+            try:
+                affiliations_div = soup.find("div", class_="affiliations")
+            except:
+                affiliations_div = ''
 
-        article.abstract = abstract
-        article.src = src
-        article.authors_div = authors_div
-        article.affiliations_div = affiliations_div
+            abstract_box = soup.find(id="abstractBox")
+            try:
+                src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
+            except:
+                src = ''
+            
+            abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
 
-        db.session.commit()
+            abstract = ''
+            try:
+                for abstract_part in abstract_parts:
+                    abstract = abstract + abstract_part.text + ' '
+            except:
+                abstract = ''
+
+            article.abstract = abstract
+            article.src = src
+            article.authors_div = authors_div
+            article.affiliations_div = affiliations_div
+
+            db.session.commit()
