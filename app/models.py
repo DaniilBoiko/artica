@@ -68,6 +68,8 @@ class Article(db.Model):
     doi = db.Column(db.String)
     doctype = db.Column(db.String)
     crossref = db.Column(db.Text)
+    authors_div = db.Column(db.Text)
+    affiliations_div = db.Column(db.Text)
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)

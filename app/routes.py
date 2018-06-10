@@ -689,3 +689,31 @@ def parse_issue(url, volume, journal_id):
                               technical_info=str(datetime.datetime.now()))
             db.session.add(article)
             db.session.commit()
+
+def parse_abstracts (start_id = 0, finish_id = 0):
+
+    articles = Article.query.filter_by(id >= start_id).filter_by(id < finish_id)
+
+    for article in articles:
+
+        doi = article.doi
+        url = 'http://dx.doi.org/' + doi
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        authors_div = soup.find(id='authors')
+        affiliations_div = soup.find("div", class_="affiliations")
+        abstract_box = soup.find(id="abstractBox")
+        src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
+        abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
+
+        abstract = ''
+        for abstract_part in abstract_parts:
+            abstract = abstract + abstract_part.text + ' '
+
+        article.abstract = abstract
+        article.src = src
+        article.authors_div = authors_div
+        article.affiliations_div = affiliations_div
+
+        db.session.commit()
