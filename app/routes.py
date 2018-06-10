@@ -307,6 +307,11 @@ def update_abs():
 
     job_id = job.get_id()
 
+    return redirect(url_for('results_update_acs', job_id=job_id))
+
+@app.route('/results_update_acs', methods=['GET'])
+def results_update_acs():
+    job_id = request.args.get('job_id')
     return render_template('acs_abs.html', job_id=job_id)
 
 
@@ -710,6 +715,9 @@ def parse_abstracts(start_id=0, finish_id=0):
     articles = Article.query.filter(Article.id.between(start_id, finish_id)).all()
 
     for article in articles:
+
+        print(article.id)
+
         doi = article.doi
         if doi != '':
             url = 'http://pubs.acs.org/doi/' + doi
@@ -756,6 +764,6 @@ def parse_abstracts(start_id=0, finish_id=0):
 
             article.abstract = abstract
             article.src = src
-            article.meta_data = meta_data
+            article.meta_data = str(meta_data)
 
             db.session.commit()
