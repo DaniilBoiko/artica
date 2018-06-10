@@ -733,7 +733,7 @@ def parse_abstracts(start_id=0, finish_id=0):
                 src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
             except:
                 src = ''
-            
+
             abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
 
             abstract = ''
