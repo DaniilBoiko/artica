@@ -5,6 +5,7 @@ import math
 import re
 import requests
 import xmltodict
+import time
 from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, jsonify, make_response, session
 from mendeley import Mendeley
@@ -715,55 +716,64 @@ def parse_abstracts(start_id=0, finish_id=0):
     articles = Article.query.filter(Article.id.between(start_id, finish_id)).all()
 
     for article in articles:
+        if article.meta_data is not None:
+            print(article.id)
 
-        print(article.id)
+            doi = article.doi
+            if doi != '':
+                url = 'http://pubs.acs.org/doi/' + doi
+                k = True
 
-        doi = article.doi
-        if doi != '':
-            url = 'http://pubs.acs.org/doi/' + doi
-            response = requests.get(url)
-            soup = BeautifulSoup(response.content, 'html.parser')
+                while k:
+                    try:
+                        response = requests.get(url)
+                        k = False
+                    except:
+                        time.sleep(1000)
+                        k = True
 
-            meta_data = soup.find(id='articleMeta')
+                soup = BeautifulSoup(response.content, 'html.parser')
 
-            if (meta_data is None):
-                meta_data = ''
+                meta_data = soup.find(id='articleMeta')
 
-            abstract_box = soup.find(id="abstractBox")
-            abstract_body = soup.find(id="articleBody")
+                if (meta_data is None):
+                    meta_data = ''
 
-            if (abstract_box is not None):
-                try:
-                    src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
-                except:
+                abstract_box = soup.find(id="abstractBox")
+                abstract_body = soup.find(id="articleBody")
+
+                if (abstract_box is not None):
+                    try:
+                        src = 'https://pubs.acs.org' + abstract_box.find(id="absImg").find_all('img')[0]['src']
+                    except:
+                        src = ''
+
+                    abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
+
+                    abstract = ''
+                    try:
+                        for abstract_part in abstract_parts:
+                            abstract = abstract + abstract_part.text + ' '
+                    except:
+                        abstract = ''
+                elif (abstract_body is not None):
+
                     src = ''
 
-                abstract_parts = abstract_box.find_all("p", class_="articleBody_abstractText")
+                    abstract_parts = abstract_body.find_all("p")
 
-                abstract = ''
-                try:
-                    for abstract_part in abstract_parts:
-                        abstract = abstract + abstract_part.text + ' '
-                except:
                     abstract = ''
-            elif (abstract_body is not None):
-
-                src = ''
-
-                abstract_parts = abstract_body.find_all("p")
-
-                abstract = ''
-                try:
-                    for abstract_part in abstract_parts:
-                        abstract = abstract + abstract_part.text + ' '
-                except:
+                    try:
+                        for abstract_part in abstract_parts:
+                            abstract = abstract + abstract_part.text + ' '
+                    except:
+                        abstract = ''
+                else:
                     abstract = ''
-            else:
-                abstract = ''
-                src = ''
+                    src = ''
 
-            article.abstract = abstract
-            article.src = src
-            article.meta_data = str(meta_data)
+                article.abstract = abstract
+                article.src = src
+                article.meta_data = str(meta_data)
 
-            db.session.commit()
+                db.session.commit()
