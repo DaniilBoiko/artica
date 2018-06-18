@@ -722,6 +722,7 @@ def parse_abstracts(start_id=0, finish_id=0):
             doi = article.doi
             if doi != '':
                 url = 'http://pubs.acs.org/doi/' + doi
+
                 k = True
 
                 while k:
@@ -729,6 +730,7 @@ def parse_abstracts(start_id=0, finish_id=0):
                         response = requests.get(url)
                         k = False
                     except:
+                        print('error')
                         time.sleep(1000)
                         k = True
 
