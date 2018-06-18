@@ -94,3 +94,11 @@ class Journal(db.Model):
         return '<Journal {}>'.format(self.name)
 
 
+class Cite(db.Model):
+    cited_doi = db.Column(db.String)
+    citing_doi = db.Column(db.String)
+    citing_id = db.Column(db.Integer)
+    reference = db.Column(db.Text)
+
+    def __repr__(self):
+        return '<Cite {}>'.format(self.name)
