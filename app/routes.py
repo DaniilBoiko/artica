@@ -713,11 +713,13 @@ def parse_issue(url, volume, journal_id):
 
 
 def parse_abstracts(start_id=0, finish_id=0):
-    articles = Article.query.filter(Article.id.between(start_id, finish_id)).all()
+    articles = Article.query.filter(Article.id.between(start_id, finish_id)).order_by(Article.id).all()
 
     for article in articles:
-        if article.meta_data is not None:
-            print(article.id)
+        print(article.id)
+
+        if article.meta_data is None:
+            print('Not none')
 
             doi = article.doi
             if doi != '':
