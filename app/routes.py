@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, jsonify, make_response, session
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
-from sqlalchemy import func,between
+from sqlalchemy import func, between
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
 from sqlalchemy_searchable import search
@@ -18,7 +18,7 @@ from sqlalchemy_searchable import search
 from app import app
 from app import db
 from app import q, Job, conn
-from app.models import Article, User, UserDocument, Journal
+from app.models import Article, User, UserDocument, Journal, Cite, Author
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -302,13 +302,15 @@ def get_acs_abs():
 @app.route('/update_acs', methods=['GET'])
 def update_abs():
     job = q.enqueue_call(
-        func=parse_abstracts, args=(int(request.args.get('firstid')), int(request.args.get('lastid'))), result_ttl=50000,
+        func=parse_abstracts, args=(int(request.args.get('firstid')), int(request.args.get('lastid'))),
+        result_ttl=50000,
         timeout=360000
     )
 
     job_id = job.get_id()
 
     return redirect(url_for('results_update_acs', job_id=job_id))
+
 
 @app.route('/results_update_acs', methods=['GET'])
 def results_update_acs():
@@ -781,3 +783,175 @@ def parse_abstracts(start_id=0, finish_id=0):
                 article.meta_data = str(meta_data)
 
                 db.session.commit()
+
+
+# ------------------------------------------------------------------------------
+#                                   Wiley
+# ------------------------------------------------------------------------------
+
+
+def get_wiley_journals():
+    # --------------
+    # Wiley journals
+    # --------------
+
+    url = 'https://onlinelibrary.wiley.com/action/showPublications?PubType=journal&startPage='
+    k = True
+    i = 0
+    journal_list = []
+    while k:
+        url_page = url + str(i)
+        response = requests.get(url_page)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        no_results = soup.find("li", class_='search-result__no-result')
+        if no_results is not None:
+            k = False
+        else:
+            journals = soup.find_all("li", class_='clearfix separator search__item')
+            for journal in journals:
+                title = journal.find(class_='meta__title meta__title__margin')
+                link = title.a['href']
+                journal_info = [title.text, link]
+                journal_list.append(journal_info)
+                new_journal = Journal(name=title, link=link)
+                db.session.add(new_journal)
+                db.session.commit()
+            i += 1
+
+def parse_wiley_journals():
+    # -------------------------
+    # Parse journal by journal
+    # -------------------------
+
+    journals = Journal.query.filter_by(publisher='Wiley').all()
+
+    for journal in journals:
+
+        print(journal.name)
+        url = 'https://onlinelibrary.wiley.com/loi/' + journal.link.split('/')[2]
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        loi_list = soup.find('ul', class_='rlist loi__list')
+
+        if loi_list is not None:
+            loi_list = loi_list.find_all('li')
+            for li in loi_list:
+                if li.has_attr('class') and li['class'][0] != ' active ':
+                    li_nested = li.find('ul')
+                    if li_nested is None:
+                        print(li.text)
+                else:
+                    print(li.text)
+
+
+def get_wiley_year(url):
+    # ----------------------------------
+    # Gets an URL of Wiley journal year
+    # ----------------------------------
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    issues = soup.find(class_="rlist loi__issues")
+    if issues is not None:
+        issues = issues.find_all('li', class_="card clearfix")
+        for issue in issues:
+            link = issue.find(class_='parent-item').find('a')
+            get_wiley_volume('https://onlinelibrary.wiley.com' + link['href'])
+
+
+def get_wiley_volume(url):
+    # ------------------------------------
+    # Gets an URL of Wiley journal volume
+    # ------------------------------------
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    articles = soup.find_all('div', class_='issue-item')
+
+    for article in articles:
+        get_wiley_article('https://onlinelibrary.wiley.com' + article.find('a', class_='issue-item__title')['href'])
+
+
+def get_wiley_article(url):
+    # -------------------------------------
+    # Gets an URL of Wiley journal article
+    # -------------------------------------
+
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
+    journal = Journal.query.filter_by(name = journal_name)
+
+    # Aricle main data
+
+    title = soup.find('h2', class_='citation__title')
+    if title is not None:
+        title = title.text
+
+    abstract = soup.find('div', class_='article-section__content en main')
+    if abstract is not None:
+        abstract = abstract.text
+
+    author_ids = []
+    author_group = soup.find('div', class_='loa-wrapper loa-authors hidden-xs')
+    if author_group is not None:
+        authors = author_group.find_all('div', class_='accordion-tabbed__tab-mobile accordion__closed')
+        for author in authors:
+
+            name = author.find('a', class_='author-name accordion-tabbed__control')
+            affilation_el = author.find('div', class_='author-info accordion-tabbed__content').find_all('p')
+            affilations = []
+            for affilation in affilation_el:
+                affilations.append(affilation.text)
+
+            if not check_author(name):
+                new_author = Author(name=name, affilations=affilations)
+                db.session.add(new_author)
+                db.session.commit()
+
+                author_ids.append(Author.query.filter_by(name=name).first().id)
+
+    doi = soup.find('a', class_='epub-doi')
+    if doi is not None:
+        doi = doi.text[16:]
+
+    doctype = soup.find('span', class_='primary-heading')
+    if doctype is not None:
+        doctype = doctype.text
+
+    date = soup.find('span', class_='epub-date')
+    if date is not None:
+        date = date.text
+
+    cited_by = soup.find('div', class_='epub-section cited-by-count')
+    if cited_by is not None:
+        cited_by = cited_by.text
+
+    # Cited by
+
+    cited_by_list = soup.find_all('li', class_='citedByEntry')
+    for cited_by_item in cited_by_list:
+        if cited_by_item.find('div', class_='extra-links') is not None:
+            new_citation = Cite(cited_doi=doi,
+                                citing_doi=cited_by_item.find('div', class_='extra-links').find('a')['href'][16:])
+            db.session.add(new_citation)
+            db.session.commit()
+
+    # Cited
+
+    new_article = Article(title=title,abstract=abstract,journal_id = journal.id, doi=doi, doctype=doctype)
+    db.session.add(new_article)
+    db.session.commit()
+
+
+# ------------------------------------------------------------------------------
+#                           Common parsing functions
+# ------------------------------------------------------------------------------
+
+def check_author(name):
+    author = Author.query.filter(name=name).first()
+    if author is None:
+        return False
+    else:
+        return True

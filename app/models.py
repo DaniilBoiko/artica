@@ -80,6 +80,7 @@ class Journal(db.Model):
     description = db.Column(db.Text)
     subject = db.Column(db.String)
     url = db.Column(db.Text)
+    publisher = db.Column(db.String)
     last_fetched = db.Column(db.DateTime)
     last_volume = db.Column(db.String)
     last_issue = db.Column(db.String)
@@ -94,6 +95,23 @@ class Journal(db.Model):
         return '<Journal {}>'.format(self.name)
 
 
+class Author(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    affilations = db.Column(ARRAY(db.Integer))
+
+    def __repr__(self):
+        return '<Author {}>'.format(self.name)
+
+
+class Affilation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    aff = db.Column(db.Text)
+
+    def __repr__(self):
+        return '<Author {}>'.format(self.name)
+
+
 class Cite(db.Model):
     cited_doi = db.Column(db.String)
     citing_doi = db.Column(db.String)
@@ -101,4 +119,4 @@ class Cite(db.Model):
     reference = db.Column(db.Text)
 
     def __repr__(self):
-        return '<Cite {}>'.format(self.name)
+        return '<Cite {}>'.format(self.reference)
