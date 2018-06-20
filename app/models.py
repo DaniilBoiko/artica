@@ -69,6 +69,7 @@ class Article(db.Model):
     doctype = db.Column(db.String)
     crossref = db.Column(db.Text)
     meta_data = db.Column(db.Text)
+    citation_counts = db.Column(db.Integer)
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)

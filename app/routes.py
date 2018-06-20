@@ -18,7 +18,7 @@ from sqlalchemy_searchable import search
 from app import app
 from app import db
 from app import q, Job, conn
-from app.models import Article, User, UserDocument, Journal, Cite, Author
+from app.models import Article, User, UserDocument, Journal, Cite, Author, Affilation
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -818,6 +818,7 @@ def get_wiley_journals():
                 db.session.commit()
             i += 1
 
+
 def parse_wiley_journals():
     # -------------------------
     # Parse journal by journal
@@ -881,7 +882,7 @@ def get_wiley_article(url):
     soup = BeautifulSoup(response.content, 'html.parser')
 
     journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
-    journal = Journal.query.filter_by(name = journal_name)
+    journal = Journal.query.filter_by(name=journal_name)
 
     # Aricle main data
 
@@ -902,8 +903,15 @@ def get_wiley_article(url):
             name = author.find('a', class_='author-name accordion-tabbed__control')
             affilation_el = author.find('div', class_='author-info accordion-tabbed__content').find_all('p')
             affilations = []
+
             for affilation in affilation_el:
-                affilations.append(affilation.text)
+                if not check_affilation(affilation.text):
+                    new_affilation = Affilation(aff=affilation.text)
+                    db.session.add(new_affilation)
+                    db.session.commit()
+
+                get_affilation = Affilation.query.filter_by(aff=affilation.text).first()
+                affilations.append(get_affilation.id)
 
             if not check_author(name):
                 new_author = Author(name=name, affilations=affilations)
@@ -922,11 +930,29 @@ def get_wiley_article(url):
 
     date = soup.find('span', class_='epub-date')
     if date is not None:
-        date = date.text
+        months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                       'September': 9, 'October': 10, 'November': 11, 'December': 12}
+
+        date = date.text.split()
+        day = int(date[0])
+        month = date[1]
+        month = int(months_dict[month])
+        year = int(date[2])
+        date = datetime.date(year=year, month=month, day=day)
 
     cited_by = soup.find('div', class_='epub-section cited-by-count')
     if cited_by is not None:
         cited_by = cited_by.text
+
+    src = soup.find('img', class_='figure__image')
+    if src is not None:
+        src = src['src']
+
+    volume_issue = soup.find('p', class_='volume-issue')
+    if volume_issue is not None:
+        volume_issue = volume_issue.find_all('span', class_='val')
+        volume = volume_issue[0].text
+        issue = volume_issue[1].text
 
     # Cited by
 
@@ -940,7 +966,8 @@ def get_wiley_article(url):
 
     # Cited
 
-    new_article = Article(title=title,abstract=abstract,journal_id = journal.id, doi=doi, doctype=doctype)
+    new_article = Article(title=title, abstract=abstract, journal_id=journal.id, doi=doi, doctype=doctype,
+                          source='wiley', src=src, citation_counts=cited_by, volume=volume, issue=issue, pubdate=date)
     db.session.add(new_article)
     db.session.commit()
 
@@ -951,6 +978,14 @@ def get_wiley_article(url):
 
 def check_author(name):
     author = Author.query.filter(name=name).first()
+    if author is None:
+        return False
+    else:
+        return True
+
+
+def check_affilation(aff):
+    author = Affilation.query.filter(aff=aff).first()
     if author is None:
         return False
     else:
