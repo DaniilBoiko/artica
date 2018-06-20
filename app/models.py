@@ -58,7 +58,7 @@ class Article(db.Model):
     issue = db.Column(db.String)
     journal_id = db.Column(db.Integer)
     journalabbr = db.Column(db.Text)
-    authors = db.Column(JSON)
+    authors = db.Column(ARRAY(db.Integer))
     language = db.Column(db.String)
     issn = db.Column(db.Text)
     isbn = db.Column(db.Text)
