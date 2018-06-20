@@ -886,13 +886,9 @@ def get_wiley_article(url):
 
     # Aricle main data
 
-    title = soup.find('h2', class_='citation__title')
-    if title is not None:
-        title = title.text
+    title = wiley_to_text(soup.find('h2', class_='citation__title'))
 
-    abstract = soup.find('div', class_='article-section__content en main')
-    if abstract is not None:
-        abstract = abstract.text
+    abstract = wiley_to_text(soup.find('div', class_='article-section__content en main'))
 
     author_ids = []
     author_group = soup.find('div', class_='loa-wrapper loa-authors hidden-xs')
@@ -900,7 +896,7 @@ def get_wiley_article(url):
         authors = author_group.find_all('div', class_='accordion-tabbed__tab-mobile accordion__closed')
         for author in authors:
 
-            name = author.find('a', class_='author-name accordion-tabbed__control')
+            name = author.find('a', class_='author-name accordion-tabbed__control').text
             affilation_el = author.find('div', class_='author-info accordion-tabbed__content').find_all('p')
             affilations = []
 
@@ -924,9 +920,7 @@ def get_wiley_article(url):
     if doi is not None:
         doi = doi.text[16:]
 
-    doctype = soup.find('span', class_='primary-heading')
-    if doctype is not None:
-        doctype = doctype.text
+    doctype = wiley_to_text(soup.find('span', class_='primary-heading'))
 
     date = soup.find('span', class_='epub-date')
     if date is not None:
@@ -940,9 +934,9 @@ def get_wiley_article(url):
         year = int(date[2])
         date = datetime.date(year=year, month=month, day=day)
 
-    cited_by = soup.find('div', class_='epub-section cited-by-count')
-    if cited_by is not None:
-        cited_by = cited_by.text
+    cited_by = wiley_to_text(soup.find('div', class_='epub-section cited-by-count'))
+    if cited_by is not None: cited_by = cited_by.split()[2]
+
 
     src = soup.find('img', class_='figure__image')
     if src is not None:
@@ -954,6 +948,10 @@ def get_wiley_article(url):
         volume = volume_issue[0].text
         issue = volume_issue[1].text
 
+    pages = soup.find('p', class_='page-range')
+    if pages is not None:
+        pages = pages.find_all('span')[1].text
+
     # Cited by
 
     cited_by_list = soup.find_all('li', class_='citedByEntry')
@@ -964,10 +962,18 @@ def get_wiley_article(url):
             db.session.add(new_citation)
             db.session.commit()
 
+    keyword_list = []
+    keywords = soup.find('section', class_='keywords')
+    if keywords is not None:
+        keywords = keywords.find_all('li')
+        for keyword in keywords:
+            keyword_list.append(keyword.text)
+
     # Cited
 
     new_article = Article(title=title, abstract=abstract, journal_id=journal.id, doi=doi, doctype=doctype,
-                          source='wiley', src=src, citation_counts=cited_by, volume=volume, issue=issue, pubdate=date)
+                          source='wiley', src=src, citation_counts=cited_by, volume=volume, issue=issue, pubdate=date,
+                          authors=author_ids,pages=pages,keyword=keyword_list)
     db.session.add(new_article)
     db.session.commit()
 
@@ -990,3 +996,11 @@ def check_affilation(aff):
         return False
     else:
         return True
+
+
+def wiley_to_text(element):
+    if element is not None:
+        return element.text
+    else:
+        return None
+
