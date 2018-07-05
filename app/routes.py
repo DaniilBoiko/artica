@@ -305,13 +305,21 @@ def update_journals():
             job = q.enqueue_call(
                 func=parse_wiley_journals, args=(start, end), result_ttl=50000, timeout=360000
             )
+            return redirect(
+                url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
+                        wiley_job_id=job.get_id()))
         else:
             return 'Describe all args', 404
 
     for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
 
-    return render_template('update.html', title='Database update', acs=acs)
+    if request.args.get('wiley_job_id') is not None:
+        wiley_job_id = request.args.get('wiley_job_id')
+    else:
+        wiley_job_id = 'No_job'
+
+    return render_template('update.html', title='Database update', acs=acs, wiley_job_id=wiley_job_id)
 
 
 @app.route('/get_acs_abs', methods=['GET'])
