@@ -17,7 +17,7 @@ from sqlalchemy_searchable import search
 
 from app import app
 from app import db
-from app import q, Job, conn
+from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Cite, Author, Affilation
 
 count_pattern = re.compile(r'rows=(\d+)')
@@ -287,6 +287,26 @@ def update_journals():
 
         return redirect(
             url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0'))
+
+    if task == 'wiley_get_journals':
+        job = q.enqueue_call(
+            func=get_wiley_journals, result_ttl=50000, timeout=360000
+        )
+
+        return redirect(
+            url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
+                    w_j_task_number='job.get_id()'))
+
+    if task == 'wiley_update_journals':
+        start = request.args.get('start')
+        end = request.args.get('end')
+
+        if (start is not None) and (end is not None):
+            job = q.enqueue_call(
+                func=parse_wiley_journals, args=(start, end), result_ttl=50000, timeout=360000
+            )
+        else:
+            return 'Describe all args', 404
 
     for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
@@ -813,59 +833,78 @@ def get_wiley_journals():
                 link = title.a['href']
                 journal_info = [title.text, link]
                 journal_list.append(journal_info)
-                new_journal = Journal(name=title, link=link)
+                new_journal = Journal(name=title.text, link=link, publisher='Wiley')
                 db.session.add(new_journal)
                 db.session.commit()
             i += 1
 
 
-def parse_wiley_journals():
+def parse_wiley_journals(start, end):
     # -------------------------
-    # Parse journal by journal Проверил
+    # Parse journal by journal
     # -------------------------
 
+    job = get_current_job()
+
     journals = Journal.query.filter_by(publisher='Wiley').all()
+    job.meta.start = start
+    job.meta.end = end
+    i = 0
 
     for journal in journals:
 
-        print(journal.name)
-        url = 'https://onlinelibrary.wiley.com/loi/' + journal.link.split('/')[2]
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        loi_list = soup.find('ul', class_='rlist loi__list')
+        if i >= start or i <= end:
 
-        if loi_list is not None:
-            loi_list = loi_list.find_all('li')
-            for li in loi_list:
-                if li.has_attr('class') and li['class'][0] != ' active ':
-                    li_nested = li.find('ul')
-                    if li_nested is None:
-                        print(li.text)
-                else:
-                    print(li.text)
+            job.meta.index = i
+            job.meta.journal = Journal.name
+
+            url = 'https://onlinelibrary.wiley.com/loi/' + journal.link.split('/')[2]
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            loi_list = soup.find('ul', class_='rlist loi__list')
+
+            if loi_list is not None:
+                loi_list = loi_list.find_all('li')
+                for li in loi_list:
+                    if li.has_attr('class') and li['class'][0] != ' active ':
+                        li_nested = li.find('ul')
+                        if li_nested is None:
+                            get_wiley_year(li.find('a')['href'])
+                    else:
+                        get_wiley_year(li.find('a')['href'],job)
+
+            journal.last_fetched = datetime.datetime.now()
+
+        i += 1
 
 
-def get_wiley_year(url):
+def get_wiley_year(url, job):
     # ----------------------------------
     # Gets an URL of Wiley journal year
     # ----------------------------------
+    job.meta.year = url.split('/')[4]
 
-    response = requests.get(url)
+    response = requests.get('https://onlinelibrary.wiley.com'+url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    issues = soup.find(class_="rlist loi__issues")
+    issues = soup.find_all(class_="rlist loi__issues")
     if issues is not None:
-        issues = issues.find_all('li', class_="card clearfix")
-        for issue in issues:
-            link = issue.find(class_='parent-item').find('a')
-            get_wiley_volume('https://onlinelibrary.wiley.com' + link['href'])
+        for issue_item in issues:
+            print(issue_item.text)
+            issue_list = issue_item.find_all('li', class_="card clearfix")
+            for issue in issue_list:
+                link = issue.find(class_='parent-item').find('a')
+                get_wiley_volume(link['href'], job)
 
 
-def get_wiley_volume(url):
+def get_wiley_volume(url, job):
     # ------------------------------------
     # Gets an URL of Wiley journal volume
     # ------------------------------------
 
-    response = requests.get(url)
+    job.meta.volume = url.split('/')[4]
+    job.meta.issue = url.split('/')[5]
+
+    response = requests.get('https://onlinelibrary.wiley.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     articles = soup.find_all('div', class_='issue-item')
 
@@ -937,7 +976,6 @@ def get_wiley_article(url):
     cited_by = wiley_to_text(soup.find('div', class_='epub-section cited-by-count'))
     if cited_by is not None: cited_by = cited_by.split()[2]
 
-
     src = soup.find('img', class_='figure__image')
     if src is not None:
         src = src['src']
@@ -973,7 +1011,7 @@ def get_wiley_article(url):
 
     new_article = Article(title=title, abstract=abstract, journal_id=journal.id, doi=doi, doctype=doctype,
                           source='wiley', src=src, citation_counts=cited_by, volume=volume, issue=issue, pubdate=date,
-                          authors=author_ids,pages=pages,keyword=keyword_list)
+                          authors=author_ids, pages=pages, keyword=keyword_list)
     db.session.add(new_article)
     db.session.commit()
 
@@ -1003,4 +1041,3 @@ def wiley_to_text(element):
         return element.text
     else:
         return None
-

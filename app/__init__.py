@@ -3,7 +3,7 @@ from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import Config
-from rq import Queue
+from rq import Queue, get_current_job
 from rq.job import Job
 from worker import conn
 
