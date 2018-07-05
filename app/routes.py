@@ -792,7 +792,7 @@ def parse_abstracts(start_id=0, finish_id=0):
 
 def get_wiley_journals():
     # --------------
-    # Wiley journals
+    # Wiley journals Проверил
     # --------------
 
     url = 'https://onlinelibrary.wiley.com/action/showPublications?PubType=journal&startPage='
@@ -821,7 +821,7 @@ def get_wiley_journals():
 
 def parse_wiley_journals():
     # -------------------------
-    # Parse journal by journal
+    # Parse journal by journal Проверил
     # -------------------------
 
     journals = Journal.query.filter_by(publisher='Wiley').all()
