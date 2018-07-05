@@ -32,6 +32,13 @@
                                 {{ "," if not loop.last }}
                             {% endfor %}
                         ];
+                        $scope.wiley_journal = 'journal';
+                        $scope.wiley_volume = 'volume';
+                        $scope.wiley_issue = 'isuse';
+                        $scope.wiley_start = 0;
+                        $scope.wiley_end = 0;
+                        $scope.wiley_now = 0;
+                        $scope.wiley_year = 'year';
 
                         $scope.init = function () {
 
@@ -56,7 +63,7 @@
                                         $log.log(data, status);
                                     } else if (status === 200) {
                                         $log.log(data);
-                                        var elementbyid = angular.element(document.querySelector('#a' + jobID));
+                                        var elementbyid = angular.element(document.querySelector('#wiley'));
                                         elementbyid.html('<a href class="btn btn-sm btn-success">Done</a>');
                                         $timeout.cancel(timeout);
                                         return false;
@@ -66,7 +73,7 @@
                                     timeout = $timeout(poller, 2000);
                                 }).error(function (error) {
                                     $log.log(error);
-                                    var elementbyid = angular.element(document.querySelector('#a' + jobID));
+                                    var elementbyid = angular.element(document.querySelector('#wiley'));
                                     elementbyid.html('<a href class="btn btn-sm btn-danger">Error</a>');
                                 })
                             };

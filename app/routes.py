@@ -398,6 +398,20 @@ def get_results(job_key):
             return "No", 202
 
 
+@app.route("/results_wiley/<job_key>", methods=['GET'])
+def get_results(job_key):
+    job = Job.fetch(job_key, connection=conn)
+
+    if job.is_finished:
+        return "Success", 200
+    else:
+        if job.is_failed:
+            return 'Failure', 403
+        else:
+            return jsonify(journal=job.meta.journal, volume=job.meta.volume, issue=job.meta.issue, start=job.meta.start,
+                           end=job.meta.end, index = job.meta.index, year = job.meta.year), 202
+
+
 @app.route("/add_data", methods=['GET'])
 def add_data():
     id = request.args.get('id')
