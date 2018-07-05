@@ -871,7 +871,7 @@ def parse_wiley_journals(start, end):
                         if li_nested is None:
                             get_wiley_year(li.find('a')['href'])
                     else:
-                        get_wiley_year(li.find('a')['href'],job)
+                        get_wiley_year(li.find('a')['href'], job)
 
             journal.last_fetched = datetime.datetime.now()
 
@@ -884,7 +884,7 @@ def get_wiley_year(url, job):
     # ----------------------------------
     job.meta.year = url.split('/')[4]
 
-    response = requests.get('https://onlinelibrary.wiley.com'+url)
+    response = requests.get('https://onlinelibrary.wiley.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     issues = soup.find_all(class_="rlist loi__issues")
     if issues is not None:
@@ -1041,3 +1041,230 @@ def wiley_to_text(element):
         return element.text
     else:
         return None
+
+
+# ------------------------------------------------------------------------------
+#                           Elsevier
+# ------------------------------------------------------------------------------
+
+def parse_elsevier():
+    for i in range(1, 149):
+        url = ('https://www.elsevier.com/catalog?page=%d&producttype=journals&series=&sort=datedesc' % i)
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        journals = soup.find_all("div", class_="row listing-products ")
+
+        for journal in journals:
+            title_for_parse = journal.find('a')['href'].split('/')[-1]
+            title = elsevier_to_text(journal.find('a'))
+            link = 'https://www.sciencedirect.com/journal/' + title_for_parse + '/vol/1/issue/1'
+            journal = Journal.query.filter_by(name=title).first()
+            if journal is None:
+                new_journal = Journal(name=title, link=link)
+                db.session.add(new_journal)
+                db.session.commit()
+            journal = Journal.query.filter_by(name=title).first()
+            print(title)
+            parse_elsevier_journal(url=link, journal_id=journal.id)
+
+
+def parse_elsevier_journal(url, journal_id):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    article_lists = soup.find("ol", class_="js-jl-aip-list article-list-items")
+
+    article_lis = []
+
+    if (article_lists is not None):
+        article_list_ols = article_lists.find_all('ol', class_='article-list')
+        if (len(article_list_ols) > 0):
+            for article_list_ol in article_list_ols:
+                article_lis = article_lis + article_list_ol.find_all('li')
+        else:
+            article_lis = article_lists.find_all('li')
+
+    vol_issue = elsevier_to_text(soup.find('h2', class_='u-text-light u-h1 js-vol-issue'))
+
+    vol_issue = vol_issue.split(' ')
+
+    volume = ''
+    issue = ''
+
+    if (len(vol_issue) == 4):
+        volume = vol_issue[1][:-1]
+        issue = vol_issue[3]
+    elif (len(vol_issue) == 2):
+        volume = vol_issue[1]
+        issue = 'without'
+
+    for article_li in article_lis:
+        article = article_li.find('a')
+        parse_elsevier_article('https://www.sciencedirect.com' + article['href'], volume=volume, issue=issue,
+                               journal_id=journal_id)
+
+    next_page = soup.find('div', class_='els-jl-issue-navigate u-padding-hor-xs issue-navigation')
+
+    if (next_page is not None):
+        next_page = next_page.find_all('a')
+    else:
+        next_page = ''
+
+    if next_page != '':
+        if (next_page[1]['aria-disabled'] == 'false'):
+            print('next_page')
+            next_page = 'https://www.sciencedirect.com' + next_page[1]['href']
+            parse_elsevier_journal(next_page, journal_id=journal_id)
+
+
+def parse_elsevier_article(url, volume, issue, journal_id):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    title = elsevier_to_text(soup.find('span', class_='title-text'))
+    doi = '/'.join(elsevier_to_text(soup.find('a', class_='doi')).split('/')[-2:])
+
+    p_abs = soup.find('div', class_='abstract author')
+    if (p_abs is not None):
+        p_abs = p_abs.find_all('p')
+    else:
+        p_abs = ''
+
+    abstract = ''
+
+    for p_ab in p_abs:
+        abstract = str(p_ab.text) + ' '
+
+    abstract = abstract[:-1]
+
+    a_authors = soup.find('div', class_='author-group')
+    if (a_authors is not None):
+        a_authors = a_authors.find_all('a', class_='author size-m workspace-trigger')
+    else:
+        a_authors = ''
+
+    authors = []
+
+    for a_author in a_authors:
+        first_name = elsevier_to_text(a_author.find('span', class_='text given-name'))
+        second_name = elsevier_to_text(a_author.find('span', class_='text surname'))
+        affs = a_author.find_all('span', class_='author-ref')
+        affiliation = []
+        for aff in affs:
+            affiliation.append(aff.text)
+        authors.append({'Name': first_name + ' ' + second_name, 'Aff_labels': affiliation})
+
+    a = elsevier_to_text(soup.find('script', type='application/json'))
+
+    affiliations = {}
+
+    if a != '':
+        json_data = json.loads(a)
+
+        js_affiliations = json_data['authors']['affiliations']
+
+        for key in js_affiliations:
+            try:
+                label = js_affiliations[key]['$$'][0]['_']
+                text = js_affiliations[key]['$$'][1]['_']
+                affiliations[label] = text
+            except:
+                pass
+
+    authors_with_aff = []
+
+    for author in authors:
+        author_affiliation = []
+        for label in author['Aff_labels']:
+            if (label in affiliations):
+                author_affiliation.append(affiliations[label])
+        authors_with_aff.append([author['Name'], author_affiliation])
+
+    author_ids = []
+
+    for label in affilations:
+        if not check_affilation(affilations[label]):
+            new_affilation = Affilation(aff=affilation.text)
+            db.session.add(new_affilation)
+            db.session.commit()
+
+        get_affilation = Affilation.query.filter_by(aff=affilation.text).first()
+        affilations.append(get_affilation.id)
+
+    for author in authors_with_aff:
+        if not check_author(author[0]):
+            new_author = Author(name=author[0], affilations=author[1])
+            db.session.add(new_author)
+            db.session.commit()
+
+            author_ids.append(Author.query.filter_by(name=author[0]).first().id)
+
+    vol = elsevier_to_text(soup.find('a', title='Go to table of contents for this volume/issue')) + ', '
+
+    vol_date_page = soup.find('div', class_='publication-volume u-text-center')
+
+    if (vol_date_page is not None):
+        vol_date_page = elsevier_to_text(vol_date_page.find('div', class_='text-xs'))
+    else:
+        vol_date_page = ''
+
+    data_page = vol_date_page.replace(vol, '')
+
+    months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                   'September': 9, 'October': 10, 'November': 11, 'December': 12}
+
+    words = data_page.split(' ')
+    try:
+        if (words[2] == 'Pages'):
+            pages = words[3]
+            day = 1
+            month = words[0]
+            month = int(months_dict[month])
+            year = int(words[1][:-1])
+            pub_date = datetime.date(year=year, month=month, day=day)
+        else:
+            pages = words[4]
+            day = int(words[0])
+            month = words[1]
+            month = int(months_dict[month])
+            year = int(words[2][:-1])
+            pub_date = datetime.date(year=year, month=month, day=day)
+    except:
+        pages = ''
+        pub_date = ''
+
+    new_url = 'https://www.sciencedirect.com/sdfe/arp/pii/' + url.split('/')[-1] + '/citingArticles'
+    new_response = requests.get(new_url)
+    new_soup = elsevier_to_text(BeautifulSoup(new_response.content, 'html.parser'))
+    citing_doi = []
+    if (new_soup != ''):
+        json_citing = json.loads(new_soup)
+        for article in json_citing['articles']:
+            citing_doi.append(article['doi'])
+
+    citing_count = len(citing_doi)
+
+    new_url = 'https://www.sciencedirect.com/sdfe/arp/pii/' + url.split('/')[-1] + '/references/external-links/3000'
+    new_response = requests.get(new_url)
+    new_soup = elsevier_to_text(BeautifulSoup(new_response.content, 'html.parser'))
+    reference_doi = []
+    if (new_soup != ''):
+        json_citing = json.loads(new_soup)
+        for article in json_citing:
+            if 'crossRefDoi' in article:
+                reference_doi.append(article['crossRefDoi'])
+
+    new_article = Article(title=title, abstract=abstract, journal_id=journal_id, doi=doi,
+                          source='elsevier', citation_counts=citing_count, volume=volume, issue=issue,
+                          pubdate=pub_date, authors=author_ids, pages=pages)
+    db.session.add(new_article)
+    db.session.commit()
+    # citing_doi, reference_doi
+
+
+def elsevier_to_text(obj):
+    if obj is not None:
+        return obj.text
+    else:
+        return ''
