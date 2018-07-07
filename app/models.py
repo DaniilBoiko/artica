@@ -6,6 +6,16 @@ from flask.ext.sqlalchemy import BaseQuery
 
 make_searchable(db.metadata)
 
+affilations = db.Table('affilations',
+                       db.Column('affilcation_id', db.Integer, db.ForeignKey('affilation.id'), primary_key=True),
+                       db.Column('author_id', db.Integer, db.ForeignKey('author.id'), primary_key=True)
+                       )
+
+authors = db.Table('authors',
+                   db.Column('author_id', db.Integer, db.ForeignKey('author.id'), primary_key=True),
+                   db.Column('article_id', db.Integer, db.ForeignKey('article.id'), primary_key=True)
+                   )
+
 
 class ArticleQuery(BaseQuery, SearchQueryMixin):
     pass
@@ -58,7 +68,8 @@ class Article(db.Model):
     issue = db.Column(db.String)
     journal_id = db.Column(db.Integer)
     journalabbr = db.Column(db.Text)
-    authors = db.Column(ARRAY(db.Integer))
+    authors = db.relationship('Author', secondary=authors, lazy='subquery',
+                              backref=db.backref('articles', lazy=True))
     language = db.Column(db.String)
     issn = db.Column(db.Text)
     isbn = db.Column(db.Text)
@@ -99,7 +110,8 @@ class Journal(db.Model):
 class Author(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    affilations = db.Column(ARRAY(db.Integer))
+    affilations = db.relationship('Affilation', secondary=affilations, lazy='subquery',
+                                  backref=db.backref('authors', lazy=True))
 
     def __repr__(self):
         return '<Author {}>'.format(self.name)
