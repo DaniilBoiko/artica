@@ -1060,11 +1060,12 @@ def get_wiley_article(url):
     for cited_by_item in cited_by_list:
         if cited_by_item.find('div', class_='extra-links') is not None:
             citation_doi =  cited_by_item.find('div', class_='extra-links').find('a')['href'][16:]
-            if Article.query.filter_by(doi=doi) is not None:
-                citing_article = Article(doi=doi)
+            if Article.query.filter_by(doi=citation_doi) is not None:
+                citing_article = Article(doi=citation_doi)
                 db.session.add(citing_article)
                 db.session.commit()
-            citing_article = Article.query.filter_by(doi=doi)
+                
+            citing_article = Article.query.filter_by(doi=citation_doi).first()
             new_citation = Citation(cited=new_article,
                                 citing=citing_article)
             db.session.add(new_citation)
