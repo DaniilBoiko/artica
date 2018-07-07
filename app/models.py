@@ -82,8 +82,8 @@ class Article(db.Model):
     meta_data = db.Column(db.Text)
 
     citation_counts = db.Column(db.Integer)
-    cited = db.relationship('Citation', backref='article', lazy=True)
-    citing = db.relationship('Citation', backref='article', lazy=True)
+    cited = db.relationship('Citation', backref='cited_article', lazy=True, foreign_keys='Citation.cited')
+    citing = db.relationship('Citation', backref='citing_article', lazy=True, foreign_keys='Citation.citing')
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
@@ -130,9 +130,9 @@ class Affilation(db.Model):
 
 class Citation(db.Model):
     cited = db.Column(db.Integer, db.ForeignKey('article.id'),
-        nullable=False)
+                      nullable=False)
     citing = db.Column(db.Integer, db.ForeignKey('article.id'),
-        nullable=False)
+                       nullable=False)
     reference = db.Column(db.Text)
 
     def __repr__(self):
