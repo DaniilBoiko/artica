@@ -252,7 +252,9 @@ def update_journals():
         #   Some basic start in parsing
         parsing = False
         url = 'https://pubs.acs.org/loi/achre4'
-        response = requests.get(url)
+        user_agent = 'Googlebot'
+        headers = {'User-Agent': user_agent}
+        response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
         journals = soup.find(id="journal-az-layer").find_all('a')
         print(url)
@@ -589,7 +591,9 @@ def parse_them_all():
     journal_inp = 'Analytical Chemistry'
     url = 'https://pubs.acs.org/loi/achre4'
     start_volume = 18
-    response = requests.get(url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     journals = soup.find(id="journal-az-layer").find_all('a')
     print(url)
@@ -610,7 +614,9 @@ def parse_them_all():
 def parse_journal(url, journal_name):
     journal = Journal.query.filter_by(name=journal_name).first()
     # Start parsing
-    response = requests.get(url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     volumes = soup.find_all("div", class_="slider")
     last_volume = volumes[0]['id'][6:]
@@ -630,7 +636,9 @@ def parse_journal(url, journal_name):
 
 
 def parse_issue(url, volume, journal_id):
-    response = requests.get(url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get(url, headers=headers)
     issue = (url.split('/'))[-1]
     soup = BeautifulSoup(response.content, 'html.parser')
     print("Enter JN: " + str(journal_id) + " volume: " + str(volume) + " issue: " + str(issue))
@@ -773,7 +781,9 @@ def parse_abstracts(start_id=0, finish_id=0):
 
                 while k:
                     try:
-                        response = requests.get(url)
+                        user_agent = 'Googlebot'
+                        headers = {'User-Agent': user_agent}
+                        response = requests.get(url, headers=headers)
                         k = False
                     except:
                         print('error')
@@ -843,7 +853,9 @@ def get_wiley_journals():
     journal_list = []
     while k:
         url_page = url + str(i)
-        response = requests.get(url_page)
+        user_agent = 'Googlebot'
+        headers = {'User-Agent': user_agent}
+        response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
         no_results = soup.find("li", class_='search-result__no-result')
         if no_results is not None:
@@ -881,7 +893,9 @@ def parse_wiley_journals(start, end):
             job.meta.journal = Journal.name
 
             url = 'https://onlinelibrary.wiley.com/loi/' + journal.link.split('/')[2]
-            response = requests.get(url)
+            user_agent = 'Googlebot'
+            headers = {'User-Agent': user_agent}
+            response = requests.get(url, headers=headers)
             soup = BeautifulSoup(response.content, 'html.parser')
             loi_list = soup.find('ul', class_='rlist loi__list')
 
@@ -905,8 +919,9 @@ def get_wiley_year(url, job):
     # Gets an URL of Wiley journal year
     # ----------------------------------
     job.meta.year = url.split('/')[4]
-
-    response = requests.get('https://onlinelibrary.wiley.com' + url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get('https://onlinelibrary.wiley.com' + url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     issues = soup.find_all(class_="rlist loi__issues")
     if issues is not None:
@@ -925,8 +940,9 @@ def get_wiley_volume(url, job):
 
     job.meta.volume = url.split('/')[4]
     job.meta.issue = url.split('/')[5]
-
-    response = requests.get('https://onlinelibrary.wiley.com' + url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get('https://onlinelibrary.wiley.com' + url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     articles = soup.find_all('div', class_='issue-item')
 
@@ -939,7 +955,9 @@ def get_wiley_article(url):
     # Gets an URL of Wiley journal article
     # -------------------------------------
 
-    response = requests.get(url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
@@ -1072,7 +1090,9 @@ def wiley_to_text(element):
 def parse_elsevier():
     for i in range(1, 149):
         url = ('https://www.elsevier.com/catalog?page=%d&producttype=journals&series=&sort=datedesc' % i)
-        response = requests.get(url)
+        user_agent = 'Googlebot'
+        headers = {'User-Agent': user_agent}
+        response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
 
         journals = soup.find_all("div", class_="row listing-products ")
@@ -1092,7 +1112,9 @@ def parse_elsevier():
 
 
 def parse_elsevier_journal(url, journal_id):
-    response = requests.get(url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     article_lists = soup.find("ol", class_="js-jl-aip-list article-list-items")
@@ -1141,7 +1163,9 @@ def parse_elsevier_journal(url, journal_id):
 
 
 def parse_elsevier_article(url, volume, issue, journal_id):
-    response = requests.get(url)
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     title = elsevier_to_text(soup.find('span', class_='title-text'))
@@ -1194,6 +1218,16 @@ def parse_elsevier_article(url, volume, issue, journal_id):
             except:
                 pass
 
+
+    for label in affiliations:
+        if not check_affilation(affiliations[label]):
+            new_affilation = Affilation(aff=affiliations[label])
+            db.session.add(new_affilation)
+            db.session.commit()
+
+        get_affilation = Affilation.query.filter_by(aff=affiliations[label]).first()
+        affiliations['label'] = get_affilation
+
     authors_with_aff = []
 
     for author in authors:
@@ -1203,24 +1237,17 @@ def parse_elsevier_article(url, volume, issue, journal_id):
                 author_affiliation.append(affiliations[label])
         authors_with_aff.append([author['Name'], author_affiliation])
 
-    author_ids = []
-
-    for label in affilations:
-        if not check_affilation(affilations[label]):
-            new_affilation = Affilation(aff=affilation.text)
-            db.session.add(new_affilation)
-            db.session.commit()
-
-        get_affilation = Affilation.query.filter_by(aff=affilation.text).first()
-        affilations.append(get_affilation.id)
+    author_to_db = []
 
     for author in authors_with_aff:
         if not check_author(author[0]):
-            new_author = Author(name=author[0], affilations=author[1])
+            new_author = Author(name=author[0])
+            for affiliation in author[1]:
+                new_author.affilations.append(affiliation)
             db.session.add(new_author)
             db.session.commit()
 
-            author_ids.append(Author.query.filter_by(name=author[0]).first().id)
+            author_to_db.append(Author.query.filter_by(name=author[0]).first().id)
 
     vol = elsevier_to_text(soup.find('a', title='Go to table of contents for this volume/issue')) + ', '
 
@@ -1257,7 +1284,10 @@ def parse_elsevier_article(url, volume, issue, journal_id):
         pub_date = ''
 
     new_url = 'https://www.sciencedirect.com/sdfe/arp/pii/' + url.split('/')[-1] + '/citingArticles'
-    new_response = requests.get(new_url)
+
+    user_agent = 'Googlebot'
+    headers = {'User-Agent': user_agent}
+    new_response = requests.get(new_url, headers=headers)
     new_soup = elsevier_to_text(BeautifulSoup(new_response.content, 'html.parser'))
     citing_doi = []
     if (new_soup != ''):
@@ -1268,7 +1298,7 @@ def parse_elsevier_article(url, volume, issue, journal_id):
     citing_count = len(citing_doi)
 
     new_url = 'https://www.sciencedirect.com/sdfe/arp/pii/' + url.split('/')[-1] + '/references/external-links/3000'
-    new_response = requests.get(new_url)
+    new_response = requests.get(new_url, headers=headers)
     new_soup = elsevier_to_text(BeautifulSoup(new_response.content, 'html.parser'))
     reference_doi = []
     if (new_soup != ''):
@@ -1277,9 +1307,13 @@ def parse_elsevier_article(url, volume, issue, journal_id):
             if 'crossRefDoi' in article:
                 reference_doi.append(article['crossRefDoi'])
 
+
     new_article = Article(title=title, abstract=abstract, journal_id=journal_id, doi=doi,
                           source='elsevier', citation_counts=citing_count, volume=volume, issue=issue,
-                          pubdate=pub_date, authors=author_ids, pages=pages)
+                          pubdate=pub_date, pages=pages)
+
+    for author_to_db_element in author_to_db:
+        new_article.authors.append(author_to_db_element)
     db.session.add(new_article)
     db.session.commit()
 
