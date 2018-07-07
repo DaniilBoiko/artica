@@ -297,7 +297,7 @@ def update_journals():
 
         return redirect(
             url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                    w_j_task_number='job.get_id()'))
+                    w_j_task_number=job.get_id()))
 
     if task == 'wiley_update_journals':
         start = request.args.get('start')
@@ -307,9 +307,10 @@ def update_journals():
             job = q.enqueue_call(
                 func=parse_wiley_journals, args=(start, end), result_ttl=50000, timeout=360000
             )
+            job_id = job.get_id()
             return redirect(
                 url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                        wiley_job_id=job.get_id()))
+                        wiley_job_id=job_id))
         else:
             return 'Describe all args', 404
 
@@ -401,7 +402,7 @@ def get_results(job_key):
 
 
 @app.route("/results_wiley/<job_key>", methods=['GET'])
-def get_results(job_key):
+def get_results_wiley(job_key):
     job = Job.fetch(job_key, connection=conn)
 
     if job.is_finished:
@@ -960,25 +961,49 @@ def get_wiley_article(url):
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
+
+    doi = soup.find('a', class_='epub-doi')
+    if doi is not None:
+        doi = doi.text[16:]
+        new_article = Article.query.filter_by(doi=doi).first()
+        if new_article is None:
+            new_article = Article()
+            new_article.doi = doi
+            db.session.add(new_article)
+            db.session.commit()
+
+    else:
+        new_article = Article()
+        new_article.doi = doi
+        db.session.add(new_article)
+        db.session.commit()
+
+
     journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
     journal = Journal.query.filter_by(name=journal_name)
 
     # Aricle main data
 
     title = wiley_to_text(soup.find('h2', class_='citation__title'))
+    new_article.title = title
 
     abstract = wiley_to_text(soup.find('div', class_='article-section__content en main'))
+    new_article.abstract = abstract
 
-    author_ids = []
     author_group = soup.find('div', class_='loa-wrapper loa-authors hidden-xs')
     if author_group is not None:
         authors = author_group.find_all('div', class_='accordion-tabbed__tab-mobile accordion__closed')
         for author in authors:
 
             name = author.find('a', class_='author-name accordion-tabbed__control').text
-            affilation_el = author.find('div', class_='author-info accordion-tabbed__content').find_all('p')
-            affilations = []
+            if not check_author(name):
+                new_author = Author(name=name)
+                db.session.add(new_author)
+                db.session.commit()
 
+            author_db = Author.query.filter_by(name=name).first()
+
+            affilation_el = author.find('div', class_='author-info accordion-tabbed__content').find_all('p')
             for affilation in affilation_el:
                 if not check_affilation(affilation.text):
                     new_affilation = Affilation(aff=affilation.text)
@@ -986,20 +1011,13 @@ def get_wiley_article(url):
                     db.session.commit()
 
                 get_affilation = Affilation.query.filter_by(aff=affilation.text).first()
-                affilations.append(get_affilation.id)
+                author_db.affilations.append(get_affilation)
 
-            if not check_author(name):
-                new_author = Author(name=name, affilations=affilations)
-                db.session.add(new_author)
-                db.session.commit()
-
-                author_ids.append(Author.query.filter_by(name=name).first().id)
-
-    doi = soup.find('a', class_='epub-doi')
-    if doi is not None:
-        doi = doi.text[16:]
+            db.session.commit(author_db)
+            new_article.authors.append(author_db)
 
     doctype = wiley_to_text(soup.find('span', class_='primary-heading'))
+    new_article.doctype = doctype
 
     date = soup.find('span', class_='epub-date')
     if date is not None:
@@ -1012,31 +1030,43 @@ def get_wiley_article(url):
         month = int(months_dict[month])
         year = int(date[2])
         date = datetime.date(year=year, month=month, day=day)
+    new_article.pubdate=date
 
     cited_by = wiley_to_text(soup.find('div', class_='epub-section cited-by-count'))
     if cited_by is not None: cited_by = cited_by.split()[2]
+    new_article.citation_counts=cited_by
 
     src = soup.find('img', class_='figure__image')
     if src is not None:
         src = src['src']
+    new_article.src=src
 
     volume_issue = soup.find('p', class_='volume-issue')
     if volume_issue is not None:
         volume_issue = volume_issue.find_all('span', class_='val')
         volume = volume_issue[0].text
         issue = volume_issue[1].text
+        new_article.volume=volume
+        new_article.issue=issue
 
     pages = soup.find('p', class_='page-range')
     if pages is not None:
         pages = pages.find_all('span')[1].text
+    new_article.pages=pages
 
     # Cited by
 
     cited_by_list = soup.find_all('li', class_='citedByEntry')
     for cited_by_item in cited_by_list:
         if cited_by_item.find('div', class_='extra-links') is not None:
-            new_citation = Citation(cited=doi,
-                                citing=cited_by_item.find('div', class_='extra-links').find('a')['href'][16:])
+            citation_doi =  cited_by_item.find('div', class_='extra-links').find('a')['href'][16:]
+            if Article.query.filter_by(doi=doi) is not None:
+                citing_article = Article(doi=doi)
+                db.session.add(citing_article)
+                db.session.commit()
+            citing_article = Article.query.filter_by(doi=doi)
+            new_citation = Citation(cited=new_article,
+                                citing=citing_article)
             db.session.add(new_citation)
             db.session.commit()
 
@@ -1046,13 +1076,8 @@ def get_wiley_article(url):
         keywords = keywords.find_all('li')
         for keyword in keywords:
             keyword_list.append(keyword.text)
+    new_article.keyword = keyword_list
 
-    # Cited
-
-    new_article = Article(title=title, abstract=abstract, journal_id=journal.id, doi=doi, doctype=doctype,
-                          source='wiley', src=src, citation_counts=cited_by, volume=volume, issue=issue, pubdate=date,
-                          authors=author_ids, pages=pages, keyword=keyword_list)
-    db.session.add(new_article)
     db.session.commit()
 
 
