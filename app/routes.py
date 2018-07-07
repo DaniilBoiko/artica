@@ -295,7 +295,7 @@ def update_journals():
 
         return redirect(
             url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                    w_j_task_number='job.get_id()'))
+                    w_j_task_number=job.get_id()))
 
     if task == 'wiley_update_journals':
         start = request.args.get('start')
@@ -305,9 +305,10 @@ def update_journals():
             job = q.enqueue_call(
                 func=parse_wiley_journals, args=(start, end), result_ttl=50000, timeout=360000
             )
+            job_id = job.get_id()
             return redirect(
                 url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                        wiley_job_id=job.get_id()))
+                        wiley_job_id=job_id))
         else:
             return 'Describe all args', 404
 
@@ -399,7 +400,7 @@ def get_results(job_key):
 
 
 @app.route("/results_wiley/<job_key>", methods=['GET'])
-def get_results(job_key):
+def get_results_wiley(job_key):
     job = Job.fetch(job_key, connection=conn)
 
     if job.is_finished:

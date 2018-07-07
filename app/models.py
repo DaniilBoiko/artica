@@ -96,6 +96,7 @@ class Journal(db.Model):
     subject = db.Column(db.String)
     url = db.Column(db.Text)
     publisher = db.Column(db.String)
+    link = db.Column(db.String)
     last_fetched = db.Column(db.DateTime)
     last_volume = db.Column(db.String)
     last_issue = db.Column(db.String)
@@ -129,6 +130,7 @@ class Affilation(db.Model):
 
 
 class Citation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
     cited = db.Column(db.Integer, db.ForeignKey('article.id'),
                       nullable=False)
     citing = db.Column(db.Integer, db.ForeignKey('article.id'),
