@@ -974,13 +974,13 @@ def get_wiley_article(url):
 
     else:
         new_article = Article()
-        new_article.doi = doi
         db.session.add(new_article)
         db.session.commit()
 
 
     journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
-    journal = Journal.query.filter_by(name=journal_name)
+    journal = Journal.query.filter_by(name=journal_name).first()
+    article.journal_id = journal.id
 
     # Aricle main data
 

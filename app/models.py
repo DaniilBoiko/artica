@@ -66,7 +66,8 @@ class Article(db.Model):
     pubdate = db.Column(db.Date)
     volume = db.Column(db.String)
     issue = db.Column(db.String)
-    journal_id = db.Column(db.Integer)
+    journal_id = db.Column(db.Integer,db.ForeignKey('journal.id'),
+        nullable=False)
     journalabbr = db.Column(db.Text)
     authors = db.relationship('Author', secondary=authors, lazy='subquery',
                               backref=db.backref('articles', lazy=True))
@@ -106,6 +107,7 @@ class Journal(db.Model):
     technical_info = db.Column(db.String)
     keyword = db.Column(ARRAY(db.String))
     job_id = db.Column(db.String)
+    articles = db.relationship('Article', backref='article', lazy=True)
 
     def __repr__(self):
         return '<Journal {}>'.format(self.name)
