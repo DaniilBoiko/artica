@@ -1064,7 +1064,7 @@ def get_wiley_article(url):
                 citing_article = Article(doi=citation_doi)
                 db.session.add(citing_article)
                 db.session.commit()
-                
+
             citing_article = Article.query.filter_by(doi=citation_doi).first()
             new_citation = Citation(cited=new_article,
                                 citing=citing_article)
