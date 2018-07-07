@@ -125,7 +125,7 @@ class Affilation(db.Model):
     aff = db.Column(db.Text)
 
     def __repr__(self):
-        return '<Author {}>'.format(self.name)
+        return '<Affilation {}>'.format(self.name)
 
 
 class Citation(db.Model):
