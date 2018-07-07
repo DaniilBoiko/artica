@@ -1260,7 +1260,6 @@ def parse_elsevier_article(url, volume, issue, journal_id):
                           pubdate=pub_date, authors=author_ids, pages=pages)
     db.session.add(new_article)
     db.session.commit()
-    # citing_doi, reference_doi
 
 
 def elsevier_to_text(obj):
