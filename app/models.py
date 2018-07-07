@@ -80,7 +80,10 @@ class Article(db.Model):
     doctype = db.Column(db.String)
     crossref = db.Column(db.Text)
     meta_data = db.Column(db.Text)
+
     citation_counts = db.Column(db.Integer)
+    cited = db.relationship('Citation', backref='article', lazy=True)
+    citing = db.relationship('Citation', backref='article', lazy=True)
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
@@ -125,11 +128,12 @@ class Affilation(db.Model):
         return '<Author {}>'.format(self.name)
 
 
-class Cite(db.Model):
-    cited_doi = db.Column(db.String)
-    citing_doi = db.Column(db.String)
-    citing_id = db.Column(db.Integer)
+class Citation(db.Model):
+    cited = db.Column(db.Integer, db.ForeignKey('article.id'),
+        nullable=False)
+    citing = db.Column(db.Integer, db.ForeignKey('article.id'),
+        nullable=False)
     reference = db.Column(db.Text)
 
     def __repr__(self):
-        return '<Cite {}>'.format(self.reference)
+        return '<Citation {}>'.format(self.reference)

@@ -18,7 +18,7 @@ from sqlalchemy_searchable import search
 from app import app
 from app import db
 from app import q, Job, conn, get_current_job
-from app.models import Article, User, UserDocument, Journal, Cite, Author, Affilation
+from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -1017,8 +1017,8 @@ def get_wiley_article(url):
     cited_by_list = soup.find_all('li', class_='citedByEntry')
     for cited_by_item in cited_by_list:
         if cited_by_item.find('div', class_='extra-links') is not None:
-            new_citation = Cite(cited_doi=doi,
-                                citing_doi=cited_by_item.find('div', class_='extra-links').find('a')['href'][16:])
+            new_citation = Citation(cited=doi,
+                                citing=cited_by_item.find('div', class_='extra-links').find('a')['href'][16:])
             db.session.add(new_citation)
             db.session.commit()
 
