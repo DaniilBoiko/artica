@@ -1185,8 +1185,11 @@ def parse_elsevier_journal(url, journal_id):
 
     for article_li in article_lis:
         article = article_li.find('a')
-        parse_elsevier_article('https://www.sciencedirect.com' + article['href'], volume=volume, issue=issue,
-                               journal_id=journal_id)
+
+        url = 'https://www.sciencedirect.com' + article['href']
+        if Article.query.filter_by(link=url).first() is not None:
+            parse_elsevier_article(url = url, volume=volume, issue=issue,
+                                   journal_id=journal_id)
 
     next_page = soup.find('div', class_='els-jl-issue-navigate u-padding-hor-xs issue-navigation')
 
@@ -1359,7 +1362,7 @@ def parse_elsevier_article(url, volume, issue, journal_id):
 
     new_article = Article(title=title, abstract=abstract, journal_id=journal_id, doi=doi,
                           source='elsevier', citation_counts=citing_count, volume=volume, issue=issue,
-                          pubdate=pub_date, pages=pages, keyword = keywords)
+                          pubdate=pub_date, pages=pages, keyword = keywords, link = url)
 
     for author_to_db_element in author_to_db:
         new_article.authors.append(author_to_db_element)
@@ -1374,22 +1377,28 @@ def parse_elsevier_article(url, volume, issue, journal_id):
             db.session.add(reference_article)
             db.session.commit()
         reference_article = Article.query.filter_by(doi=doi)
-        new_citation = Citation(cited=reference_article,
-                                citing=new_article)
-        db.session.add(new_citation)
-        db.session.commit()
+        old_citation = Citation.query.filter_by(cited=new_article,
+                                                citing=citing_article).first()
+        if old_citation is None:
+            new_citation = Citation(cited=reference_article,
+                                    citing=new_article)
+            db.session.add(new_citation)
+            db.session.commit()
 
     # Cited by
     for doi in citing_doi:
-        if Article.query.filter_by(doi=doi) is not None:
+        if Article.query.filter_by(doi=doi).first() is None:
             citing_article = Article(doi=doi)
             db.session.add(citing_article)
             db.session.commit()
         citing_article = Article.query.filter_by(doi=doi)
-        new_citation = Citation(cited=new_article,
-                                citing=citing_article)
-        db.session.add(new_citation)
-        db.session.commit()
+        old_citation = Citation.query.filter_by(cited=new_article,
+                                citing=citing_article).first()
+        if old_citation is None:
+            new_citation = Citation(cited=new_article,
+                                    citing=citing_article)
+            db.session.add(new_citation)
+            db.session.commit()
 
 
 def elsevier_to_text(obj):
