@@ -1193,6 +1193,17 @@ def parse_elsevier_article(url, volume, issue, journal_id):
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
+    keyword_div = soup.find('div', class_='Keywords')
+    keywords = []
+    if (keyword_div is not None):
+        kw_divs = keyword_div.find_all('div', class_='keywords')
+        for kw_div in kw_divs:
+            span = kw_div.find('span')
+            if span is not None:
+                keywords.append(span.text)
+
+
+
     title = elsevier_to_text(soup.find('span', class_='title-text'))
     doi = '/'.join(elsevier_to_text(soup.find('a', class_='doi')).split('/')[-2:])
 
@@ -1335,12 +1346,37 @@ def parse_elsevier_article(url, volume, issue, journal_id):
 
     new_article = Article(title=title, abstract=abstract, journal_id=journal_id, doi=doi,
                           source='elsevier', citation_counts=citing_count, volume=volume, issue=issue,
-                          pubdate=pub_date, pages=pages)
+                          pubdate=pub_date, pages=pages, keyword = keywords)
 
     for author_to_db_element in author_to_db:
         new_article.authors.append(author_to_db_element)
     db.session.add(new_article)
     db.session.commit()
+
+    #References
+
+    for doi in reference_doi:
+        if Article.query.filter_by(doi=doi) is not None:
+            reference_article = Article(doi=doi)
+            db.session.add(reference_article)
+            db.session.commit()
+        reference_article = Article.query.filter_by(doi=doi)
+        new_citation = Citation(cited=reference_article,
+                                citing=new_article)
+        db.session.add(new_citation)
+        db.session.commit()
+
+    # Cited by
+    for doi in citing_doi:
+        if Article.query.filter_by(doi=doi) is not None:
+            citing_article = Article(doi=doi)
+            db.session.add(citing_article)
+            db.session.commit()
+        citing_article = Article.query.filter_by(doi=doi)
+        new_citation = Citation(cited=new_article,
+                                citing=citing_article)
+        db.session.add(new_citation)
+        db.session.commit()
 
 
 def elsevier_to_text(obj):
