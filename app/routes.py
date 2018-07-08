@@ -1031,11 +1031,19 @@ def get_wiley_article(url):
                        'September': 9, 'October': 10, 'November': 11, 'December': 12}
 
         date = date.text.split()
-        day = int(date[0])
-        month = date[1]
-        month = int(months_dict[month])
-        year = int(date[2])
-        date = datetime.date(year=year, month=month, day=day)
+        if len(date)==3:
+            day = int(date[0])
+            month = date[1]
+            month = int(months_dict[month])
+            year = int(date[2])
+            date = datetime.date(year=year, month=month, day=day)
+        else:
+            day = 1
+            month = date[0]
+            month = int(months_dict[month])
+            year = int(date[1])
+            date = datetime.date(year=year, month=month, day=day)
+
     new_article.pubdate = date
 
     cited_by = wiley_to_text(soup.find('div', class_='epub-section cited-by-count'))
