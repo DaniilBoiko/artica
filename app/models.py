@@ -66,8 +66,7 @@ class Article(db.Model):
     pubdate = db.Column(db.Date)
     volume = db.Column(db.String)
     issue = db.Column(db.String)
-    journal_id = db.Column(db.Integer,db.ForeignKey('journal.id'),
-        nullable=False)
+    journal_id = db.Column(db.Integer,db.ForeignKey('journal.id'))
     journalabbr = db.Column(db.Text)
     authors = db.relationship('Author', secondary=authors, lazy='subquery',
                               backref=db.backref('articles', lazy=True))
