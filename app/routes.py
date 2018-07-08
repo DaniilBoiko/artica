@@ -411,8 +411,9 @@ def get_results_wiley(job_key):
         if job.is_failed:
             return 'Failure', 403
         else:
-            return jsonify(journal=job.meta.journal, volume=job.meta.volume, issue=job.meta.issue, start=job.meta.start,
-                           end=job.meta.end, index = job.meta.index, year = job.meta.year), 202
+            return jsonify(journal=job.meta['journal'], volume=job.meta['volume'], issue=job.meta['issue'],
+                           start=job.meta['start'],
+                           end=job.meta['end'], index=job.meta['index'], year=job.meta['year']), 202
 
 
 @app.route("/add_data", methods=['GET'])
@@ -856,7 +857,7 @@ def get_wiley_journals():
         url_page = url + str(i)
         user_agent = 'Googlebot'
         headers = {'User-Agent': user_agent}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url_page, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
         no_results = soup.find("li", class_='search-result__no-result')
         if no_results is not None:
@@ -882,16 +883,16 @@ def parse_wiley_journals(start, end):
     job = get_current_job()
 
     journals = Journal.query.filter_by(publisher='Wiley').all()
-    job.meta.start = start
-    job.meta.end = end
+    job.meta['start'] = start
+    job.meta['end'] = end
     i = 0
 
     for journal in journals:
 
-        if i >= start or i <= end:
+        if i >= int(start) or i <= int(end):
 
-            job.meta.index = i
-            job.meta.journal = Journal.name
+            job.meta['index'] = i
+            job.meta['journal'] = Journal.name
 
             url = 'https://onlinelibrary.wiley.com/loi/' + journal.link.split('/')[2]
             user_agent = 'Googlebot'
@@ -906,7 +907,7 @@ def parse_wiley_journals(start, end):
                     if li.has_attr('class') and li['class'][0] != ' active ':
                         li_nested = li.find('ul')
                         if li_nested is None:
-                            get_wiley_year(li.find('a')['href'])
+                            get_wiley_year(li.find('a')['href'], job)
                     else:
                         get_wiley_year(li.find('a')['href'], job)
 
@@ -919,7 +920,7 @@ def get_wiley_year(url, job):
     # ----------------------------------
     # Gets an URL of Wiley journal year
     # ----------------------------------
-    job.meta.year = url.split('/')[4]
+    job.meta['year'] = url.split('/')[4]
     user_agent = 'Googlebot'
     headers = {'User-Agent': user_agent}
     response = requests.get('https://onlinelibrary.wiley.com' + url, headers=headers)
@@ -939,8 +940,8 @@ def get_wiley_volume(url, job):
     # Gets an URL of Wiley journal volume
     # ------------------------------------
 
-    job.meta.volume = url.split('/')[4]
-    job.meta.issue = url.split('/')[5]
+    job.meta['volume'] = url.split('/')[4]
+    job.meta['issue'] = url.split('/')[5]
     user_agent = 'Googlebot'
     headers = {'User-Agent': user_agent}
     response = requests.get('https://onlinelibrary.wiley.com' + url, headers=headers)
@@ -961,6 +962,11 @@ def get_wiley_article(url):
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
+    journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
+    journal = Journal.query.filter_by(name=journal_name).first()
+
+    print(journal_name)
+    print(journal)
 
     doi = soup.find('a', class_='epub-doi')
     if doi is not None:
@@ -969,18 +975,18 @@ def get_wiley_article(url):
         if new_article is None:
             new_article = Article()
             new_article.doi = doi
+            new_article.journal_id = journal.id
             db.session.add(new_article)
             db.session.commit()
 
     else:
         new_article = Article()
+        article.journal_id = journal.id
         db.session.add(new_article)
         db.session.commit()
 
-
-    journal_name = soup.find('a', class_='citation--logo')['title'][0:-9]
-    journal = Journal.query.filter_by(name=journal_name).first()
     article.journal_id = journal.id
+    db.session.commit()
 
     # Aricle main data
 
@@ -1013,7 +1019,7 @@ def get_wiley_article(url):
                 get_affilation = Affilation.query.filter_by(aff=affilation.text).first()
                 author_db.affilations.append(get_affilation)
 
-            db.session.commit(author_db)
+            db.session.commit()
             new_article.authors.append(author_db)
 
     doctype = wiley_to_text(soup.find('span', class_='primary-heading'))
@@ -1030,44 +1036,44 @@ def get_wiley_article(url):
         month = int(months_dict[month])
         year = int(date[2])
         date = datetime.date(year=year, month=month, day=day)
-    new_article.pubdate=date
+    new_article.pubdate = date
 
     cited_by = wiley_to_text(soup.find('div', class_='epub-section cited-by-count'))
     if cited_by is not None: cited_by = cited_by.split()[2]
-    new_article.citation_counts=cited_by
+    new_article.citation_counts = cited_by
 
     src = soup.find('img', class_='figure__image')
     if src is not None:
         src = src['src']
-    new_article.src=src
+    new_article.src = src
 
     volume_issue = soup.find('p', class_='volume-issue')
     if volume_issue is not None:
         volume_issue = volume_issue.find_all('span', class_='val')
         volume = volume_issue[0].text
         issue = volume_issue[1].text
-        new_article.volume=volume
-        new_article.issue=issue
+        new_article.volume = volume
+        new_article.issue = issue
 
     pages = soup.find('p', class_='page-range')
     if pages is not None:
         pages = pages.find_all('span')[1].text
-    new_article.pages=pages
+    new_article.pages = pages
 
     # Cited by
 
     cited_by_list = soup.find_all('li', class_='citedByEntry')
     for cited_by_item in cited_by_list:
         if cited_by_item.find('div', class_='extra-links') is not None:
-            citation_doi =  cited_by_item.find('div', class_='extra-links').find('a')['href'][16:]
+            citation_doi = cited_by_item.find('div', class_='extra-links').find('a')['href'][1:]
             if Article.query.filter_by(doi=citation_doi) is not None:
                 citing_article = Article(doi=citation_doi)
                 db.session.add(citing_article)
                 db.session.commit()
 
             citing_article = Article.query.filter_by(doi=citation_doi).first()
-            new_citation = Citation(cited=new_article,
-                                citing=citing_article)
+            new_citation = Citation(cited=new_article.id,
+                                    citing=citing_article.id)
             db.session.add(new_citation)
             db.session.commit()
 
@@ -1087,7 +1093,7 @@ def get_wiley_article(url):
 # ------------------------------------------------------------------------------
 
 def check_author(name):
-    author = Author.query.filter(name=name).first()
+    author = Author.query.filter_by(name=name).first()
     if author is None:
         return False
     else:
@@ -1095,7 +1101,7 @@ def check_author(name):
 
 
 def check_affilation(aff):
-    author = Affilation.query.filter(aff=aff).first()
+    author = Affilation.query.filter_by(aff=aff).first()
     if author is None:
         return False
     else:
@@ -1244,7 +1250,6 @@ def parse_elsevier_article(url, volume, issue, journal_id):
             except:
                 pass
 
-
     for label in affiliations:
         if not check_affilation(affiliations[label]):
             new_affilation = Affilation(aff=affiliations[label])
@@ -1332,7 +1337,6 @@ def parse_elsevier_article(url, volume, issue, journal_id):
         for article in json_citing:
             if 'crossRefDoi' in article:
                 reference_doi.append(article['crossRefDoi'])
-
 
     new_article = Article(title=title, abstract=abstract, journal_id=journal_id, doi=doi,
                           source='elsevier', citation_counts=citing_count, volume=volume, issue=issue,
