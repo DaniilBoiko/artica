@@ -1038,11 +1038,20 @@ def get_wiley_article(url):
             year = int(date[2])
             date = datetime.date(year=year, month=month, day=day)
         else:
-            day = 1
-            month = date[0]
-            month = int(months_dict[month])
-            year = int(date[1])
-            date = datetime.date(year=year, month=month, day=day)
+            if len(date[0].split('/')) == 1:
+                day = 1
+                month = date[0]
+                month = int(months_dict[month])
+                year = int(date[1])
+                new_article.technical_info = date
+                date = datetime.date(year=year, month=month, day=day)
+            else:
+                day = 1
+                month = date[0].split('/')[0]
+                month = int(months_dict[month])
+                year = int(date[1])
+                new_article.technical_info = date
+                date = datetime.date(year=year, month=month, day=day)
 
     new_article.pubdate = date
 
@@ -1080,10 +1089,11 @@ def get_wiley_article(url):
                 db.session.commit()
 
             citing_article = Article.query.filter_by(doi=citation_doi).first()
-            new_citation = Citation(cited=new_article.id,
-                                    citing=citing_article.id)
-            db.session.add(new_citation)
-            db.session.commit()
+            if Citation.query.filter_by(cited=new_article.id,citing=citing_article.id).first() is None:
+                new_citation = Citation(cited=new_article.id,
+                                        citing=citing_article.id)
+                db.session.add(new_citation)
+                db.session.commit()
 
     keyword_list = []
     keywords = soup.find('section', class_='keywords')
@@ -1396,4 +1406,4 @@ def elsevier_to_text(obj):
     if obj is not None:
         return obj.text
     else:
-        return ''
+        return obj
