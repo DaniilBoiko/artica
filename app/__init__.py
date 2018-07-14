@@ -7,7 +7,7 @@ from rq import Queue, get_current_job
 from rq.job import Job
 from worker import conn
 from elasticsearch import Elasticsearch
-import certifi
+import certifi, app
 
 application = Flask(__name__)
 app = application
