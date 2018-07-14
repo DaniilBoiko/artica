@@ -7,7 +7,7 @@ import requests
 import xmltodict
 import time
 from bs4 import BeautifulSoup
-from flask import render_template, request, redirect, url_for, jsonify, make_response, session
+from flask import render_template, request, redirect, url_for, jsonify, make_response, session, current_app
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
 from sqlalchemy import func, between
@@ -178,9 +178,11 @@ def index():
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
-    query = request.args.get('query')
-    page = int(request.args.get('page', 1))
+    query = request.args.get('query', type=str)
+    if (query is None) or len(query) < 5:
+        return redirect(url_for('index'))
 
+    '''
     q = Article.query.search(query, sort=True)
     answers = q.paginate(page, 10, False).items
     counts = count_estimate(q, db.session)
@@ -216,10 +218,25 @@ def search():
                 answer.authorlist.append(author['LastName'] + ' ' + author['ForeName'])
         except:
             answer.authorlist.append('')
+    '''
 
-    return render_template('search.html', title=query, answers=answers, query=query, counts=counts, npages=npages,
+    page = request.args.get('page', 1, type=int)
+
+    answers, total = Article.search(q, page,
+                                    current_app.config['POSTS_PER_PAGE'])
+    next_url = url_for('search', q=q, page=page + 1) \
+        if total > page * current_app.config['POSTS_PER_PAGE'] else None
+    prev_url = url_for('main.search', q=q, page=page - 1) \
+        if page > 1 else None
+
+    return render_template('search.html', title=query, answers=answers, query=query, counts=total,
+                           npages= int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
                            page=page)
 
+@app.route('/es_reindex')
+def es_reindex():
+    Article.reindex()
+    return redirect(url_for('index'))
 
 @app.route('/admin', methods=['GET'])
 def admin():
@@ -869,9 +886,11 @@ def get_wiley_journals():
                 link = title.a['href']
                 journal_info = [title.text, link]
                 journal_list.append(journal_info)
-                new_journal = Journal(name=title.text, link=link, publisher='Wiley')
-                db.session.add(new_journal)
-                db.session.commit()
+                check_journal = Journal.query.filter_by(name=title.text).first()
+                if check_journal is None:
+                    new_journal = Journal(name=title.text, link=link, publisher='Wiley')
+                    db.session.add(new_journal)
+                    db.session.commit()
             i += 1
 
 
@@ -912,6 +931,7 @@ def parse_wiley_journals(start, end):
                         get_wiley_year(li.find('a')['href'], job)
 
             journal.last_fetched = datetime.datetime.now()
+            db.session.commit()
 
         i += 1
 
@@ -1031,7 +1051,7 @@ def get_wiley_article(url):
                        'September': 9, 'October': 10, 'November': 11, 'December': 12}
 
         date = date.text.split()
-        if len(date)==3:
+        if len(date) == 3:
             day = int(date[0])
             month = date[1]
             month = int(months_dict[month])
@@ -1089,7 +1109,7 @@ def get_wiley_article(url):
                 db.session.commit()
 
             citing_article = Article.query.filter_by(doi=citation_doi).first()
-            if Citation.query.filter_by(cited=new_article.id,citing=citing_article.id).first() is None:
+            if Citation.query.filter_by(cited=new_article.id, citing=citing_article.id).first() is None:
                 new_citation = Citation(cited=new_article.id,
                                         citing=citing_article.id)
                 db.session.add(new_citation)
@@ -1198,7 +1218,7 @@ def parse_elsevier_journal(url, journal_id):
 
         url = 'https://www.sciencedirect.com' + article['href']
         if Article.query.filter_by(link=url).first() is not None:
-            parse_elsevier_article(url = url, volume=volume, issue=issue,
+            parse_elsevier_article(url=url, volume=volume, issue=issue,
                                    journal_id=journal_id)
 
     next_page = soup.find('div', class_='els-jl-issue-navigate u-padding-hor-xs issue-navigation')
@@ -1229,8 +1249,6 @@ def parse_elsevier_article(url, volume, issue, journal_id):
             span = kw_div.find('span')
             if span is not None:
                 keywords.append(span.text)
-
-
 
     title = elsevier_to_text(soup.find('span', class_='title-text'))
     doi = '/'.join(elsevier_to_text(soup.find('a', class_='doi')).split('/')[-2:])
@@ -1372,14 +1390,14 @@ def parse_elsevier_article(url, volume, issue, journal_id):
 
     new_article = Article(title=title, abstract=abstract, journal_id=journal_id, doi=doi,
                           source='elsevier', citation_counts=citing_count, volume=volume, issue=issue,
-                          pubdate=pub_date, pages=pages, keyword = keywords, link = url)
+                          pubdate=pub_date, pages=pages, keyword=keywords, link=url)
 
     for author_to_db_element in author_to_db:
         new_article.authors.append(author_to_db_element)
     db.session.add(new_article)
     db.session.commit()
 
-    #References
+    # References
 
     for doi in reference_doi:
         if Article.query.filter_by(doi=doi) is not None:
@@ -1403,7 +1421,7 @@ def parse_elsevier_article(url, volume, issue, journal_id):
             db.session.commit()
         citing_article = Article.query.filter_by(doi=doi)
         old_citation = Citation.query.filter_by(cited=new_article,
-                                citing=citing_article).first()
+                                                citing=citing_article).first()
         if old_citation is None:
             new_citation = Citation(cited=new_article,
                                     citing=citing_article)
