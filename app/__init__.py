@@ -6,8 +6,6 @@ from config import Config
 from rq import Queue, get_current_job
 from rq.job import Job
 from worker import conn
-from elasticsearch import Elasticsearch
-import certifi, app
 
 application = Flask(__name__)
 app = application
@@ -17,9 +15,6 @@ db.configure_mappers()
 migrate = Migrate(app, db)
 bootstrap = Bootstrap(app)
 q = Queue(connection=conn)
-
-app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']],use_ssl=True, ca_certs=certifi.where())) \
-    if app.config['ELASTICSEARCH_URL'] else None
 
 from app import models
 
