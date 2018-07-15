@@ -145,7 +145,7 @@ def get_article(url):
                 db.session.add(new_author)
                 db.session.commit()
             #Select author in db
-            author_db = Author.query.filter_by(name = author_name.get_test()).first()
+            author_db = Author.query.filter_by(name = author_name.get_text()).first()
 
             af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
             for af_item in af_section.find_all('li'):
