@@ -71,7 +71,7 @@ def get_article(url):
     year = date.pop(0)
     month = date.pop(0)
     day = date.pop(0)
-    date = datetime.date(year=year, month=month, day=day)
+    date = datetime.date(year=int(year), month=int(month), day=int(day))
     article.pubdate = date
 
     if soup.find('a', class_='ArticleCitation_Issue') is not None:
@@ -171,7 +171,7 @@ def get_journal(url):
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
-    if Journal.query.filter_by(name = title) is None:
+    if Journal.query.filter_by(name = title).first() is None:
         new_journal = Journal(name = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
         db.session.add(new_journal)
         db.session.commit()
