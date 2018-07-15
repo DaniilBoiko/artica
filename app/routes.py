@@ -182,61 +182,18 @@ def search():
     if (query is None) or len(query) < 5:
         return redirect(url_for('index'))
 
-    '''
-    q = Article.query.search(query, sort=True)
-    answers = q.paginate(page, 10, False).items
-    counts = count_estimate(q, db.session)
-    if counts < 20000:
-        counts = get_count(q)
-    else:
-        counts = 10000 * (counts // 10000)
-
-    npages = int(math.ceil(counts / 10))
-    for answer in answers:
-        if answer.title is not None:
-            answer.title = answer.title[2:]
-            answer.title = answer.title[:-1]
-            if answer.title[0] == '[':
-                answer.title = answer.title[1:]
-                answer.title = str(answer.title[:-2]) + '.'
-        else:
-            answer.title = ''
-
-        if answer.abstract is not None:
-            answer.abstract = answer.abstract[2:]
-            answer.abstract = answer.abstract[:-1]
-        else:
-            answer.abstract = ''
-        if answer.pubdate is not None:
-            answer.pubdate = answer.pubdate.strftime('Published at %d, %b %Y')
-        else:
-            answer.pubdate = ''
-
-        answer.authorlist = []
-        try:
-            for author in json.loads(answer.authors)['Author']:
-                answer.authorlist.append(author['LastName'] + ' ' + author['ForeName'])
-        except:
-            answer.authorlist.append('')
-    '''
-
     page = request.args.get('page', 1, type=int)
 
     answers, total = Article.search(q, page,
                                     current_app.config['POSTS_PER_PAGE'])
     next_url = url_for('search', q=q, page=page + 1) \
         if total > page * current_app.config['POSTS_PER_PAGE'] else None
-    prev_url = url_for('main.search', q=q, page=page - 1) \
+    prev_url = url_for('search', q=q, page=page - 1) \
         if page > 1 else None
 
     return render_template('search.html', title=query, answers=answers, query=query, counts=total,
                            npages= int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
                            page=page)
-
-@app.route('/es_reindex')
-def es_reindex():
-    Article.reindex()
-    return redirect(url_for('index'))
 
 @app.route('/admin', methods=['GET'])
 def admin():

@@ -63,9 +63,6 @@ authors = db.Table('authors',
                    )
 
 
-class ArticleQuery(BaseQuery, SearchQueryMixin):
-    pass
-
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -100,8 +97,6 @@ class UserDocument(db.Model):
 
 class Article(SearchableMixin, db.Model):
     __searchable__ = ['title','abstract']
-
-    query_class = ArticleQuery
 
     id = db.Column(db.Integer, primary_key=True)
     source = db.Column(db.String)
