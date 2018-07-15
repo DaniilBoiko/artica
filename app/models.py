@@ -12,8 +12,8 @@ from app.search import add_to_index, remove_from_index, query_index
 
 class SearchableMixin(object):
     @classmethod
-    def search(cls, expression, page, per_page):
-        ids, total = query_index(cls.__name__.lower(), expression, page, per_page)
+    def search(cls, expression, page, per_page, suggestion = False):
+        ids, total = query_index(cls.__name__.lower(), expression, page, per_page, suggestion)
         if total == 0:
             return cls.query.filter_by(id=0), 0
         when = []
@@ -51,22 +51,6 @@ class SearchableMixin(object):
 db.event.listen(db.session, 'before_commit', SearchableMixin.before_commit)
 db.event.listen(db.session, 'after_commit', SearchableMixin.after_commit)
 
-
-affilations = db.Table('affilations',
-                       db.Column('affilcation_id', db.Integer, db.ForeignKey('affilation.id'), primary_key=True),
-                       db.Column('author_id', db.Integer, db.ForeignKey('author.id'), primary_key=True)
-                       )
-
-authors = db.Table('authors',
-                   db.Column('author_id', db.Integer, db.ForeignKey('author.id'), primary_key=True),
-                   db.Column('article_id', db.Integer, db.ForeignKey('article.id'), primary_key=True)
-                   )
-
-
-class ArticleQuery(BaseQuery, SearchQueryMixin):
-    pass
-
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     mendeley_id = db.Column(db.String)
@@ -98,10 +82,8 @@ class UserDocument(db.Model):
         return '<User document {}>'.format(self.title)
 
 
-class Article(SearchableMixin, db.Model):
+class Article(SearchableMixin,db.Model):
     __searchable__ = ['title','abstract']
-
-    query_class = ArticleQuery
 
     id = db.Column(db.Integer, primary_key=True)
     source = db.Column(db.String)
@@ -114,10 +96,9 @@ class Article(SearchableMixin, db.Model):
     pubdate = db.Column(db.Date)
     volume = db.Column(db.String)
     issue = db.Column(db.String)
-    journal_id = db.Column(db.Integer,db.ForeignKey('journal.id'))
+    journal_id = db.Column(db.Integer)
     journalabbr = db.Column(db.Text)
-    authors = db.relationship('Author', secondary=authors, lazy='subquery',
-                              backref=db.backref('articles', lazy=True))
+    authors = db.Column(JSON)
     language = db.Column(db.String)
     issn = db.Column(db.Text)
     isbn = db.Column(db.Text)
@@ -129,10 +110,6 @@ class Article(SearchableMixin, db.Model):
     crossref = db.Column(db.Text)
     meta_data = db.Column(db.Text)
 
-    citation_counts = db.Column(db.Integer)
-    cited = db.relationship('Citation', backref='cited_article', lazy=True, foreign_keys='Citation.cited')
-    citing = db.relationship('Citation', backref='citing_article', lazy=True, foreign_keys='Citation.citing')
-
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
 
@@ -143,8 +120,6 @@ class Journal(db.Model):
     description = db.Column(db.Text)
     subject = db.Column(db.String)
     url = db.Column(db.Text)
-    publisher = db.Column(db.String)
-    link = db.Column(db.String)
     last_fetched = db.Column(db.DateTime)
     last_volume = db.Column(db.String)
     last_issue = db.Column(db.String)
@@ -154,37 +129,6 @@ class Journal(db.Model):
     technical_info = db.Column(db.String)
     keyword = db.Column(ARRAY(db.String))
     job_id = db.Column(db.String)
-    articles = db.relationship('Article', backref='article', lazy=True)
 
     def __repr__(self):
         return '<Journal {}>'.format(self.name)
-
-
-class Author(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    affilations = db.relationship('Affilation', secondary=affilations, lazy='subquery',
-                                  backref=db.backref('authors', lazy=True))
-
-    def __repr__(self):
-        return '<Author {}>'.format(self.name)
-
-
-class Affilation(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    aff = db.Column(db.Text)
-
-    def __repr__(self):
-        return '<Affilation {}>'.format(self.name)
-
-
-class Citation(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    cited = db.Column(db.Integer, db.ForeignKey('article.id'),
-                      nullable=False)
-    citing = db.Column(db.Integer, db.ForeignKey('article.id'),
-                       nullable=False)
-    reference = db.Column(db.Text)
-
-    def __repr__(self):
-        return '<Citation {}>'.format(self.reference)

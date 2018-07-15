@@ -36,7 +36,7 @@
                     {% endfor %}
                 </p>
                 <p class="text-secondary mb-0">
-                    <small>{{ article.pubdate }}{% if article.journal %} in <b>{{ article.journal }}</b>{% endif %}</small>
+                    <small>{{ article.pubdate }} in <b>{{ journal.name }}</b></small>
                 </p>
                 {% if article.abstract == '' %}
                 {% else %}

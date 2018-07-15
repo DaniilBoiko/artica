@@ -5,7 +5,7 @@ POSTGRES = {
     'user': 'artica',
     'pw': 'keklolkek',
     'db': 'artica',
-    'host': 'artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com',
+    'host': 'artica.caur5thdijuo.us-east-2.rds.amazonaws.com',
     'port': '5432',
 }
 
