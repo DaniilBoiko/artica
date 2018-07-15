@@ -104,15 +104,6 @@ def get_article(url):
     af_name = []
     author_section = soup.find('div', class_='content authors-affiliations u-interface')
     if author_section is not None:
-            af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
-            for af_item in af_section.find_all('li'):
-                af.append(af_item.get_text())
-        for email_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
-            email_block = email_item.find('span', class_='author-information')
-            if email_block is not None:
-                email_name = email_block.find('a')['title']
-                emails.append(email_name)
-
         af_name_section = soup.find('ol', class_='test-affiliations')
         for af_name_item in af_name_section.find_all('li', class_='affiliation'):
             af_name_dep = af_name_item.find('span', class_='affiliation__department')
@@ -136,6 +127,70 @@ def get_article(url):
             else:
                 af_country = ''
             af_name.append(af_dep + af_n + af_city + af_country)
-            for aff in af_name:
-                if Affiliation.query.filter_by(aff = aff) is None:
-                    new_aff = Affiliarion(aff = aff)
+        for aff in af_name:
+            if Affiliation.query.filter_by(aff=aff).first() is None:
+                new_aff = Affiliation(aff=aff)
+                db.session.add(new_aff)
+                db.session.commit()
+
+        #Check and add author
+        for author_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
+            author_name = author_item.find('span', class_='authors-affiliations__name')
+            if Author.query.filter_by(name = author_name.get_text()).first() is None:
+                new_author = Author(name = author_name.get_text())
+                db.session.add(new_author)
+                db.session.commit()
+            #Select author in db
+            author_db = Author.query.filter_by(name = author_name.get_test()).first()
+
+            af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
+            for af_item in af_section.find_all('li'):
+                new_aff = Affiliation(aff = af_name[int('af_item.get_text()')])
+                author_db.affiliation.append(new_aff)                                #Добавляем aff для автора из
+                                                                                     #списка aff_name по номеру aff
+            email_block = author_item.find('span', class_='author-information')
+            if email_block is not None:
+                email_name = email_block.find('a')['title']
+                emails.append(email_name)
+                if Affiliation.query.filter_by(aff=email_name) is none:
+                    new_aff = Affiliation(aff=email_name)
+                    db.session.add(new_aff)
+                    db.session.commit()
+                new_aff = Affiliation(aff = af_name[int('af_item.get_text()')])
+                author_db.affiliation.append(new_aff)
+            article.authors.append(author_db)
+
+
+def get_journal(url):
+    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    title = soup.find('div', id='publication-title').find('h1').get_text()
+    if Journal.query.filter_by(title = title) is None:
+        new_journal = Journal(title = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
+        db.session.add(new_journal)
+        db.session.commit()
+
+    issue_section = []
+    issue_block = []
+    volume_tab = soup.find('div', class_='volumes tab-content')
+    for volume_item in volume_tab.find_all('div', class_='volume-item'):
+        issue_list = volume_item.find('ul', class_='issues-list')
+        for issue_item in issue_list.find_all('li', class_='issue-item'):
+            issue_section.append(issue_item.find('a', class_='title')['href'])
+        issue_block = issue_block + issue_section
+
+    for issue_item in issue_block:
+        response = requests.get('https://link.springer.com' + issue_item)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        results = soup.find('div', class_='toc')
+        for article_item in results.find_all('li'):
+            article_link = article_item.find('h3', class_='title').find('a')['href']
+            get_article(article_link)
+
+for item in range(1,175):
+    response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
+    soup = BeautifulSoup(response.content, 'html.parser')
+    results = soup.find('ol', class_ = 'content-item-list')
+    for journal_item in results.find_all('li'):
+        link = journal_item.find('a')['href'][9:]
+        get_journal(link)
