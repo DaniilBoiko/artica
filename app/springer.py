@@ -11,6 +11,7 @@ def get_article(url):
     soup = BeautifulSoup(response.content, 'html.parser')
 
     title = soup.find('h1', class_='ArticleTitle').get_text()
+    print(title)
 
     doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
     #Проверяем наличие статьи в базе
@@ -92,6 +93,7 @@ def get_article(url):
     article.issn = ISSN
 
     journal = soup.find('span', class_='JournalTitle').get_text()
+    article.journal_id = Journal.query.filter_by(name=journal).first().id
 
     key_section = soup.find('div', class_='KeywordGroup', lang="en")
     keywords = []
@@ -161,16 +163,20 @@ def get_article(url):
                 new_aff = Affiliation(aff = af_name[int('af_item.get_text()')])
                 author_db.affiliation.append(new_aff)
             article.authors.append(author_db)
+    db.session.commit()
+    
 
 
 def get_journal(url):
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
-    if Journal.query.filter_by(title = title) is None:
-        new_journal = Journal(title = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
+    if Journal.query.filter_by(name = title) is None:
+        new_journal = Journal(name = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
         db.session.add(new_journal)
         db.session.commit()
+
+    print(title)
 
     issue_block = []
     volume_tab = soup.find('div', class_='volumes tab-content')
@@ -186,6 +192,7 @@ def get_journal(url):
         results = soup.find('div', class_='toc')
         for article_item in results.find_all('li'):
             article_link = article_item.find('h3', class_='title').find('a')['href']
+            print(article_link)
             get_article(article_link)
 
 def get_springer(start,end):
