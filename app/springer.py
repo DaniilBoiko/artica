@@ -1,5 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
+from app.models import Article,Citation,Author,Journal,Affilation
+from app import db
 
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
@@ -170,14 +172,13 @@ def get_journal(url):
         db.session.add(new_journal)
         db.session.commit()
 
-    issue_section = []
     issue_block = []
     volume_tab = soup.find('div', class_='volumes tab-content')
     for volume_item in volume_tab.find_all('div', class_='volume-item'):
         issue_list = volume_item.find('ul', class_='issues-list')
         for issue_item in issue_list.find_all('li', class_='issue-item'):
-            issue_section.append(issue_item.find('a', class_='title')['href'])
-        issue_block = issue_block + issue_section
+            issue_block.append(issue_item.find('a', class_='title')['href'])
+
 
     for issue_item in issue_block:
         response = requests.get('https://link.springer.com' + issue_item)
@@ -187,10 +188,11 @@ def get_journal(url):
             article_link = article_item.find('h3', class_='title').find('a')['href']
             get_article(article_link)
 
-for item in range(1,175):
-    response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
-    soup = BeautifulSoup(response.content, 'html.parser')
-    results = soup.find('ol', class_ = 'content-item-list')
-    for journal_item in results.find_all('li'):
-        link = journal_item.find('a')['href'][9:]
-        get_journal(link)
+def get_springer(start,end):
+    for item in range(start,end):
+        response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
+        soup = BeautifulSoup(response.content, 'html.parser')
+        results = soup.find('ol', class_ = 'content-item-list')
+        for journal_item in results.find_all('li'):
+            link = journal_item.find('a')['href'][9:]
+            get_journal(link)

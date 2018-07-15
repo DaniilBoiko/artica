@@ -19,6 +19,7 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
+from app.springer import get_article, get_journal,get_springer
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -193,11 +194,6 @@ def admin():
 
 @app.route('/update_journals', methods=['GET'])
 def update_journals():
-    # Token check
-    token = request.args.get('token')
-    if token != '64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0':
-        return redirect(url_for('index'))
-
     acs = []
 
     task = request.args.get('task')
@@ -268,6 +264,18 @@ def update_journals():
                         wiley_job_id=job_id))
         else:
             return 'Describe all args', 404
+
+    if task == 'springer':
+        start = request.args.get('start')
+        end = request.args.get('end')
+
+        job = q.enqueue_call(
+            func=get_springer, args=(start, end), result_ttl=50000, timeout=360000
+        )
+
+        return redirect(
+            url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
+                    w_j_task_number=job.get_id()))
 
     for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
