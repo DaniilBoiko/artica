@@ -22,72 +22,11 @@ from app.models import Article, User, UserDocument, Journal
 
 from app.search import add_to_index
 
-count_pattern = re.compile(r'rows=(\d+)')
-
-
-def extract_analyze_count(rows):
-    for row in rows:
-        match = count_pattern.search(row[0])
-        if match:
-            return int(match.groups()[0])
-
-
-def count_estimate(query, session, threshold=None):
-    rows = session.execute(explain(query)).fetchall()
-    count = extract_analyze_count(rows)
-    if threshold is not None and count < threshold:
-        return query.count()
-    return count
-
 
 def get_session_from_cookies():
     return MendeleySession(mendeley, session['token'])
 
-
 mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
-
-
-class explain(Executable, ClauseElement):
-    def __init__(self, stmt, analyze=False):
-        self.statement = _literal_as_text(stmt)
-        self.analyze = analyze
-        # helps with INSERT statements
-        self.inline = getattr(stmt, 'inline', None)
-
-
-def get_count(q):
-    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
-    count = q.session.execute(count_q).scalar()
-    return count
-
-
-@compiles(explain, 'postgresql')
-def pg_explain(element, compiler, **kw):
-    text = 'EXPLAIN '
-    if element.analyze:
-        text += 'ANALYZE '
-    text += compiler.process(element.statement, **kw)
-    return text
-
-
-def distance(a, b):
-    "Calculates the Levenshtein distance between a and b."
-    n, m = len(a), len(b)
-    if n > m:
-        # Make sure n <= m, to use O(min(n,m)) space
-        a, b = b, a
-        n, m = m, n
-
-    current_row = range(n + 1)  # Keep current and previous row, not entire matrix
-    for i in range(1, m + 1):
-        previous_row, current_row = current_row, [i] + [0] * n
-        for j in range(1, n + 1):
-            add, delete, change = previous_row[j] + 1, current_row[j - 1] + 1, previous_row[j - 1]
-            if a[j - 1] != b[i - 1]:
-                change += 1
-            current_row[j] = min(add, delete, change)
-
-    return current_row[n]
 
 
 @app.route('/')
@@ -102,44 +41,6 @@ def search():
     if (query is None) or len(query) < 5:
         return redirect(url_for('index'))
 
-    '''
-    q = Article.query.search(query, sort=True)
-    answers = q.paginate(page, 10, False).items
-    counts = count_estimate(q, db.session)
-    if counts < 20000:
-        counts = get_count(q)
-    else:
-        counts = 10000 * (counts // 10000)
-
-    npages = int(math.ceil(counts / 10))
-    for answer in answers:
-        if answer.title is not None:
-            answer.title = answer.title[2:]
-            answer.title = answer.title[:-1]
-            if answer.title[0] == '[':
-                answer.title = answer.title[1:]
-                answer.title = str(answer.title[:-2]) + '.'
-        else:
-            answer.title = ''
-
-        if answer.abstract is not None:
-            answer.abstract = answer.abstract[2:]
-            answer.abstract = answer.abstract[:-1]
-        else:
-            answer.abstract = ''
-        if answer.pubdate is not None:
-            answer.pubdate = answer.pubdate.strftime('Published at %d, %b %Y')
-        else:
-            answer.pubdate = ''
-
-        answer.authorlist = []
-        try:
-            for author in json.loads(answer.authors)['Author']:
-                answer.authorlist.append(author['LastName'] + ' ' + author['ForeName'])
-        except:
-            answer.authorlist.append('')
-    '''
-
     page = request.args.get('page', 1, type=int)
 
     answers, total = Article.search(query, page,
@@ -152,7 +53,7 @@ def search():
     prev_url = url_for('search', q=query, page=page - 1) \
         if page > 1 else None
 
-    return render_template('search.html', title=query, answers=answers, query=query, counts=total,
+    return render_template('search/search.html', title=query, answers=answers, query=query, counts=total,
                            npages= int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
                            page=page)
 
@@ -187,7 +88,7 @@ def admin():
                 func=parse_them_all, args=(), result_ttl=50000, timeout=360000
             )
     print(job.get_id())
-    return render_template('admin.html', title='admin')
+    return render_template('admin/admin.html', title='admin')
 
 
 @app.route('/update_journals', methods=['GET'])
@@ -331,35 +232,7 @@ def article():
     except:
         article.authorlist.append('')
 
-    return render_template('article.html', title=article.title, journal = journal, article=article, query=query)
-
-
-@app.route("/results/<job_key>", methods=['GET'])
-def get_results(job_key):
-    job = Job.fetch(job_key, connection=conn)
-
-    if job.is_finished:
-        return "Success", 200
-    else:
-        if job.is_failed:
-            return 'Failure', 403
-        else:
-            return "No", 202
-
-
-@app.route("/results_wiley/<job_key>", methods=['GET'])
-def get_results_wiley(job_key):
-    job = Job.fetch(job_key, connection=conn)
-
-    if job.is_finished:
-        return "Success", 200
-    else:
-        if job.is_failed:
-            return 'Failure', 403
-        else:
-            return jsonify(journal=job.meta['journal'], volume=job.meta['volume'], issue=job.meta['issue'],
-                           start=job.meta['start'],
-                           end=job.meta['end'], index=job.meta['index'], year=job.meta['year']), 202
+    return render_template('search/article.html', title=article.title, journal = journal, article=article, query=query)
 
 
 @app.route("/add_data", methods=['GET'])
@@ -405,7 +278,7 @@ def login():
     auth = mendeley.start_authorization_code_flow()
     session['state'] = auth.state
 
-    return render_template('login.html', login_url=(auth.get_login_url()))
+    return render_template('user/login.html', login_url=(auth.get_login_url()))
 
 
 @app.route('/oauth')
@@ -461,7 +334,7 @@ def list_documents():
 
     docs = mendeley_session.documents.list(view='client').items
 
-    return render_template('library.html', name=name, docs=docs, title='Library')
+    return render_template('user/library.html', name=name, docs=docs, title='Library')
 
 
 @app.route('/download')
@@ -525,7 +398,7 @@ def account():
 
     email = mendeley_session.profiles.me.email
 
-    return render_template('account.html', name=name, email=email)
+    return render_template('user/account.html', name=name, email=email)
 
 
 @app.route('/logout')
