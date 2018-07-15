@@ -1,4 +1,4 @@
-import requests
+import requests, datetime
 from bs4 import BeautifulSoup
 from app.models import Article,Citation,Author,Journal,Affilation
 from app import db
@@ -164,7 +164,7 @@ def get_article(url):
                 author_db.affiliation.append(new_aff)
             article.authors.append(author_db)
     db.session.commit()
-    
+
 
 
 def get_journal(url):
