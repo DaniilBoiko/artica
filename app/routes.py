@@ -3,7 +3,8 @@ import json
 import math
 import requests
 from bs4 import BeautifulSoup
-from flask import render_template, request, redirect, url_for, jsonify, make_response, session, current_app
+from flask import render_template, request, redirect, url_for, session, current_app
+
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
 
@@ -105,13 +106,6 @@ def article():
         article.pubdate = article.pubdate.strftime('Published at %d, %b %Y')
     else:
         article.pubdate = ''
-
-    article.authorlist = []
-    try:
-        for author in json.loads(article.authors)['Author']:
-            article.authorlist.append(author['LastName'] + ' ' + author['ForeName'])
-    except:
-        article.authorlist.append('')
 
     return render_template('search/article.html', title=article.title, journal=journal, article=article, query=query)
 

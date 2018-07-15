@@ -8,7 +8,7 @@ from rq.job import Job
 from worker import conn
 from elasticsearch import Elasticsearch
 import certifi
-import app
+import app, os
 
 application = Flask(__name__)
 app = application
@@ -21,6 +21,8 @@ q = Queue(connection=conn)
 
 app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']], use_ssl=True, ca_certs=certifi.where()) \
     if app.config['ELASTICSEARCH_URL'] else None
+
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 from app import models
 
