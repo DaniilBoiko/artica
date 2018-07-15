@@ -150,8 +150,11 @@ def get_article(url):
             af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
             for af_item in af_section.find_all('li'):
                 new_aff = Affilation(aff = af_name[int(af_item.get_text())-1])
+                db.session.add(new_aff)
+                db.session.commit()
                 author_db.affilations.append(new_aff)                                #Добавляем aff для автора из
-                                                                                     #списка aff_name по номеру aff
+                db.session.commit()                                                                     #списка aff_name по номеру aff
+
             email_block = author_item.find('span', class_='author-information')
             if email_block is not None:
                 email_name = email_block.find('a')['title']
@@ -162,6 +165,7 @@ def get_article(url):
                     db.session.commit()
                 new_aff = Affilation.query.filter_by(aff=email_name).first()
                 author_db.affilations.append(new_aff)
+                db.session.commit()
             article.authors.append(author_db)
     db.session.commit()
 
