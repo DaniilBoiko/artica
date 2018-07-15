@@ -1,6 +1,6 @@
 import requests, datetime
 from bs4 import BeautifulSoup
-from app.models import Article,Citation,Author,Journal,Affilation
+from app.models import Article,Citation,Author,Journal, Affilation
 from app import db
 
 user_agent = 'Googlebot'
@@ -132,8 +132,8 @@ def get_article(url):
                 af_country = ''
             af_name.append(af_dep + af_n + af_city + af_country)
         for aff in af_name:
-            if Affiliation.query.filter_by(aff=aff).first() is None:
-                new_aff = Affiliation(aff=aff)
+            if Affilation.query.filter_by(aff=aff).first() is None:
+                new_aff = Affilation(aff=aff)
                 db.session.add(new_aff)
                 db.session.commit()
 
@@ -149,18 +149,18 @@ def get_article(url):
 
             af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
             for af_item in af_section.find_all('li'):
-                new_aff = Affiliation(aff = af_name[int('af_item.get_text()')])
+                new_aff = Affilation(aff = af_name[int('af_item.get_text()')])
                 author_db.affiliation.append(new_aff)                                #Добавляем aff для автора из
                                                                                      #списка aff_name по номеру aff
             email_block = author_item.find('span', class_='author-information')
             if email_block is not None:
                 email_name = email_block.find('a')['title']
                 emails.append(email_name)
-                if Affiliation.query.filter_by(aff=email_name) is none:
-                    new_aff = Affiliation(aff=email_name)
+                if Affilation.query.filter_by(aff=email_name) is None:
+                    new_aff = Affilation(aff=email_name)
                     db.session.add(new_aff)
                     db.session.commit()
-                new_aff = Affiliation(aff = af_name[int('af_item.get_text()')])
+                new_aff = Affilation(aff = af_name[int('af_item.get_text()')])
                 author_db.affiliation.append(new_aff)
             article.authors.append(author_db)
     db.session.commit()
