@@ -1,30 +1,24 @@
-import collections
 import datetime
 import json
 import math
-import re
 import requests
-import xmltodict
-import time
 from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, jsonify, make_response, session, current_app
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
-from sqlalchemy import func, between
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
-from sqlalchemy_searchable import search
 
 from app import app
 from app import db
-from app import q, Job, conn, get_current_job
+from app import q
 from app.models import Article, User, UserDocument, Journal
+from app.tools import distance
 
 from app.search import add_to_index
 
 
 def get_session_from_cookies():
     return MendeleySession(mendeley, session['token'])
+
 
 mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
 
@@ -54,8 +48,9 @@ def search():
         if page > 1 else None
 
     return render_template('search/search.html', title=query, answers=answers, query=query, counts=total,
-                           npages= int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
+                           npages=int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
                            page=page)
+
 
 @app.route('/es_reindex')
 def es_reindex():
@@ -69,11 +64,11 @@ def es_reindex():
 
 def es_reindex():
     with app.app_context():
-        for i in range(3002,500000):
+        for i in range(3002, 500000):
             print(i)
             article = Article.query.filter_by(id=i).first()
             print(article.title)
-            add_to_index('article',article)
+            add_to_index('article', article)
 
 
 @app.route('/admin', methods=['GET'])
@@ -82,121 +77,7 @@ def admin():
     if token != '64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0':
         return redirect(url_for('index'))
 
-    if request.args.get('task') is not None:
-        if request.args.get('task') == 'parse':
-            job = q.enqueue_call(
-                func=parse_them_all, args=(), result_ttl=50000, timeout=360000
-            )
-    print(job.get_id())
     return render_template('admin/admin.html', title='admin')
-
-
-@app.route('/update_journals', methods=['GET'])
-def update_journals():
-    acs = []
-
-    task = request.args.get('task')
-
-    if task == 'parse':
-        # ACS
-        #   Some basic start in parsing
-        parsing = False
-        url = 'https://pubs.acs.org/loi/achre4'
-        user_agent = 'Googlebot'
-        headers = {'User-Agent': user_agent}
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        journals = soup.find(id="journal-az-layer").find_all('a')
-        print(url)
-
-        # Journal-by-journal
-        for journal in journals:
-            url = journal['href']
-            journal_name = journal.text
-            print(journal_name)
-
-            url = url.split('/')[2]
-            url = 'https://pubs.acs.org/loi/' + url
-
-            # Check for journal existence / add if not exist
-            if Journal.query.filter_by(name=journal_name).first() is None:
-                journal = Journal(name=journal_name, url=url, last_fetched=datetime.datetime.now(), last_issue='0',
-                                  last_volume='0')
-                db.session.add(journal)
-                db.session.commit()
-
-            # Start queue
-
-            job = q.enqueue_call(
-                func=parse_journal, args=(url, journal_name), result_ttl=50000, timeout=360000
-            )
-
-            #   Some cool thing for online monitoring (see in update.html)
-            our_journal = Journal.query.filter_by(name=journal_name).first()
-            our_journal.job_id = job.get_id()
-
-            db.session.commit()
-
-        return redirect(
-            url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0'))
-
-    if task == 'wiley_get_journals':
-        job = q.enqueue_call(
-            func=get_wiley_journals, result_ttl=50000, timeout=360000
-        )
-
-        return redirect(
-            url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                    w_j_task_number=job.get_id()))
-
-    if task == 'wiley_update_journals':
-        start = request.args.get('start')
-        end = request.args.get('end')
-
-        if (start is not None) and (end is not None):
-            job = q.enqueue_call(
-                func=parse_wiley_journals, args=(start, end), result_ttl=50000, timeout=360000
-            )
-            job_id = job.get_id()
-            return redirect(
-                url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                        wiley_job_id=job_id))
-        else:
-            return 'Describe all args', 404
-
-    for journal in Journal.query.order_by(Journal.id).all():
-        acs.append({'name': journal.name, 'job_id': journal.job_id})
-
-    if request.args.get('wiley_job_id') is not None:
-        wiley_job_id = request.args.get('wiley_job_id')
-    else:
-        wiley_job_id = 'No_job'
-
-    return render_template('update.html', title='Database update', acs=acs, wiley_job_id=wiley_job_id)
-
-
-@app.route('/get_acs_abs', methods=['GET'])
-def get_acs_abs():
-    return render_template('get_acs_abs.html')
-
-
-@app.route('/update_acs', methods=['GET'])
-def update_abs():
-    job = q.enqueue_call(
-        func=parse_abstracts, args=(int(request.args.get('firstid')), int(request.args.get('lastid'))),
-        result_ttl=50000,
-        timeout=360000
-    )
-
-    job_id = job.get_id()
-
-    return redirect(url_for('results_update_acs', job_id=job_id))
-
-
-@app.route('/results_update_acs', methods=['GET'])
-def results_update_acs():
-    job_id = request.args.get('job_id')
-    return render_template('acs_abs.html', job_id=job_id)
 
 
 @app.route('/article', methods=['GET'])
@@ -232,7 +113,7 @@ def article():
     except:
         article.authorlist.append('')
 
-    return render_template('search/article.html', title=article.title, journal = journal, article=article, query=query)
+    return render_template('search/article.html', title=article.title, journal=journal, article=article, query=query)
 
 
 @app.route("/add_data", methods=['GET'])
