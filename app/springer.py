@@ -188,8 +188,8 @@ def get_journal(url):
             article_link = article_item.find('h3', class_='title').find('a')['href']
             get_article(article_link)
 
-def get_springer(int(start),int(end)):
-    for item in range(start,end):
+def get_springer(start,end):
+    for item in range(int(start),int(end)):
         response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_ = 'content-item-list')
