@@ -149,7 +149,7 @@ def get_article(url):
 
             af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
             for af_item in af_section.find_all('li'):
-                new_aff = Affilation(aff = af_name[int('af_item.get_text()')])
+                new_aff = Affilation(aff = af_name[int(af_item.get_text())])
                 author_db.affiliation.append(new_aff)                                #Добавляем aff для автора из
                                                                                      #списка aff_name по номеру aff
             email_block = author_item.find('span', class_='author-information')
