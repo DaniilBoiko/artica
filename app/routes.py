@@ -176,25 +176,6 @@ def index():
     return render_template('index.html', title='Home')
 
 
-@app.route('/search', methods=['GET', 'POST'])
-def search():
-    query = request.args.get('query', type=str)
-    if (query is None) or len(query) < 5:
-        return redirect(url_for('index'))
-
-    page = request.args.get('page', 1, type=int)
-
-    answers, total = Article.search(q, page,
-                                    current_app.config['POSTS_PER_PAGE'])
-    next_url = url_for('search', q=q, page=page + 1) \
-        if total > page * current_app.config['POSTS_PER_PAGE'] else None
-    prev_url = url_for('search', q=q, page=page - 1) \
-        if page > 1 else None
-
-    return render_template('search.html', title=query, answers=answers, query=query, counts=total,
-                           npages= int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
-                           page=page)
-
 @app.route('/admin', methods=['GET'])
 def admin():
     token = request.args.get('token')
