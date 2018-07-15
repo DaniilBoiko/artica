@@ -160,7 +160,7 @@ def get_article(url):
                     new_aff = Affilation(aff=email_name)
                     db.session.add(new_aff)
                     db.session.commit()
-                new_aff = Affilation.query.filter_by(aff=email_name)
+                new_aff = Affilation.query.filter_by(aff=email_name).first()
                 author_db.affilations.append(new_aff)
             article.authors.append(author_db)
     db.session.commit()
