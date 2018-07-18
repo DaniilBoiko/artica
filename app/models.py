@@ -24,8 +24,10 @@ class SearchableMixin(object):
             db.case(when, value=cls.id)), total
 
     @classmethod
-    def queryES(cls, query, rows=['*'], type='multimatch'):
-        return ESQueryObject(cls.__name__.lower()).query(type, query, rows)
+    def queryES(cls, query, rows=['*'], type='multi_match'):
+        index = cls.__name__.lower()
+        es = ESQueryObject(index, cls)
+        return es.query_function(type, query, rows)
 
     @classmethod
     def filterES(cls, *conditions):

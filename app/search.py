@@ -1,5 +1,5 @@
 from flask import current_app
-
+from app import db
 
 def add_to_index(index, model):
     if not current_app.elasticsearch:
@@ -56,16 +56,23 @@ def query_index(index, query=None, page=1, per_page=25, filters=None, sort=None)
 
 
 class ESQueryObject:
-    def __init__(self, index):
+    def __init__(self, index, model):
         self.body = {}
         self.index = index
         self.query = False
         self.filter = False
         self.sort = False
+        self.model = model
 
-    def query(self, type, query, fields):
+    def query_function(self, type, query, fields):
         if not self.query:
-            self.body['query']['bool']['must'][type]= {'query': query, 'fields': fields}
+            self.body['query'] = {"bool":
+                                      {"must":
+                                           {type:
+                                                {'query': query, 'fields': fields}
+                                            }
+                                       }
+                                  }
             self.query = True
             return self
         else:
@@ -87,12 +94,20 @@ class ESQueryObject:
             raise Exception('Already sorted')
 
     def paginate(self, page, per_page):
-        self.body['from'] = (page - 1) * per_page,
+        self.body['from'] = (page - 1) * per_page
         self.body['size'] = per_page
-
-        search = current_app.elastivsearch.search(index=self.index, doc_type=self.index, body=self.body)
+        print(self.body)
+        search = current_app.elasticsearch.search(index=self.index, doc_type=self.index, body=self.body)
         ids = [int(hit['_id']) for hit in search['hits']['hits']]
-        return ids, search['hits']['total']
+        total  = search['hits']['total']
+
+        if total == 0:
+            return self.model.query.filter_by(id=0), 0
+        when = []
+        for i in range(len(ids)):
+            when.append((ids[i], i))
+        return self.model.query.filter(self.model.id.in_(ids)).order_by(
+            db.case(when, value=self.model.id)), total
 
     def all(self):
         search = current_app.elastivsearch.search(index=self.index, doc_type=self.index, body=self.body)

@@ -40,8 +40,8 @@ def search():
 
     page = request.args.get('page', 1, type=int)
 
-    answers, total = Article.search(query, page,
-                                    current_app.config['POSTS_PER_PAGE'])
+    answers, total = Article.queryES(query).paginate(int(page),
+                                                     int(current_app.config['POSTS_PER_PAGE']))
 
     articles = []
 
@@ -142,7 +142,7 @@ def journal():
     last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
 
     return render_template('search/journal.html', title=journal.name, journal=journal, query=query, summary=summary,
-                           n_issue=n_issue,last_published=last_published)
+                           n_issue=n_issue, last_published=last_published)
 
 
 @app.route('/article', methods=['GET'])
