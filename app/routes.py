@@ -2,6 +2,7 @@ import datetime
 import json
 import math
 import requests
+import wikipedia
 from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, session, current_app
 
@@ -15,6 +16,7 @@ from app.models import Article, User, UserDocument, Journal
 from app.tools import distance
 
 from app.search import add_to_index
+from sqlalchemy import desc
 
 
 def get_session_from_cookies():
@@ -40,15 +42,39 @@ def search():
 
     answers, total = Article.search(query, page,
                                     current_app.config['POSTS_PER_PAGE'])
-    for answer in answers:
-        answer.title = str(answer.title).encode('latin1').decode("utf-8")
+
+    articles = []
+
+    for article in answers:
+        article.title = str(article.title).encode('latin1').decode("utf-8")
+
+        if article.pubdate is not None:
+            pub_date = article.pubdate.strftime('Published at %d, %b %Y')
+        else:
+            pub_date = ''
+
+        if article.journal_id is not None:
+            journal_name = Journal.query.get_or_404(article.journal_id).name
+        else:
+            journal_name = ''
+
+        articles.append({
+            'id': article.id,
+            'title': str(article.title).encode('latin1').decode("utf-8"),
+            'abstract': article.abstract,
+            'authors': article.authors,
+            'pub_date': pub_date,
+            'journal_name': journal_name,
+            'src': article.src,
+            'journal_id': article.journal_id
+        })
 
     next_url = url_for('search', q=query, page=page + 1) \
         if total > page * current_app.config['POSTS_PER_PAGE'] else None
     prev_url = url_for('search', q=query, page=page - 1) \
         if page > 1 else None
 
-    return render_template('search/search.html', title=query, answers=answers, query=query, counts=total,
+    return render_template('search/search.html', title=query, answers=articles, query=query, counts=total,
                            npages=int(math.ceil(total / current_app.config['POSTS_PER_PAGE'])),
                            page=page)
 
@@ -79,6 +105,44 @@ def admin():
         return redirect(url_for('index'))
 
     return render_template('admin/admin.html', title='admin')
+
+
+@app.route('/journal', methods=['GET'])
+def journal():
+    id = request.args.get('id', type=int)
+    query = request.args.get('query', default='', type=str)
+
+    if id is None:
+        return redirect(url_for('index'))
+
+    query = request.args.get('query', '')
+
+    journal = Journal.query.get_or_404(id)
+
+    if journal.name is not None:
+        journal.name = journal.name
+    else:
+        journal.title = ''
+
+    summary = wikipedia.summary(journal.name + ' (journal)')
+    if summary is None:
+        summary = wikipedia.summary(journal.name)
+
+    if summary is not None:
+        if 'journal' not in summary.split('.')[0]:
+            summary = None
+
+    n_issue = []
+    n_volumes = Article.query.filter_by(journal_id=journal.id).order_by(Article.id).first().volume
+    for i in range(1, int(n_volumes) + 1):
+        n_issue.append(int(Article.query.filter(Article.journal_id == journal.id, Article.volume == str(i)).order_by(
+            Article.id).first().issue))
+    print(n_issue)
+
+    last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
+
+    return render_template('search/journal.html', title=journal.name, journal=journal, query=query, summary=summary,
+                           n_issue=n_issue,last_published=last_published)
 
 
 @app.route('/article', methods=['GET'])

@@ -4,15 +4,16 @@ from sqlalchemy_utils import TSVectorType
 from sqlalchemy_searchable import SearchQueryMixin
 from flask.ext.sqlalchemy import BaseQuery
 
-#--------------------------------------------------------
+# --------------------------------------------------------
 #                  Elastic Search
-#--------------------------------------------------------
+# --------------------------------------------------------
 
-from app.search import add_to_index, remove_from_index, query_index
+from app.search import add_to_index, remove_from_index, query_index, ESQueryObject
+
 
 class SearchableMixin(object):
     @classmethod
-    def search(cls, expression, page, per_page, suggestion = False):
+    def search(cls, expression, page, per_page, suggestion=False):
         ids, total = query_index(cls.__name__.lower(), expression, page, per_page)
         if total == 0:
             return cls.query.filter_by(id=0), 0
@@ -21,6 +22,18 @@ class SearchableMixin(object):
             when.append((ids[i], i))
         return cls.query.filter(cls.id.in_(ids)).order_by(
             db.case(when, value=cls.id)), total
+
+    @classmethod
+    def queryES(cls, query, rows=['*'], type='multimatch'):
+        return ESQueryObject(cls.__name__.lower()).query(type, query, rows)
+
+    @classmethod
+    def filterES(cls, *conditions):
+        return ESQueryObject(cls.__name__.lower()).filter(*conditions)
+
+    @classmethod
+    def sortES(cls, row, type):
+        return ESQueryObject(cls.__name__.lower()).sort(row, type)
 
     @classmethod
     def before_commit(cls, session):
@@ -48,8 +61,10 @@ class SearchableMixin(object):
         for obj in cls.query:
             add_to_index(cls.__name__.lower(), obj)
 
+
 db.event.listen(db.session, 'before_commit', SearchableMixin.before_commit)
 db.event.listen(db.session, 'after_commit', SearchableMixin.after_commit)
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -82,8 +97,8 @@ class UserDocument(db.Model):
         return '<User document {}>'.format(self.title)
 
 
-class Article(SearchableMixin,db.Model):
-    __searchable__ = ['title','abstract']
+class Article(SearchableMixin, db.Model):
+    __searchable__ = ['title', 'abstract']
 
     id = db.Column(db.Integer, primary_key=True)
     source = db.Column(db.String)
