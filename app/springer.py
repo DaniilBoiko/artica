@@ -1,12 +1,12 @@
 import requests, datetime
 from bs4 import BeautifulSoup
-from app.models import Article,Citation,Author,Journal, Affilation
+from app.models import Article,Citation,Author,Journal,Affilation
 from app import db
 
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
-def get_article(url):
+def get_article(url):                   #счетчик
     response = requests.get('https://link.springer.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -152,21 +152,25 @@ def get_article(url):
                 new_aff = Affilation(aff = af_name[int(af_item.get_text())-1])
                 db.session.add(new_aff)
                 db.session.commit()
-                author_db.affilations.append(new_aff)                                #Добавляем aff для автора из
-                db.session.commit()                                                                     #списка aff_name по номеру aff
+                author_db.affilations.append(new_aff)      #Добавляем aff для автора из списка aff_name по номеру aff
+                db.session.commit()
 
             email_block = author_item.find('span', class_='author-information')
             if email_block is not None:
                 email_name = email_block.find('a')['title']
-                if Affilation.query.filter_by(aff=email_name) is None:
-                    new_aff = Affilation(aff=email_name)
-                    db.session.add(new_aff)
+                print(email_name)
+                if email_name is not None:
+                    if Affilation.query.filter_by(aff=email_name).first() is None:
+                        new_aff = Affilation(aff=email_name)
+                        print(new_aff.aff)
+                        db.session.add(new_aff)
+                        db.session.commit()
+                    new_aff = Affilation.query.filter_by(aff=email_name).first()
+                    print(new_aff.aff)
+                    author_db.affilations.append(new_aff)
                     db.session.commit()
-                new_aff = Affilation.query.filter_by(aff=email_name).first()
-                author_db.affilations.append(new_aff)
-                db.session.commit()
-                article.authors.append(author_db)
-                db.session.commit()
+                    article.authors.append(author_db)
+                    db.session.commit()
     db.session.commit()
 
 
@@ -191,13 +195,15 @@ def get_journal(url):
 
 
     for issue_item in issue_block:
-        response = requests.get('https://link.springer.com' + issue_item)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        results = soup.find('div', class_='toc')
-        for article_item in results.find_all('li'):
-            article_link = article_item.find('h3', class_='title').find('a')['href']
-            print(article_link)
-            get_article(article_link)
+        if Journal.query.filter_by(last_issue = issue_item).first() is None:
+            response = requests.get('https://link.springer.com' + issue_item)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = soup.find('div', class_='toc')
+            for article_item in results.find_all('li'):
+                article_link = article_item.find('h3', class_='title').find('a')['href']
+                if Article.query.filter_by(doi = article_link[9:]).first() is None:
+                    get_article(article_link)
+            journal.last_issue = issue_item
 
 def get_springer(start,end):
     for item in range(int(start),int(end)):
