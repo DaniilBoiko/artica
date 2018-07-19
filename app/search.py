@@ -36,6 +36,10 @@ class ESQueryObject:
         self.sort = False
         self.model = model
 
+    # ----------------------------------------------
+    #   Methods, used to modify the query
+    # ----------------------------------------------
+
     def search_(self, query, fields=['*'], type='multi_match'):
         if not self.search:
             self.body['query'] = {"bool":
@@ -81,6 +85,10 @@ class ESQueryObject:
         ids = [int(hit['_id']) for hit in search['suggest']['suggest']]
         return ids, search['hits']['total']
 
+    # ----------------------------------------------
+    #   Methods, used to limit the query size
+    # ----------------------------------------------
+
     def paginate(self, page, per_page):
         self.body['from'] = (page - 1) * per_page
         self.body['size'] = per_page
@@ -101,6 +109,10 @@ class ESQueryObject:
         ids = [int(hit['_id']) for hit in search['hits']['hits']]
         total = search['hits']['total']
         return self.fetch_from_db(ids, total)
+
+    # ----------------------------------------------
+    #   Method, used to get data from database
+    # ----------------------------------------------
 
     def fetch_from_db(self, ids, total):
         if total == 0:
