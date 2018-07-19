@@ -8,7 +8,7 @@ from flask.ext.sqlalchemy import BaseQuery
 #                  Elastic Search
 # --------------------------------------------------------
 
-from app.search import add_to_index, remove_from_index, query_index, ESQueryObject
+from app.search import add_to_index, remove_from_index, ESQueryObject
 
 
 class SearchableMixin(object):
@@ -24,18 +24,8 @@ class SearchableMixin(object):
             db.case(when, value=cls.id)), total
 
     @classmethod
-    def queryES(cls, query, rows=['*'], type='multi_match'):
-        index = cls.__name__.lower()
-        es = ESQueryObject(index, cls)
-        return es.query_function(type, query, rows)
-
-    @classmethod
-    def filterES(cls, *conditions):
-        return ESQueryObject(cls.__name__.lower()).filter(*conditions)
-
-    @classmethod
-    def sortES(cls, row, type):
-        return ESQueryObject(cls.__name__.lower()).sort(row, type)
+    def queryES(cls):
+        return ESQueryObject(cls.__name__.lower(), cls)
 
     @classmethod
     def before_commit(cls, session):

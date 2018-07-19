@@ -40,8 +40,8 @@ def search():
 
     page = request.args.get('page', 1, type=int)
 
-    answers, total = Article.queryES(query).paginate(int(page),
-                                                     int(current_app.config['POSTS_PER_PAGE']))
+    answers, total = Article.queryES().search_(query).paginate(int(page),
+                                                              int(current_app.config['POSTS_PER_PAGE']))
 
     articles = []
 
