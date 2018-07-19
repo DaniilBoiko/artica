@@ -41,6 +41,12 @@ class ESQueryObject:
     # ----------------------------------------------
 
     def search_(self, query, fields=['*'], type='multi_match'):
+        # Convert db.Columns to fields
+        if fields != ['*']:
+            for field in fields:
+                field = field.name
+
+        # Fire query
         if not self.search:
             self.body['query'] = {"bool":
                 {"must":
@@ -89,6 +95,9 @@ class ESQueryObject:
     #   Methods, used to limit the query size
     # ----------------------------------------------
 
+    def aggregate(self, field):
+        return self
+
     def paginate(self, page, per_page):
         self.body['from'] = (page - 1) * per_page
         self.body['size'] = per_page
@@ -127,17 +136,17 @@ class ESQueryObject:
 class ESCondition():
     # This class provides important function for .filter method of ESQueryObject
 
-    def btw(self, field, start, end, strict=False):
-        return {'range', {field: {'gte': start, 'lte': end}}} if not strict else {'range', {
+    def btw_(self, field, start, end, strict=False):
+        return {'range', {field.name: {'gte': start, 'lte': end}}} if not strict else {'range', {
             'field': {'gt': start, 'lte': end}}}
 
-    def grt(self, field, value, strict=False):
-        return {'range', {field: {'gte': value}}} if not strict else {'range', {
+    def grt_(self, field, value, strict=False):
+        return {'range', {field.name: {'gte': value}}} if not strict else {'range', {
             'field': {'gt': value}}}
 
-    def lss(self, field, value, strict=False):
-        return {'range', {field: {'lte': value}}} if not strict else {'range', {
+    def lss_(self, field, value, strict=False):
+        return {'range', {field.name: {'lte': value}}} if not strict else {'range', {
             'field': {'lt': value}}}
 
-    def eql(self, field, value):
-        return {'term': {field: value}}
+    def eql_(self, field, value):
+        return {'term': {field.name: value}}
