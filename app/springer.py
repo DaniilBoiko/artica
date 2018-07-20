@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from app.models import Article,Citation,Author,Journal,Affilation
 from app import db
 from multiprocessing import Pool
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
 
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
@@ -12,7 +14,6 @@ def get_article(url):                   #счетчик
     soup = BeautifulSoup(response.content, 'html.parser')
 
     title = soup.find('h1', class_='ArticleTitle').get_text()
-    print(title)
 
     doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
     #Проверяем наличие статьи в базе
@@ -97,7 +98,6 @@ def get_article(url):                   #счетчик
 
     journal = soup.find('span', class_='JournalTitle').get_text()
     article.journal_id = Journal.query.filter_by(name=journal).first().id
-    print(journal)
 
     key_section = soup.find('div', class_='KeywordGroup', lang="en")
     keywords = []
@@ -177,7 +177,7 @@ def get_article(url):                   #счетчик
 
 
 def get_journal(url):
-    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url.find('a')['href'][9:])
+    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
     if Journal.query.filter_by(name = title).first() is None:
@@ -220,7 +220,15 @@ def get_springer(start,end):
         response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_ = 'content-item-list')
-        res = pool.map(get_journal, results.find_all('li'))
-        '''for journal_item in results.find_all('li'):
-            link = journal_item.find('a')['href'][9:]
-            get_journal(link)'''
+        links = []
+        for result in results.find_all('li'):
+            links.append(result.find('a')['href'][9:])
+        '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
+        session_factory - sessionmaker(bind = engine)
+        Session = scoped_session(session_factory)'''
+        if __name__ == '__main__':
+            pool_count = 10
+            with Pool(pool_count) as p:
+                res = p.map(get_journal, links)
+
+        #Session.remove()
