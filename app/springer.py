@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from app.models import Article,Citation,Author,Journal,Affilation
 from app import db
 
-
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
@@ -159,12 +158,15 @@ def get_article(url):                   #счетчик
             email_block = author_item.find('span', class_='author-information')
             if email_block is not None:
                 email_name = email_block.find('a')['title']
+                print(email_name)
                 if email_name is not None:
                     if Affilation.query.filter_by(aff=email_name).first() is None:
                         new_aff = Affilation(aff=email_name)
+                        print(new_aff.aff)
                         db.session.add(new_aff)
                         db.session.commit()
                     new_aff = Affilation.query.filter_by(aff=email_name).first()
+                    print(new_aff.aff)
                     author_db.affilations.append(new_aff)
                     db.session.commit()
                     article.authors.append(author_db)
@@ -174,8 +176,7 @@ def get_article(url):                   #счетчик
 
 
 def get_journal(url):
-    print(url)
-    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url))
+    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
     if Journal.query.filter_by(name = title).first() is None:
@@ -209,7 +210,6 @@ def get_springer(start,end):
         response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_ = 'content-item-list')
-        urls = [journal_item.find('a')['href'][9:] for journal_item in results.find_all('li')]
-        print(urls)
-
-
+        for journal_item in results.find_all('li'):
+            link = journal_item.find('a')['href'][9:]
+            get_journal(link)
