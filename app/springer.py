@@ -2,8 +2,8 @@ import requests, datetime
 from bs4 import BeautifulSoup
 from app.models import Article,Citation,Author,Journal,Affilation
 from app import db
-from multiprocessing import Pool
-'''from multiprocessing.dummy import Pool as ThreadPool'''
+'''from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool'''
 
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
