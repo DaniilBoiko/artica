@@ -175,9 +175,7 @@ def get_article(url):                   #счетчик
 
 
 def get_journal(url):
-    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url))
     soup = BeautifulSoup(response.content, 'html.parser')
-    print(response.content)
     title = soup.find('div', id='publication-title').find('h1').get_text()
     if Journal.query.filter_by(name = title).first() is None:
         new_journal = Journal(name = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
@@ -210,10 +208,14 @@ def get_springer(start,end):
         response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_ = 'content-item-list')
-        urls = results.find_all('li')
-        pool = ThreadPool(4)
+        urls = [journal_item.find('a')['href'][9:] for journal_item in results.find_all('li')]
+        pool = Pool(8)
         res = pool.map(get_journal, urls)
 
-        '''for journal_item in results.find_all('li'):
+        '''li = results.find_all('li')
+        pool = ThreadPool(4)
+        res = pool.map(get_journal, li)
+
+        for journal_item in results.find_all('li'):
             link = journal_item.find('a')['href'][9:]
             get_journal(link)'''
