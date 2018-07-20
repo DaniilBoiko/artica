@@ -30,15 +30,16 @@ def get_article(url):                   #счетчик
             db.session.add(article)
             db.session.commit()
     #проверили
-    abstract = ''
-    abstract_section = soup.find('section', class_='Abstract')
-    if abstract_section is not None:
-        for abstract_par in abstract_section.find_all('p'):
-            abstract = abstract + abstract_par.get_text() + '\n'
-    if abstract == '':
-        article.abstract = None
-    else:
-        article.abstract = abstract
+    if article.abstract is not None:
+        abstract = ''
+        abstract_section = soup.find('section', class_='Abstract')
+        if abstract_section is not None:
+            for abstract_par in abstract_section.find_all('p'):
+                abstract = abstract + abstract_par.get_text() + '\n'
+        if abstract == '':
+            article.abstract = None
+        else:
+            article.abstract = abstract
 
     ref = []
     ref_section = soup.find('section', class_='Section1 RenderAsSection1', id='Bib1')
@@ -66,13 +67,14 @@ def get_article(url):                   #счетчик
                 db.session.commit()
 
     date = []
-    date_time = soup.find('span', class_='article-dates__first-online')
-    date = date_time.find('time')['datetime'].split('-')
-    year = date.pop(0)
-    month = date.pop(0)
-    day = date.pop(0)
-    date = datetime.date(year=int(year), month=int(month), day=int(day))
-    article.pubdate = date
+    date = soup.find('span', class_='article-dates__first-online')
+    if date is not None:
+        date_time = date.find('time')['datetime'].split('-')
+        year = date.pop(0)
+        month = date.pop(0)
+        day = date.pop(0)
+        date = datetime.date(year=int(year), month=int(month), day=int(day))
+        article.pubdate = date
 
     if soup.find('a', class_='ArticleCitation_Issue') is not None:
         volume = soup.find('span', class_='ArticleCitation_Volume').get_text().replace(',', '\t')[6:]
@@ -158,15 +160,12 @@ def get_article(url):                   #счетчик
             email_block = author_item.find('span', class_='author-information')
             if email_block is not None:
                 email_name = email_block.find('a')['title']
-                print(email_name)
                 if email_name is not None:
                     if Affilation.query.filter_by(aff=email_name).first() is None:
                         new_aff = Affilation(aff=email_name)
-                        print(new_aff.aff)
                         db.session.add(new_aff)
                         db.session.commit()
                     new_aff = Affilation.query.filter_by(aff=email_name).first()
-                    print(new_aff.aff)
                     author_db.affilations.append(new_aff)
                     db.session.commit()
                     article.authors.append(author_db)
@@ -184,6 +183,7 @@ def get_journal(url):
         db.session.add(new_journal)
         db.session.commit()
 
+    journal = Journal.query.filter_by(name = title).first()
     print(title)
 
     issue_block = []
@@ -193,9 +193,13 @@ def get_journal(url):
         for issue_item in issue_list.find_all('li', class_='issue-item'):
             issue_block.append(issue_item.find('a', class_='title')['href'])
 
-
+    k = False
     for issue_item in issue_block:
-        if Journal.query.filter_by(last_issue = issue_item).first() is None:
+        if journal.last_issue is not None:
+            if issue_item == journal.last_issue:
+                k = True
+
+        if (journal.last_issue is None) or k:
             response = requests.get('https://link.springer.com' + issue_item)
             soup = BeautifulSoup(response.content, 'html.parser')
             results = soup.find('div', class_='toc')
@@ -203,7 +207,11 @@ def get_journal(url):
                 article_link = article_item.find('h3', class_='title').find('a')['href']
                 if Article.query.filter_by(doi = article_link[9:]).first() is None:
                     get_article(article_link)
+
             journal.last_issue = issue_item
+            db.session.commit()
+
+            k = True
 
 def get_springer(start,end):
     for item in range(int(start),int(end)):
