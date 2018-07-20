@@ -211,9 +211,9 @@ def get_springer(start,end):
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_ = 'content-item-list')
         urls = [journal_item.find('a')['href'][9:] for journal_item in results.find_all('li')]
-        pool = Pool(8)
         print(urls)
-        '''res = pool.map(get_journal, urls)'''
+        '''pool = Pool(8)
+        res = pool.map(get_journal, urls)'''
 
         '''li = results.find_all('li')
         pool = ThreadPool(4)
