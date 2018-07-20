@@ -177,7 +177,7 @@ def get_article(url):                   #счетчик
 def get_journal(url):
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url))
     soup = BeautifulSoup(response.content, 'html.parser')
-    print(response)
+    print(response.content)
     title = soup.find('div', id='publication-title').find('h1').get_text()
     if Journal.query.filter_by(name = title).first() is None:
         new_journal = Journal(name = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
