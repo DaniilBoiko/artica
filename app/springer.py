@@ -175,6 +175,7 @@ def get_article(url):                   #счетчик
 
 
 def get_journal(url):
+    print(url)
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url))
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
