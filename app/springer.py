@@ -70,9 +70,9 @@ def get_article(url):                   #счетчик
     date = soup.find('span', class_='article-dates__first-online')
     if date is not None:
         date_time = date.find('time')['datetime'].split('-')
-        year = date.pop(0)
-        month = date.pop(0)
-        day = date.pop(0)
+        year = date_time.pop(0)
+        month = date_time.pop(0)
+        day = date_time.pop(0)
         date = datetime.date(year=int(year), month=int(month), day=int(day))
         article.pubdate = date
 
@@ -96,6 +96,7 @@ def get_article(url):                   #счетчик
 
     journal = soup.find('span', class_='JournalTitle').get_text()
     article.journal_id = Journal.query.filter_by(name=journal).first().id
+    print(journal)
 
     key_section = soup.find('div', class_='KeywordGroup', lang="en")
     keywords = []
