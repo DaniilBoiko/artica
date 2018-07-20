@@ -160,15 +160,12 @@ def get_article(url):                   #счетчик
             email_block = author_item.find('span', class_='author-information')
             if email_block is not None:
                 email_name = email_block.find('a')['title']
-                print(email_name)
                 if email_name is not None:
                     if Affilation.query.filter_by(aff=email_name).first() is None:
                         new_aff = Affilation(aff=email_name)
-                        print(new_aff.aff)
                         db.session.add(new_aff)
                         db.session.commit()
                     new_aff = Affilation.query.filter_by(aff=email_name).first()
-                    print(new_aff.aff)
                     author_db.affilations.append(new_aff)
                     db.session.commit()
                     article.authors.append(author_db)
