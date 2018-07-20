@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from app.models import Article,Citation,Author,Journal,Affilation
 from app import db
 from multiprocessing import Pool
-from multiprocessing.dummy import Pool as ThreadPool
+'''from multiprocessing.dummy import Pool as ThreadPool'''
 
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
@@ -215,10 +215,3 @@ def get_springer(start,end):
         '''pool = Pool(8)
         res = pool.map(get_journal, urls)'''
 
-        '''li = results.find_all('li')
-        pool = ThreadPool(4)
-        res = pool.map(get_journal, li)
-
-        for journal_item in results.find_all('li'):
-            link = journal_item.find('a')['href'][9:]
-            get_journal(link)'''
