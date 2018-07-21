@@ -278,7 +278,7 @@ def update_journals():
         '''
 
         return redirect(
-            url_for('index')
+            url_for('index'))
 
     for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
