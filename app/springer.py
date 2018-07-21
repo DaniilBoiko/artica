@@ -2,7 +2,7 @@ import requests, datetime, sys
 from bs4 import BeautifulSoup
 from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
-from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from app import app
@@ -178,43 +178,45 @@ def get_article(url):  # счетчик
 
 
 def get_journal(url):
-    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    title = soup.find('div', id='publication-title').find('h1').get_text()
-    print(title)
-    if Journal.query.filter_by(name=title).first() is None:
-        new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
-        db.session.add(new_journal)
-        db.session.commit()
+    with app.app_context():
 
-    journal = Journal.query.filter_by(name=title).first()
-
-    issue_block = []
-    volume_tab = soup.find('div', class_='volumes tab-content')
-    for volume_item in volume_tab.find_all('div', class_='volume-item'):
-        issue_list = volume_item.find('ul', class_='issues-list')
-        for issue_item in issue_list.find_all('li', class_='issue-item'):
-            issue_block.append(issue_item.find('a', class_='title')['href'])
-
-    k = False
-    for issue_item in issue_block:
-        if journal.last_issue is not None:
-            if issue_item == journal.last_issue:
-                k = True
-
-        if (journal.last_issue is None) or k:
-            response = requests.get('https://link.springer.com' + issue_item)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            results = soup.find('div', class_='toc')
-            for article_item in results.find_all('li'):
-                article_link = article_item.find('h3', class_='title').find('a')['href']
-                if Article.query.filter_by(doi=article_link[9:]).first() is None:
-                    get_article(article_link)
-
-            journal.last_issue = issue_item
+        response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        title = soup.find('div', id='publication-title').find('h1').get_text()
+        print(title)
+        if Journal.query.filter_by(name=title).first() is None:
+            new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
+            db.session.add(new_journal)
             db.session.commit()
 
-            k = True
+        journal = Journal.query.filter_by(name=title).first()
+
+        issue_block = []
+        volume_tab = soup.find('div', class_='volumes tab-content')
+        for volume_item in volume_tab.find_all('div', class_='volume-item'):
+            issue_list = volume_item.find('ul', class_='issues-list')
+            for issue_item in issue_list.find_all('li', class_='issue-item'):
+                issue_block.append(issue_item.find('a', class_='title')['href'])
+
+        k = False
+        for issue_item in issue_block:
+            if journal.last_issue is not None:
+                if issue_item == journal.last_issue:
+                    k = True
+
+            if (journal.last_issue is None) or k:
+                response = requests.get('https://link.springer.com' + issue_item)
+                soup = BeautifulSoup(response.content, 'html.parser')
+                results = soup.find('div', class_='toc')
+                for article_item in results.find_all('li'):
+                    article_link = article_item.find('h3', class_='title').find('a')['href']
+                    if Article.query.filter_by(doi=article_link[9:]).first() is None:
+                        get_article(article_link)
+
+                journal.last_issue = issue_item
+                db.session.commit()
+
+                k = True
 
 
 def get_springer(start, end):
@@ -230,10 +232,9 @@ def get_springer(start, end):
         session_factory - sessionmaker(bind = engine)
         Session = scoped_session(session_factory)'''
 
-        pool_count = 2
-        with Pool(pool_count) as p:
-            with app.app_context():
-                res = p.map(get_journal, links)
+        pool_count = 10
+        with ThreadPool(pool_count) as p:
+            res = p.map(get_journal, links)
             while not res.ready():
                 sys.stdout.flush()
             res.wait(0.1)
