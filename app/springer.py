@@ -12,6 +12,7 @@ headers = {'User-Agent': user_agent}
 
 
 def get_article(url):  # счетчик
+    print(url)
     response = requests.get('https://link.springer.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
