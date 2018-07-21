@@ -12,8 +12,55 @@ headers = {'User-Agent': user_agent}
 
 
 def get_article(url):  # счетчик
+<<<<<<< HEAD
     with app.app_context():
         print(url)
+=======
+    response = requests.get('https://link.springer.com' + url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    title = soup.find('h1', class_='ArticleTitle').get_text()
+
+    doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
+    # Проверяем наличие статьи в базе
+    if doi is not None:
+        article = Article.query.filter_by(doi=doi).first()
+        if article is None:
+            article = Article(doi=doi, title=title)
+            db.session.add(article)
+            db.session.commit()
+        else:
+            article.title = title
+    else:
+        article = Article.query.filter_by(title=title).first()
+        if article is None:
+            article = Article(doi=doi, title=title)
+            db.session.add(article)
+            db.session.commit()
+    # проверили
+    if article.abstract is not None:
+        abstract = ''
+        abstract_section = soup.find('section', class_='Abstract')
+        if abstract_section is not None:
+            for abstract_par in abstract_section.find_all('p'):
+                abstract = abstract + abstract_par.get_text() + '\n'
+        if abstract == '':
+            article.abstract = None
+        else:
+            article.abstract = abstract
+
+    ref = []
+    ref_section = soup.find('section', class_='Section1 RenderAsSection1', id='Bib1')
+    if ref_section is not None:
+        for ref_item in ref_section.find_all('li', class_='Citation'):
+            ref_doi = ref_item.find('span', class_='RefSource')
+            if ref_doi is not None:
+                ref.append(ref_doi.get_text()[16:])
+            else:
+                ref_doi = ref_item.find('span', class_='Occurrence OccurrenceDOI')
+                if ref_doi is not None:
+                    ref.append(ref_doi.find('a', class_='gtm-reference')['href'][16:])
+>>>>>>> parent of 572ac63... -
 
         response = requests.get('https://link.springer.com' + url)
         soup = BeautifulSoup(response.content, 'html.parser')
