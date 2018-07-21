@@ -1,7 +1,7 @@
 from app import db
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
 from sqlalchemy_utils import TSVectorType
-from flask.ext.sqlalchemy import BaseQuery
+from flask_sqlalchemy import BaseQuery
 
 
 affilations = db.Table('affilations',

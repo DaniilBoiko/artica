@@ -180,13 +180,13 @@ def get_journal(url):
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
+    print(title)
     if Journal.query.filter_by(name = title).first() is None:
         new_journal = Journal(name = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
         db.session.add(new_journal)
         db.session.commit()
 
     journal = Journal.query.filter_by(name = title).first()
-    print(title)
 
     issue_block = []
     volume_tab = soup.find('div', class_='volumes tab-content')
