@@ -269,13 +269,16 @@ def update_journals():
         start = request.args.get('start')
         end = request.args.get('end')
 
+        get_springer(start,end)
+
+        '''
         job = q.enqueue_call(
             func=get_springer, args=(start, end), result_ttl=50000, timeout=360000
         )
+        '''
 
         return redirect(
-            url_for('update_journals', token='64E80F015881BF456198E9DAECB22B23D52CC45E2DE4708780E20F0E28F76CB0',
-                    w_j_task_number=job.get_id()))
+            url_for('index')
 
     for journal in Journal.query.order_by(Journal.id).all():
         acs.append({'name': journal.name, 'job_id': journal.job_id})
