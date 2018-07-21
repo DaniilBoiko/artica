@@ -1,6 +1,6 @@
 import requests, datetime, sys
 from bs4 import BeautifulSoup
-from app.models import Article,Citation,Author,Journal,Affilation
+from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
 from multiprocessing import Pool
 from sqlalchemy.orm import sessionmaker
@@ -10,18 +10,19 @@ from app import app
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
-def get_article(url):                   #счетчик
+
+def get_article(url):  # счетчик
     response = requests.get('https://link.springer.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     title = soup.find('h1', class_='ArticleTitle').get_text()
 
     doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
-    #Проверяем наличие статьи в базе
+    # Проверяем наличие статьи в базе
     if doi is not None:
         article = Article.query.filter_by(doi=doi).first()
         if article is None:
-            article = Article(doi=doi, title = title)
+            article = Article(doi=doi, title=title)
             db.session.add(article)
             db.session.commit()
         else:
@@ -32,7 +33,7 @@ def get_article(url):                   #счетчик
             article = Article(doi=doi, title=title)
             db.session.add(article)
             db.session.commit()
-    #проверили
+    # проверили
     if article.abstract is not None:
         abstract = ''
         abstract_section = soup.find('section', class_='Abstract')
@@ -62,10 +63,10 @@ def get_article(url):                   #счетчик
                 db.session.add(citing_article)
                 db.session.commit()
             cited_article = Article.query.filter_by(doi=doi_item).first()
-            if Citation.query.filter_by(cited = cited_article.id,
-                                        citing = article.id).first() is None:
-                citation = Citation(cited = cited_article.id,
-                                    citing = article.id)
+            if Citation.query.filter_by(cited=cited_article.id,
+                                        citing=article.id).first() is None:
+                citation = Citation(cited=cited_article.id,
+                                    citing=article.id)
                 db.session.add(citation)
                 db.session.commit()
 
@@ -142,22 +143,22 @@ def get_article(url):                   #счетчик
                 db.session.add(new_aff)
                 db.session.commit()
 
-        #Check and add author
+        # Check and add author
         for author_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
             author_name = author_item.find('span', class_='authors-affiliations__name')
-            if Author.query.filter_by(name = author_name.get_text()).first() is None:
-                new_author = Author(name = author_name.get_text())
+            if Author.query.filter_by(name=author_name.get_text()).first() is None:
+                new_author = Author(name=author_name.get_text())
                 db.session.add(new_author)
                 db.session.commit()
-            #Select author in db
-            author_db = Author.query.filter_by(name = author_name.get_text()).first()
+            # Select author in db
+            author_db = Author.query.filter_by(name=author_name.get_text()).first()
 
             af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
             for af_item in af_section.find_all('li'):
-                new_aff = Affilation(aff = af_name[int(af_item.get_text())-1])
+                new_aff = Affilation(aff=af_name[int(af_item.get_text()) - 1])
                 db.session.add(new_aff)
                 db.session.commit()
-                author_db.affilations.append(new_aff)      #Добавляем aff для автора из списка aff_name по номеру aff
+                author_db.affilations.append(new_aff)  # Добавляем aff для автора из списка aff_name по номеру aff
                 db.session.commit()
 
             email_block = author_item.find('span', class_='author-information')
@@ -176,52 +177,51 @@ def get_article(url):                   #счетчик
     db.session.commit()
 
 
-
 def get_journal(url):
-    with app.app_context():
-        response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        title = soup.find('div', id='publication-title').find('h1').get_text()
-        print(title)
-        if Journal.query.filter_by(name = title).first() is None:
-            new_journal = Journal(name = title, link = 'https://link.springer.com/journal/' + url, publisher = 'Springer')
-            db.session.add(new_journal)
-            db.session.commit()
+    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    title = soup.find('div', id='publication-title').find('h1').get_text()
+    print(title)
+    if Journal.query.filter_by(name=title).first() is None:
+        new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
+        db.session.add(new_journal)
+        db.session.commit()
 
-        journal = Journal.query.filter_by(name = title).first()
+    journal = Journal.query.filter_by(name=title).first()
 
-        issue_block = []
-        volume_tab = soup.find('div', class_='volumes tab-content')
-        for volume_item in volume_tab.find_all('div', class_='volume-item'):
-            issue_list = volume_item.find('ul', class_='issues-list')
-            for issue_item in issue_list.find_all('li', class_='issue-item'):
-                issue_block.append(issue_item.find('a', class_='title')['href'])
+    issue_block = []
+    volume_tab = soup.find('div', class_='volumes tab-content')
+    for volume_item in volume_tab.find_all('div', class_='volume-item'):
+        issue_list = volume_item.find('ul', class_='issues-list')
+        for issue_item in issue_list.find_all('li', class_='issue-item'):
+            issue_block.append(issue_item.find('a', class_='title')['href'])
 
-        k = False
-        for issue_item in issue_block:
-            if journal.last_issue is not None:
-                if issue_item == journal.last_issue:
-                    k = True
-
-            if (journal.last_issue is None) or k:
-                response = requests.get('https://link.springer.com' + issue_item)
-                soup = BeautifulSoup(response.content, 'html.parser')
-                results = soup.find('div', class_='toc')
-                for article_item in results.find_all('li'):
-                    article_link = article_item.find('h3', class_='title').find('a')['href']
-                    if Article.query.filter_by(doi = article_link[9:]).first() is None:
-                        get_article(article_link)
-
-                journal.last_issue = issue_item
-                db.session.commit()
-
+    k = False
+    for issue_item in issue_block:
+        if journal.last_issue is not None:
+            if issue_item == journal.last_issue:
                 k = True
 
-def get_springer(start,end):
-    for item in range(int(start),int(end)):
-        response = requests.get('https://link.springer.com/search/page/'+str(item)+'?facet-content-type="Journal"')
+        if (journal.last_issue is None) or k:
+            response = requests.get('https://link.springer.com' + issue_item)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = soup.find('div', class_='toc')
+            for article_item in results.find_all('li'):
+                article_link = article_item.find('h3', class_='title').find('a')['href']
+                if Article.query.filter_by(doi=article_link[9:]).first() is None:
+                    get_article(article_link)
+
+            journal.last_issue = issue_item
+            db.session.commit()
+
+            k = True
+
+
+def get_springer(start, end):
+    for item in range(int(start), int(end)):
+        response = requests.get('https://link.springer.com/search/page/' + str(item) + '?facet-content-type="Journal"')
         soup = BeautifulSoup(response.content, 'html.parser')
-        results = soup.find('ol', class_ = 'content-item-list')
+        results = soup.find('ol', class_='content-item-list')
         links = []
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
@@ -231,8 +231,9 @@ def get_springer(start,end):
 
         pool_count = 10
         with Pool(pool_count) as p:
-            res = p.map(get_journal, links)
+            with app.app_context():
+                res = p.map(get_journal, links)
             while not res.ready():
                 sys.stdout.flush()
             res.wait(0.1)
-        #Session.remove()
+        # Session.remove()
