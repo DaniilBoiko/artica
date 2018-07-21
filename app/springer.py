@@ -2,7 +2,7 @@ import requests, datetime, sys
 from bs4 import BeautifulSoup
 from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
-from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from app import app
@@ -12,13 +12,7 @@ headers = {'User-Agent': user_agent}
 
 
 def get_article(url):  # счетчик
-<<<<<<< HEAD
-<<<<<<< HEAD
-    with app.app_context():
-        print(url)
-=======
-=======
->>>>>>> parent of 572ac63... -
+    print(url)
     response = requests.get('https://link.springer.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -63,175 +57,130 @@ def get_article(url):  # счетчик
                 ref_doi = ref_item.find('span', class_='Occurrence OccurrenceDOI')
                 if ref_doi is not None:
                     ref.append(ref_doi.find('a', class_='gtm-reference')['href'][16:])
->>>>>>> parent of 572ac63... -
 
-        response = requests.get('https://link.springer.com' + url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        title = soup.find('h1', class_='ArticleTitle').get_text()
-
-        doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
-        # Проверяем наличие статьи в базе
-        if doi is not None:
-            article = Article.query.filter_by(doi=doi).first()
-            if article is None:
-                article = Article(doi=doi, title=title)
-                db.session.add(article)
+        for doi_item in ref:
+            if Article.query.filter_by(doi=doi_item).first() is None:
+                citing_article = Article(doi=doi_item)
+                db.session.add(citing_article)
                 db.session.commit()
-            else:
-                article.title = title
-        else:
-            article = Article.query.filter_by(title=title).first()
-            if article is None:
-                article = Article(doi=doi, title=title)
-                db.session.add(article)
+            cited_article = Article.query.filter_by(doi=doi_item).first()
+            if Citation.query.filter_by(cited=cited_article.id,
+                                        citing=article.id).first() is None:
+                citation = Citation(cited=cited_article.id,
+                                    citing=article.id)
+                db.session.add(citation)
                 db.session.commit()
-        # проверили
-        if article.abstract is not None:
-            abstract = ''
-            abstract_section = soup.find('section', class_='Abstract')
-            if abstract_section is not None:
-                for abstract_par in abstract_section.find_all('p'):
-                    abstract = abstract + abstract_par.get_text() + '\n'
-            if abstract == '':
-                article.abstract = None
+
+    date = []
+    date = soup.find('span', class_='article-dates__first-online')
+    if date is not None:
+        date_time = date.find('time')['datetime'].split('-')
+        year = date_time.pop(0)
+        month = date_time.pop(0)
+        day = date_time.pop(0)
+        date = datetime.date(year=int(year), month=int(month), day=int(day))
+        article.pubdate = date
+
+    if soup.find('a', class_='ArticleCitation_Issue') is not None:
+        volume = soup.find('span', class_='ArticleCitation_Volume').get_text().replace(',', '\t')[6:]
+        issue = soup.find('a', class_='ArticleCitation_Issue').get_text().replace(',', '\t')[5:]
+        pp = soup.find('span', class_='ArticleCitation_Pages').get_text().replace(',', '\t')[3:]
+        article.pages = pp
+    elif soup.find('span', class_='ArticleCitation_Volume') is not None:
+        volume = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(0)
+        issue = soup.find('time')['datetime'].split('-').pop(1).strip()
+        if issue[0] == '0':
+            issue = issue[1:]
+        number = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(1)
+        article.technical_info = number
+    article.volume = volume
+    article.issue = issue
+
+    ISSN = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
+    article.issn = ISSN
+
+    journal = soup.find('span', class_='JournalTitle').get_text()
+    article.journal_id = Journal.query.filter_by(name=journal).first().id
+
+    key_section = soup.find('div', class_='KeywordGroup', lang="en")
+    keywords = []
+    if key_section is not None:
+        for key_item in key_section.find_all('span', class_='Keyword'):
+            keywords.append(key_item.get_text())
+    article.keyword = keywords
+
+    authors = []
+    af = []
+    emails = []
+    af_name = []
+    author_section = soup.find('div', class_='content authors-affiliations u-interface')
+    if author_section is not None:
+        af_name_section = soup.find('ol', class_='test-affiliations')
+        for af_name_item in af_name_section.find_all('li', class_='affiliation'):
+            af_name_dep = af_name_item.find('span', class_='affiliation__department')
+            if af_name_dep is not None:
+                af_dep = af_name_dep.get_text() + ', '
             else:
-                article.abstract = abstract
+                af_dep = ''
+            af_name_name = af_name_item.find('span', class_='affiliation__name')
+            if af_name_name is not None:
+                af_n = af_name_name.get_text() + ', '
+            else:
+                af_n = ''
+            af_name_city = af_name_item.find('span', class_='affiliation__city')
+            if af_name_city is not None:
+                af_city = af_name_city.get_text() + ', '
+            else:
+                af_city = ''
+            af_name_country = af_name_item.find('span', class_='affiliation__country')
+            if af_name_country is not None:
+                af_country = af_name_country.get_text()
+            else:
+                af_country = ''
+            af_name.append(af_dep + af_n + af_city + af_country)
+        for aff in af_name:
+            if Affilation.query.filter_by(aff=aff).first() is None:
+                new_aff = Affilation(aff=aff)
+                db.session.add(new_aff)
+                db.session.commit()
 
-        ref = []
-        ref_section = soup.find('section', class_='Section1 RenderAsSection1', id='Bib1')
-        if ref_section is not None:
-            for ref_item in ref_section.find_all('li', class_='Citation'):
-                ref_doi = ref_item.find('span', class_='RefSource')
-                if ref_doi is not None:
-                    ref.append(ref_doi.get_text()[16:])
-                else:
-                    ref_doi = ref_item.find('span', class_='Occurrence OccurrenceDOI')
-                    if ref_doi is not None:
-                        ref.append(ref_doi.find('a', class_='gtm-reference')['href'][16:])
+        # Check and add author
+        for author_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
+            author_name = author_item.find('span', class_='authors-affiliations__name')
+            if Author.query.filter_by(name=author_name.get_text()).first() is None:
+                new_author = Author(name=author_name.get_text())
+                db.session.add(new_author)
+                db.session.commit()
+            # Select author in db
+            author_db = Author.query.filter_by(name=author_name.get_text()).first()
 
-            for doi_item in ref:
-                if Article.query.filter_by(doi=doi_item).first() is None:
-                    citing_article = Article(doi=doi_item)
-                    db.session.add(citing_article)
-                    db.session.commit()
-                cited_article = Article.query.filter_by(doi=doi_item).first()
-                if Citation.query.filter_by(cited=cited_article.id,
-                                            citing=article.id).first() is None:
-                    citation = Citation(cited=cited_article.id,
-                                        citing=article.id)
-                    db.session.add(citation)
-                    db.session.commit()
+            af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
+            for af_item in af_section.find_all('li'):
+                new_aff = Affilation(aff=af_name[int(af_item.get_text()) - 1])
+                db.session.add(new_aff)
+                db.session.commit()
+                author_db.affilations.append(new_aff)  # Добавляем aff для автора из списка aff_name по номеру aff
+                db.session.commit()
 
-        date = []
-        date = soup.find('span', class_='article-dates__first-online')
-        if date is not None:
-            date_time = date.find('time')['datetime'].split('-')
-            year = date_time.pop(0)
-            month = date_time.pop(0)
-            day = date_time.pop(0)
-            date = datetime.date(year=int(year), month=int(month), day=int(day))
-            article.pubdate = date
-
-        if soup.find('a', class_='ArticleCitation_Issue') is not None:
-            volume = soup.find('span', class_='ArticleCitation_Volume').get_text().replace(',', '\t')[6:]
-            issue = soup.find('a', class_='ArticleCitation_Issue').get_text().replace(',', '\t')[5:]
-            pp = soup.find('span', class_='ArticleCitation_Pages').get_text().replace(',', '\t')[3:]
-            article.pages = pp
-        elif soup.find('span', class_='ArticleCitation_Volume') is not None:
-            volume = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(0)
-            issue = soup.find('time')['datetime'].split('-').pop(1).strip()
-            if issue[0] == '0':
-                issue = issue[1:]
-            number = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(1)
-            article.technical_info = number
-        article.volume = volume
-        article.issue = issue
-
-        ISSN = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
-        article.issn = ISSN
-
-        journal = soup.find('span', class_='JournalTitle').get_text()
-        article.journal_id = Journal.query.filter_by(name=journal).first().id
-
-        key_section = soup.find('div', class_='KeywordGroup', lang="en")
-        keywords = []
-        if key_section is not None:
-            for key_item in key_section.find_all('span', class_='Keyword'):
-                keywords.append(key_item.get_text())
-        article.keyword = keywords
-
-        authors = []
-        af = []
-        emails = []
-        af_name = []
-        author_section = soup.find('div', class_='content authors-affiliations u-interface')
-        if author_section is not None:
-            af_name_section = soup.find('ol', class_='test-affiliations')
-            for af_name_item in af_name_section.find_all('li', class_='affiliation'):
-                af_name_dep = af_name_item.find('span', class_='affiliation__department')
-                if af_name_dep is not None:
-                    af_dep = af_name_dep.get_text() + ', '
-                else:
-                    af_dep = ''
-                af_name_name = af_name_item.find('span', class_='affiliation__name')
-                if af_name_name is not None:
-                    af_n = af_name_name.get_text() + ', '
-                else:
-                    af_n = ''
-                af_name_city = af_name_item.find('span', class_='affiliation__city')
-                if af_name_city is not None:
-                    af_city = af_name_city.get_text() + ', '
-                else:
-                    af_city = ''
-                af_name_country = af_name_item.find('span', class_='affiliation__country')
-                if af_name_country is not None:
-                    af_country = af_name_country.get_text()
-                else:
-                    af_country = ''
-                af_name.append(af_dep + af_n + af_city + af_country)
-            for aff in af_name:
-                if Affilation.query.filter_by(aff=aff).first() is None:
-                    new_aff = Affilation(aff=aff)
-                    db.session.add(new_aff)
-                    db.session.commit()
-
-            # Check and add author
-            for author_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
-                author_name = author_item.find('span', class_='authors-affiliations__name')
-                if Author.query.filter_by(name=author_name.get_text()).first() is None:
-                    new_author = Author(name=author_name.get_text())
-                    db.session.add(new_author)
-                    db.session.commit()
-                # Select author in db
-                author_db = Author.query.filter_by(name=author_name.get_text()).first()
-
-                af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
-                for af_item in af_section.find_all('li'):
-                    new_aff = Affilation(aff=af_name[int(af_item.get_text()) - 1])
-                    db.session.add(new_aff)
-                    db.session.commit()
-                    author_db.affilations.append(new_aff)  # Добавляем aff для автора из списка aff_name по номеру aff
-                    db.session.commit()
-
-                email_block = author_item.find('span', class_='author-information')
-                if email_block is not None:
-                    email_name = email_block.find('a')['title']
-                    if email_name is not None:
-                        if Affilation.query.filter_by(aff=email_name).first() is None:
-                            new_aff = Affilation(aff=email_name)
-                            db.session.add(new_aff)
-                            db.session.commit()
-                        new_aff = Affilation.query.filter_by(aff=email_name).first()
-                        author_db.affilations.append(new_aff)
+            email_block = author_item.find('span', class_='author-information')
+            if email_block is not None:
+                email_name = email_block.find('a')['title']
+                if email_name is not None:
+                    if Affilation.query.filter_by(aff=email_name).first() is None:
+                        new_aff = Affilation(aff=email_name)
+                        db.session.add(new_aff)
                         db.session.commit()
-                        article.authors.append(author_db)
-                        db.session.commit()
-        db.session.commit()
+                    new_aff = Affilation.query.filter_by(aff=email_name).first()
+                    author_db.affilations.append(new_aff)
+                    db.session.commit()
+                    article.authors.append(author_db)
+                    db.session.commit()
+    db.session.commit()
 
 
 def get_journal(url):
     with app.app_context():
+
         response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
         soup = BeautifulSoup(response.content, 'html.parser')
         title = soup.find('div', id='publication-title').find('h1').get_text()
@@ -285,9 +234,8 @@ def get_springer(start, end):
         Session = scoped_session(session_factory)'''
 
         pool_count = 10
-        with Pool(pool_count) as p:
-            with app.app_context():
-                res = p.map(get_journal, links)
+        with ThreadPool(pool_count) as p:
+            res = p.map(get_journal, links)
             while not res.ready():
                 sys.stdout.flush()
             res.wait(0.1)
