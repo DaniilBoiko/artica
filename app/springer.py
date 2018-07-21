@@ -228,11 +228,11 @@ def get_springer(start,end):
         '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
         session_factory - sessionmaker(bind = engine)
         Session = scoped_session(session_factory)'''
-        if __name__ == '__main__':
-            pool_count = 10
-            with Pool(pool_count) as p:
-                res = p.map(get_journal, links)
-                while not res.ready():
-                    sys.stdout.flush()
-                res.wait(0.1)
+
+        pool_count = 10
+        with Pool(pool_count) as p:
+            res = p.map(get_journal, links)
+            while not res.ready():
+                sys.stdout.flush()
+            res.wait(0.1)
         #Session.remove()
