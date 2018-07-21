@@ -224,12 +224,13 @@ def get_springer(start,end):
         results = soup.find('ol', class_ = 'content-item-list')
         links = []
         for result in results.find_all('li'):
+            print(result.find('a')['href'][9:])
             links.append(result.find('a')['href'][9:])
         '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
         session_factory - sessionmaker(bind = engine)
         Session = scoped_session(session_factory)'''
 
-        pool_count = 10
+        pool_count = 2
         with Pool(pool_count) as p:
             res = p.map(get_journal, links)
             while not res.ready():
