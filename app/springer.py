@@ -13,9 +13,12 @@ headers = {'User-Agent': user_agent}
 
 def get_article(url):  # счетчик
 <<<<<<< HEAD
+<<<<<<< HEAD
     with app.app_context():
         print(url)
 =======
+=======
+>>>>>>> parent of 572ac63... -
     response = requests.get('https://link.springer.com' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
