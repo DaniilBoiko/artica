@@ -187,7 +187,7 @@ def journal():
     es_condition = ESCondition()
 
     last_published, total = Article.queryES(index='articles', doctype='article'). \
-        filter_(es_condition.eql_('journal_name',journal.name)).sort_('pubdate','desc').limit_(5)
+        filter_(es_condition.eql_('journal_name',journal.name)).sort_('pubdate','desc').limit_(6)
 
     #last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
 

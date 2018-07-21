@@ -34,24 +34,29 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6">
-                <h2>Last published</h2>
-                {% for article in last_published %}
-                    <h3>{{ article.title }}</h3>
-                    <p class="text-mited">
-                    {% for author in article.authors %}
-                        {{ author }}{{ ", " if not loop.last }}
+            <div class="col-md-9">
+                <h3>Last published</h3>
+                <div class="card-columns">
+
+                    {% for article in last_published %}
+                        <div class="card">
+                            {% if article.src %}
+                                <img class="card-img-top" src="{{ article.src }}" alt="Card image cap">
+                            {% endif %}
+                            <div class="card-body">
+                                <a href="{{ url_for('article',id=article.id, query=query) }}"><h6 class="card-title">{{ article.title }}</h6></a>
+                                <small><p class="text-mited">
+                                    {% for author in article.authors %}
+                                        {{ author }}{{ ", " if not loop.last }}
+                                    {% endfor %}
+                                </p></small>
+                            </div>
+                        </div>
                     {% endfor %}
-                    </p>
-                {% endfor %}
+                </div>
             </div>
-            <div class="col-md-6">
-                {% for volume in n_issue %}
-                    <h2>Volume {{ loop.index }}</h2>
-                    {% for i in range(1,volume + 1) %}
-                        <h3> Issue {{ loop.index }}</h3>
-                    {% endfor %}
-                {% endfor %}
+            <div class="col-md-3">
+                <h3>Tools</h3>
             </div>
         </div>
     </div>
