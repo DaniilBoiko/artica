@@ -1,156 +1,128 @@
-{% extends "base.html" %}
+{% extends "base_other.html" %}
 
 {% block app_content %}
-    <style>
-        .container {
-            margin-left: 150px;
-        }
+    <p class="mt-3">
+        <small>Found: {{ counts }} articles</small>
+    </p>
+    {% for res in answers %}
+        <style>
+            #summary{{ res.id }} {
+                font-size: 14px;
+                line-height: 1.5;
+            }
 
-        .vertical-center {
+            #summary{{ res.id }} p.collapse:not(.show) {
+                height: 63px !important;
+                overflow: hidden;
 
-            display: flex;
-            align-items: center;
-        }
-    </style>
-    <nav class="pl-0 navbar navbar-light bg-light">
-        <a class="navbar-brand" href="/" style="position:absolute;margin-left: 40px">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" height="30" alt="">
-        </a>
-        <div class="container">
-            <div class="col-md-12 pl-0">
-                <form class="form-inline" action="/search" method="get">
-                    <input name="query" type="text" class="form-control mb-0 mr-sm-2 col-md-6"
-                           value="{{ query }}"/>
-                    <button type="submit" class="btn btn-primary mb-0">Search</button>
-                </form>
-            </div>
-        </div>
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+            }
 
-    </nav>
-    <div class="container" style="margin-top: 20px">
+            #summary{{ res.id }} p.collapsing {
+                min-height: 63px !important;
+            }
 
-        <p class="mt-3">
-            <small>Found: {{ counts }} articles</small>
-        </p>
-        {% for res in answers %}
-            <style>
-                #summary{{ res.id }} {
-                    font-size: 14px;
-                    line-height: 1.5;
-                }
+            #summary{{ res.id }} a.collapsed:after {
+                content: '+ Read More';
+            }
 
-                #summary{{ res.id }} p.collapse:not(.show) {
-                    height: 63px !important;
-                    overflow: hidden;
-
-                    display: -webkit-box;
-                    -webkit-line-clamp: 3;
-                    -webkit-box-orient: vertical;
-                }
-
-                #summary{{ res.id }} p.collapsing {
-                    min-height: 63px !important;
-                }
-
-                #summary{{ res.id }} a.collapsed:after {
-                    content: '+ Read More';
-                }
-
-                #summary{{ res.id }} a:not(.collapsed):after {
-                    content: '- Read Less';
-                }
-            </style>
-            <div class="row mt-5">
+            #summary{{ res.id }} a:not(.collapsed):after {
+                content: '- Read Less';
+            }
+        </style>
+        <div class="row mt-5">
             <div class="col-md-12">
                 <a href="{{ url_for('article',id=res['id'],query=query) }}"><h3>{{ res['title'] }}</h3></a>
             </div>
-            </div>
-            <div class="row">
-            {% if res['src'] %}
-                <div class="col-md-8">
-            {% else %}
-                <div class="col-md-12">
-            {% endif %}
-        <p class="text-muted">
-            {% for author in res['authors'] %}
-                {{ author }}{{ ", " if not loop.last }}
-            {% endfor %}
-        </p>
-        <p class="text-secondary mb-0">
-            <small>{{ res['pub_date'] }} in <b><a
-                    href="{{ url_for('journal',id=res['journal_id'],query=query) }}">{{ res['journal_name'] }}</a></b></small>
-        </p>
-        {% if res.abstract == '' %}
-        {% else %}
-            <div id="summary{{ res['id'] }}">
-                <p class="collapse mb-1" id="collapseSummary{{ res['id'] }}">
-                    {{ res['abstract'] }}</p>
-                <a class="collapsed" data-toggle="collapse" href="#collapseSummary{{ res['id'] }}"
-                   aria-expanded="false"
-                   aria-controls="collapseSummary"></a>
-            </div>
-            <div class="mt-2">
-                <a class="btn btn-link pl-0" href>Add to Mendeley</a> <a class="btn btn-link" href>Show similar</a>
-            </div>
-        {% endif %}
         </div>
+        <div class="row">
         {% if res['src'] %}
-            <div class="col-md-4 vertical-center">
-                <img class="img-fluid mt-1" src="{{ res['src'] }}">
-            </div>
+            <div class="col-md-8">
+        {% else %}
+            <div class="col-md-12">
         {% endif %}
-        </div>
+    <p class="text-muted">
+        {% for author in res['authors'] %}
+            {{ author }}{{ ", " if not loop.last }}
         {% endfor %}
-        <div class="col-md-12">
-            <nav>
-                <ul class="pagination mt-4">
-                    {% set pagend = 0 %}
-                    {% if page != 1 %}
-                        <li class="page-item"><a class="page-link"
-                                                 href="/search?query={{ query }}&page={{ (page - 1) }}">Previous</a>
-                        </li>
-                    {% endif %}
-                    {% if npages > 6 %}
-                        {% for i in range(6) %}
-                            <li class="page-item
+    </p>
+    <p class="text-secondary mb-0">
+        <small>{{ res['pub_date'] }} in <b><a
+                href="{{ url_for('journal',id=res['journal_id'],query=query) }}">{{ res['journal_name'] }}</a></b>
+        </small>
+    </p>
+    {% if res.abstract == '' %}
+    {% else %}
+        <div id="summary{{ res['id'] }}">
+            <p class="collapse mb-1" id="collapseSummary{{ res['id'] }}">
+                {{ res['abstract'] }}</p>
+            <a class="collapsed" data-toggle="collapse" href="#collapseSummary{{ res['id'] }}"
+               aria-expanded="false"
+               aria-controls="collapseSummary"></a>
+        </div>
+        <div class="mt-2">
+            <a class="btn btn-link pl-0" href>Add to Mendeley</a> <a class="btn btn-link" href>Show similar</a>
+        </div>
+    {% endif %}
+    </div>
+    {% if res['src'] %}
+        <div class="col-md-4 vertical-center">
+            <img class="img-fluid mt-1" src="{{ res['src'] }}">
+        </div>
+    {% endif %}
+    </div>
+    {% endfor %}
+<div class="col-md-12">
+    <nav>
+        <ul class="pagination mt-4">
+            {% set pagend = 0 %}
+            {% if page != 1 %}
+                <li class="page-item"><a class="page-link"
+                                         href="/search?query={{ query }}&page={{ (page - 1) }}">Previous</a>
+                </li>
+            {% endif %}
+            {% if npages > 6 %}
+                {% for i in range(6) %}
+                    <li class="page-item
                             {% if loop.index == page %}
                             active
                             {% endif %}
 "><a class="page-link" href="/search?query={{ query }}&page={{ loop.index }}">{{ loop.index }}</a></li>
-                        {% endfor %}
-                        {% if page == 7 %}
-                            {% if npages != 7 %}
-                                <li class="page-item active"><a class="page-link" href="">7</a></li>
-                                <li class="page-item"><a class="page-link" href="">...</a></li>
-                            {% else %}
-                                <li class="page-item active"><a class="page-link" href="#">7</a></li>
-                            {% endif %}
-                        {% else %}
-                            <li class="page-item"><a class="page-link" href="#">...</a></li>
-                            {% if page > 7 %}
-                                <li class="page-item active"><a class="page-link" href="">{{ page }}</a></li>
-                                {% if npages != 8 %}
-                                    <li class="page-item"><a class="page-link" href="#">...</a></li>
-                                {% endif %}
-                            {% endif %}
-                        {% endif %}
+                {% endfor %}
+                {% if page == 7 %}
+                    {% if npages != 7 %}
+                        <li class="page-item active"><a class="page-link" href="">7</a></li>
+                        <li class="page-item"><a class="page-link" href="">...</a></li>
                     {% else %}
-                        {% for i in range(npages) %}
-                            <li class="page-item
+                        <li class="page-item active"><a class="page-link" href="#">7</a></li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="#">...</a></li>
+                    {% if page > 7 %}
+                        <li class="page-item active"><a class="page-link" href="">{{ page }}</a></li>
+                        {% if npages != 8 %}
+                            <li class="page-item"><a class="page-link" href="#">...</a></li>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            {% else %}
+                {% for i in range(npages) %}
+                    <li class="page-item
                             {% if loop.index == page %}
                             active
                             {% endif %}
 "><a class="page-link" href="/search?query={{ query }}&page={{ loop.index }}">{{ loop.index }}</a></li>
-                        {% endfor %}
-                    {% endif %}
-                    {% if page != npages %}
-                        <li class="page-item"><a class="page-link"
-                                                 href="/search?query={{ query }}&page={{ (page + 1) }}">Next</a></li>
-                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            {% if page != npages %}
+                <li class="page-item"><a class="page-link"
+                                         href="/search?query={{ query }}&page={{ (page + 1) }}">Next</a></li>
+            {% endif %}
 
-                </ul>
-            </nav>
+        </ul>
+    </nav>
 
-        </div>
-        </div>
+</div>
 {% endblock %}

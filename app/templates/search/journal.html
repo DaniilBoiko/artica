@@ -1,26 +1,6 @@
-{% extends "base.html" %}
+{% extends "base_other.html" %}
 
 {% block app_content %}
-    <style>
-        .container {
-            margin-left: 150px;
-        }
-    </style>
-    <nav class="navbar navbar-light pl-0 bg-light">
-        <a class="navbar-brand" href="/" style="position:absolute;margin-left: 40px">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" height="30" alt="">
-        </a>
-        <div class="container">
-            <div class="col-md-12 pl-0">
-                <form class="form-inline" action="/search" method="get">
-                    <input name="query" type="text" class="form-control mb-0 mr-sm-2 col-md-6"
-                           value="{{ query }}"/>
-                    <button type="submit" class="btn btn-primary mb-0">Search</button>
-                </form>
-            </div>
-        </div>
-    </nav>
-    <div class="container" style="margin-top: 20px">
         <div class="row">
             <div class="col-md-12 mt-4">
                 <h1 class="display-4">{{ journal.name }}</h1>
@@ -45,7 +25,8 @@
                                 <img class="card-img-top" src="{{ article.src }}" alt="Card image cap">
                             {% endif %}
                             <div class="card-body">
-                                <a href="{{ url_for('article',id=article.id, query=query) }}"><h6 class="card-title">{{ article.title }}</h6></a>
+                                <a href="{{ url_for('article',id=article.id, query=query) }}"><h6
+                                        class="card-title">{{ article.title }}</h6></a>
                                 <small><p class="text-mited">
                                     {% for author in article.authors %}
                                         {{ author }}{{ ", " if not loop.last }}
@@ -60,5 +41,4 @@
                 <h2 class="mb-4">Tools</h2>
             </div>
         </div>
-    </div>
 {% endblock %}

@@ -1,0 +1,124 @@
+
+
+{% extends 'bootstrap/base.html' %}
+
+{% block title %}
+    {% if title %}{{ title }} - Artica{% else %}Welcome to Artica{% endif %}
+{% endblock %}
+
+
+
+{% block content %}
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info" role="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <style>
+
+
+        @media screen and (min-width: 768px) and (max-width: 992px) {
+            .container {
+                margin-left: 150px;
+                width: calc(100% - 150px);
+                max-width: 900px;
+            }
+
+            #search-input {
+                width: calc(100% - 90px);
+                max-width: 500px;
+
+            }
+
+            .form-inline {
+                width: 100% !important;
+            }
+        }
+
+        @media screen and (min-width: 992px) {
+            .container {
+                margin-left: 150px;
+                width: calc(100% - 150px);
+                max-width: 1100px;
+            }
+
+            #search-input {
+                width: calc(100% - 90px);
+                max-width: 500px;
+            }
+
+            .form-inline {
+                width: 100% !important;
+            }
+
+        }
+
+        @media screen and (max-width: 992px) {
+            #search-input {
+                width: calc(100% - 90px);
+                max-width: 500px;
+            }
+
+            .form-inline {
+                width: calc(100% - 60px) !important;
+            }
+
+        }
+
+        @media screen and (max-width: 768px) {
+            .navbar-brand {
+                display: none;
+            }
+
+        }
+
+        .container {
+            padding-left: 15px !important;
+            padding-right: 15px !important;
+        }
+
+        #search-input {
+            margin-right: 8px;
+        }
+
+
+    </style>
+    <nav class="navbar navbar-light navbar-expand-md pl-0 bg-light">
+        <a class="navbar-brand" href="/" style="position:absolute;margin-left: 40px">
+            <img src="{{ url_for('static', filename='images/logo.svg') }}" height="30" alt="">
+        </a>
+        <div class="container">
+            <form class="form-inline" action="/search" method="get">
+                <input id="search-input" name="query" type="text" class="form-control mb-0 mr-sm-2"
+                       value="{{ query }}"/>
+                <button type="submit" class="btn btn-primary mb-0">Search</button>
+            </form>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText"
+                    aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarText">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Explore <span class="sr-only">(current)</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Feed</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Account</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container" style="margin-top: 20px">
+        {% block app_content %}{% endblock %}
+    </div>
+
+{% endblock %}
