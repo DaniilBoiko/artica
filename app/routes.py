@@ -5,6 +5,7 @@ import requests
 import wikipedia
 from bs4 import BeautifulSoup
 from flask import render_template, request, redirect, url_for, session, current_app
+from elasticsearch import client
 
 from mendeley import Mendeley
 from mendeley.session import MendeleySession
@@ -14,6 +15,7 @@ from app import db
 from app import q
 from app.models import Article, User, UserDocument, Journal
 from app.tools import distance
+from app.search import ESCondition
 
 from app.search import add_to_index
 from sqlalchemy import desc
@@ -40,8 +42,11 @@ def search():
 
     page = request.args.get('page', 1, type=int)
 
-    answers, total = Article.queryES().search_(query).paginate(int(page),
-                                                              int(current_app.config['POSTS_PER_PAGE']))
+    answers, total = Article.queryES(index='articles', doctype='article'). \
+        search_(query, fields=[Article.title, Article.abstract]).paginate(
+        int(page),
+        int(current_app.config['POSTS_PER_PAGE'])
+    )
 
     articles = []
 
@@ -90,12 +95,52 @@ def es_reindex():
 
 
 def es_reindex():
+    # Create index
+    '''
+    current_app.elasticsearch.indices.create(index='articles',
+                                        body={
+                                            "settings": {
+                                                "number_of_shards": 1
+                                            },
+                                            "mappings": {
+                                                "article": {
+                                                    "properties": {
+                                                        "title": {"type": "text", "analyzer": "english"},
+                                                        "abstract": {"type": "text", "analyzer": "english"},
+                                                        "doi": {"type": "keyword"},
+                                                        "authors": {"type": "keyword"},
+                                                        "journal_name":{"type": "keyword"},
+                                                        "pubdate": {
+                                                            "type": "date"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        )
+
     with app.app_context():
-        for i in range(3002, 500000):
+        journal_id = 100000000000
+        journal_name = ''
+        for i in range(1, 500000):
+            article = Article.query.get_or_404(i)
             print(i)
-            article = Article.query.filter_by(id=i).first()
-            print(article.title)
-            add_to_index('article', article)
+
+            if journal_id != article.journal_id:
+                journal_name = Journal.query.get_or_404(article.journal_id).name
+                journal_id = article.journal_id
+
+            body = {
+                "title": article.title,
+                "abstract": article.abstract,
+                "doi": article.doi,
+                "authors": article.authors,
+                "journal_name": journal_name,
+                "pubdate": article.pubdate
+            }
+
+            current_app.elasticsearch.index('articles', doc_type='article', id=article.id, body=body)
+    '''
 
 
 @app.route('/admin', methods=['GET'])
@@ -131,18 +176,23 @@ def journal():
     if summary is not None:
         if 'journal' not in summary.split('.')[0]:
             summary = None
-
+    '''
     n_issue = []
     n_volumes = Article.query.filter_by(journal_id=journal.id).order_by(Article.id).first().volume
     for i in range(1, int(n_volumes) + 1):
         n_issue.append(int(Article.query.filter(Article.journal_id == journal.id, Article.volume == str(i)).order_by(
             Article.id).first().issue))
     print(n_issue)
+    '''
+    es_condition = ESCondition()
 
-    last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
+    last_published, total = Article.queryES(index='articles', doctype='article'). \
+        filter_(es_condition.eql_('journal_name',journal.name)).sort_('pubdate','desc').limit_(5)
+
+    #last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
 
     return render_template('search/journal.html', title=journal.name, journal=journal, query=query, summary=summary,
-                           n_issue=n_issue, last_published=last_published)
+                           n_issue=[], last_published=last_published)
 
 
 @app.route('/article', methods=['GET'])

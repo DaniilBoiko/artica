@@ -13,19 +13,12 @@ from app.search import add_to_index, remove_from_index, ESQueryObject
 
 class SearchableMixin(object):
     @classmethod
-    def search(cls, expression, page, per_page, suggestion=False):
-        ids, total = query_index(cls.__name__.lower(), expression, page, per_page)
-        if total == 0:
-            return cls.query.filter_by(id=0), 0
-        when = []
-        for i in range(len(ids)):
-            when.append((ids[i], i))
-        return cls.query.filter(cls.id.in_(ids)).order_by(
-            db.case(when, value=cls.id)), total
-
-    @classmethod
-    def queryES(cls):
-        return ESQueryObject(cls.__name__.lower(), cls)
+    def queryES(cls, index = None, doctype = None):
+        if index is None:
+            index = cls.__name__.lower()
+        if doctype is None:
+            doctype = cls.__name__.lower()
+        return ESQueryObject(index, cls, doctype)
 
     @classmethod
     def before_commit(cls, session):
