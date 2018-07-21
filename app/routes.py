@@ -265,6 +265,7 @@ def update_journals():
         else:
             return 'Describe all args', 404
 
+
     if task == 'springer':
         start = request.args.get('start')
         end = request.args.get('end')
@@ -1383,3 +1384,6 @@ def elsevier_to_text(obj):
         return obj.text
     else:
         return obj
+
+
+
