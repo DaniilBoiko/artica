@@ -1,120 +1,120 @@
 {% extends "base_other.html" %}
 
 {% block app_content %}
-                <div class="mt-4">
-                    <h2>{{ article.title }}</h2>
-                    <p class="text-muted">
-                        {% for author in article.authors %}
-                            {{ author }}{{ "," if not loop.last }}
-                        {% endfor %}
+    <div class="mt-4">
+        <h2>{{ article.title }}</h2>
+        <p class="text-muted">
+            {% for author in article.authors %}
+                {{ author }}{{ "," if not loop.last }}
+            {% endfor %}
+        </p>
+        <p class="text-secondary mb-0">
+            {% if article.doctype %}
+                <span class="badge badge-secondary mr-2">{{ article.doctype }}</span>
+            {% endif %}
+            <small>{{ pub_date }} in <b><a
+                    href="{{ url_for('journal',id=journal.id,query=query) }}">{{ journal.name }}</a></b>
+            </small>
+        </p>
+        <div class="row">
+
+            {% if article.src %}
+                <div class="col-md-7">
+            {% else %}
+                <div class=" col-md-12">
+            {% endif %}
+
+            {% if article.abstract == '' %}
+            {% else %}
+
+                <div id="summary{{ article.id }}">
+                    <p class="text-justify">
+                        {{ article.abstract }}
                     </p>
-                    <p class="text-secondary mb-0">
-                        {% if article.doctype %}
-                            <span class="badge badge-secondary mr-2">{{ article.doctype }}</span>
-                        {% endif %}
-                        <small>{{ article.pub_date }} in <b><a
-                                href="{{ url_for('journal',id=journal.id,query=query) }}">{{ journal.name }}</a></b>
-                        </small>
-                    </p>
-                    <div class="row">
-
-                        {% if article.src %}
-                            <div class="col-md-7">
-                        {% else %}
-                            <div class=" col-md-12">
-                        {% endif %}
-
-                        {% if article.abstract == '' %}
-                        {% else %}
-
-                            <div id="summary{{ article.id }}">
-                                <p class="text-justify">
-                                    {{ article.abstract }}
-                                </p>
-                            </div>
-                        {% endif %}
-                        {% if article.doi %}
-                            <a href="http://dx.doi.org/{{ article.doi }}">{{ article.doi }}</a>
-                        {% else %}
-                            <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
-                            <script>
-                                (function () {
-                                    'use strict';
-                                    angular.module('DOIApp', [])
+                </div>
+            {% endif %}
+            {% if article.doi %}
+                <a href="http://dx.doi.org/{{ article.doi }}">{{ article.doi }}</a>
+            {% else %}
+                <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+                <script>
+                    (function () {
+                        'use strict';
+                        angular.module('DOIApp', [])
 
 
-                                        .controller('DOIController', ['$scope', '$log', '$http',
-                                            function ($scope, $log, $http) {
-                                                $scope.buttontext = 'Get DOI';
-                                                $scope.loading = false;
-                                                $scope.hide = false;
+                            .controller('DOIController', ['$scope', '$log', '$http',
+                                function ($scope, $log, $http) {
+                                    $scope.buttontext = 'Get DOI';
+                                    $scope.loading = false;
+                                    $scope.hide = false;
 
-                                                $scope.getResults = function () {
-                                                    $scope.loading = true;
-                                                    $scope.buttontext = 'Loading...';
+                                    $scope.getResults = function () {
+                                        $scope.loading = true;
+                                        $scope.buttontext = 'Loading...';
 
-                                                    var url = 'https://api.crossref.org/works';
-                                                    var title = angular.element(document.getElementsByName('article_title')[0]).val();
-                                                    var authors = angular.element(document.getElementsByName('article_authors')[0]).val();
+                                        var url = 'https://api.crossref.org/works';
+                                        var title = angular.element(document.getElementsByName('article_title')[0]).val();
+                                        var authors = angular.element(document.getElementsByName('article_authors')[0]).val();
 
-                                                    $http({
-                                                        url: url,
-                                                        method: "GET",
-                                                        params: {
-                                                            "query.title": title,
-                                                            "query.author": authors,
-                                                            "mailto": "daniel.boyko.al@gmail.com",
-                                                            "rows": 1
-                                                        }
-                                                    }).success(function (results) {
-                                                        $scope.doi = results['message']['items'][0]['DOI'];
-                                                        $scope.hide = true;
-                                                        $http({
-                                                            url: '/add_data',
-                                                            method: "GET",
-                                                            params: {
-                                                                'id': {{ article.id }},
-                                                                'title': results['message']['items'][0]['title'][0],
-                                                                'doi': results['message']['items'][0]['DOI'],
-                                                                'doctype': results['message']['items'][0]['type'],
-                                                                'crossref': results['message']['items'][0]
-                                                            }
-                                                        })
-                                                    }).error(function (error) {
-                                                        $log.log(error);
-                                                    });
-
-                                                };
+                                        $http({
+                                            url: url,
+                                            method: "GET",
+                                            params: {
+                                                "query.title": title,
+                                                "query.author": authors,
+                                                "mailto": "daniel.boyko.al@gmail.com",
+                                                "rows": 1
                                             }
-                                        ]);
+                                        }).success(function (results) {
+                                            $scope.doi = results['message']['items'][0]['DOI'];
+                                            $scope.hide = true;
+                                            $http({
+                                                url: '/add_data',
+                                                method: "GET",
+                                                params: {
+                                                    'id': {{ article.id }},
+                                                    'title': results['message']['items'][0]['title'][0],
+                                                    'doi': results['message']['items'][0]['DOI'],
+                                                    'doctype': results['message']['items'][0]['type'],
+                                                    'crossref': results['message']['items'][0]
+                                                }
+                                            })
+                                        }).error(function (error) {
+                                            $log.log(error);
+                                        });
 
-                                }());
-                            </script>
-                            <div ng-app="DOIApp" ng-controller="DOIController">
-                                <div id="bla">
-                                    <input type="hidden" value="{{ article.title }}" name="article_title"
-                                           ng-model="article_title">
-                                    <input type="hidden" value="{{ article.authorlist }}" name="article_authors"
-                                           ng-model="article_authors">
-                                    {% raw %}
-                                    <button class="btn btn-secondary btn-sm"
-                                            ng-disabled="loading" ng-hide="hide" ng-click="getResults()">{{ buttontext
-                                        }}
-                                    </button>
-                                    {% endraw %}
-                                    {% raw %}
-                                    <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a>
-                                    {% endraw %}
+                                    };
+                                }
+                            ]);
 
-                                </div>
-                            </div>
-                        {% endif %}
-                        </div>
-                        {% if article.src %}
+                    }());
+                </script>
+                <div ng-app="DOIApp" ng-controller="DOIController">
+                    <div id="bla">
+                        <input type="hidden" value="{{ article.title }}" name="article_title"
+                               ng-model="article_title">
+                        <input type="hidden" value="{{ article.authorlist }}" name="article_authors"
+                               ng-model="article_authors">
+                        {% raw %}
+                        <button class="btn btn-secondary btn-sm"
+                                ng-disabled="loading" ng-hide="hide" ng-click="getResults()">{{ buttontext
+                            }}
+                        </button>
+                        {% endraw %}
+                        {% raw %}
+                        <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a>
+                        {% endraw %}
 
-                            <div class="col-md-5">
-                                <img src='{{ article.src }}' class="ml-2 img-fluid">
-                            </div>
-                        {% endif %}
-                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            </div>
+            {% if article.src %}
+
+                <div class="col-md-5">
+                    <img src='{{ article.src }}' class="ml-2 img-fluid">
+                </div>
+            {% endif %}
+            </div>
 {% endblock %}

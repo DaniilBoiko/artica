@@ -1,22 +1,39 @@
-{% extends "base_mendeley.html" %}
+{% extends "base_other.html" %}
 
 {% block app_content %}
-<h2 class="mt-5 mb-3">This is your library</h2>
+    <nav class="navbar navbar-expand navbar-light bg-light rounded">
+        <div class="collapse navbar-collapse justify-content-center mt-2" id="navbarsExample10">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('account', query=query) }}">Account details</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="{{ url_for('list_documents', query=query) }}">Library <span
+                            class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('logout', query=query) }}">Logout</a>
+                </li>
 
-<table class="table">
-    {% for doc in docs %}
-    <tr>
-        <td><a href="/document?document_id={{doc['id']}}">{{doc.title}}</a></td>
-        {% if doc.file_attached %}
-            <td><a href="/download?document_id={{doc['id']}}" class="btn btn-light">Download</a></td>
-        {% endif %}
-    </tr>
-    {% endfor %}
-</table>
+            </ul>
+        </div>
+    </nav>
+    <h1 class="mt-5 mb-3">This is your library</h1>
 
-<form action="/metadataLookup" method="GET" class="mt-5 form-inline">
-    <label class="my-1">DOI lookup:</label>
-    <input class="form-control ml-2 mr-2" type="text" name="doi">
-    <input class="btn btn-primary" type="submit">
-</form>
+    <table class="table">
+        {% for doc in docs %}
+            <tr>
+                <td><a href="/document?document_id={{ doc['id'] }}">{{ doc.title }}</a></td>
+                {% if doc.file_attached %}
+                    <td><a href="/download?document_id={{ doc['id'] }}" class="btn btn-light">Download</a></td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+    </table>
+
+    <form action="/metadataLookup" method="GET" class="mt-5 form-inline">
+        <label class="my-1">DOI lookup:</label>
+        <input class="form-control ml-2 mr-2" type="text" name="doi">
+        <input class="btn btn-primary" type="submit">
+    </form>
 {% endblock %}

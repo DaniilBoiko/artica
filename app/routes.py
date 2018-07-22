@@ -187,9 +187,9 @@ def journal():
     es_condition = ESCondition()
 
     last_published, total = Article.queryES(index='articles', doctype='article'). \
-        filter_(es_condition.eql_('journal_name',journal.name)).sort_('pubdate','desc').limit_(6)
+        filter_(es_condition.eql_('journal_name', journal.name)).sort_('pubdate', 'desc').limit_(6)
 
-    #last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
+    # last_published = Article.query.filter_by(journal_id=journal.id).order_by(desc(Article.pubdate)).limit(5).all()
 
     return render_template('search/journal.html', title=journal.name, journal=journal, query=query, summary=summary,
                            n_issue=[], last_published=last_published)
@@ -216,12 +216,14 @@ def article():
         article.abstract = article.abstract
     else:
         article.abstract = ''
-    if article.pubdate is not None:
-        article.pubdate = article.pubdate.strftime('Published at %d, %b %Y')
-    else:
-        article.pubdate = ''
 
-    return render_template('search/article.html', title=article.title, journal=journal, article=article, query=query)
+    if article.pubdate is not None:
+        pub_date = article.pubdate.strftime('Published at %d, %b %Y')
+    else:
+        pub_date = ''
+
+    return render_template('search/article.html', title=article.title, journal=journal, article=article, query=query,
+                       pub_date=pub_date)
 
 
 @app.route("/add_data", methods=['GET'])
@@ -264,10 +266,12 @@ def login():
     if 'token' in session:
         return redirect('/listDocuments')
 
+    query = request.args.get('query', '')
+
     auth = mendeley.start_authorization_code_flow()
     session['state'] = auth.state
 
-    return render_template('user/login.html', login_url=(auth.get_login_url()))
+    return render_template('user/login.html', login_url=(auth.get_login_url()), query=query)
 
 
 @app.route('/oauth')
@@ -312,6 +316,8 @@ def auth_return():
 
 @app.route('/listDocuments')
 def list_documents():
+    query = request.args.get('query', '')
+
     if 'token' not in session:
         return redirect('/')
 
@@ -323,7 +329,7 @@ def list_documents():
 
     docs = mendeley_session.documents.list(view='client').items
 
-    return render_template('user/library.html', name=name, docs=docs, title='Library')
+    return render_template('user/library.html', name=name, docs=docs, title='Library', query=query)
 
 
 @app.route('/download')
@@ -342,6 +348,8 @@ def download():
 
 @app.route('/document')
 def get_document():
+    query = request.args.get('query', '')
+
     if 'token' not in session:
         return redirect('/')
 
@@ -354,7 +362,7 @@ def get_document():
     document_id = request.args.get('document_id')
     doc = mendeley_session.documents.get(document_id)
 
-    return render_template('metadata.html', doc=doc, name=name, title=doc['title'])
+    return render_template('metadata.html', doc=doc, name=name, title=doc['title'], query=query)
 
 
 @app.route('/metadataLookup')
@@ -377,7 +385,9 @@ def metadata_lookup():
 @app.route('/account')
 def account():
     if 'token' not in session:
-        return redirect('/')
+        return render_template('technical_pages/login_wall.html')
+
+    query = request.args.get('query', '')
 
     try:
         mendeley_session = get_session_from_cookies()
@@ -387,10 +397,19 @@ def account():
 
     email = mendeley_session.profiles.me.email
 
-    return render_template('user/account.html', name=name, email=email)
+    return render_template('user/account.html', name=name, email=email, query=query)
 
 
 @app.route('/logout')
 def logout():
+    query = request.args.get('query', '')
+
     session.pop('token', None)
-    return redirect('/')
+    return redirect('/', query=query)
+
+
+@app.route('/feed')
+def feed():
+    query = request.args.get('query', '')
+
+    return render_template('feed/feed.html', title='Feed', query=query)

@@ -1,10 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'bootstrap/base.html' %}
 
-</body>
-</html>
+{% block title %}
+    {% if title %}{{ title }} - Artica{% else %}Welcome to Artica{% endif %}
+{% endblock %}
+
+
+
+{% block content %}
+
+    <style>
+
+        body {
+            background: url("{{  url_for('static', filename='images/backgrounds/biology.jpg') }}") no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+            z-index: -100;
+        }
+
+        .container {
+            z-index: 2;
+        }
+
+        .header {
+            margin-top: 12%;
+            color: #222;
+        }
+
+        .header h1 {
+            color: #222;
+        }
+    </style>
+
+    <div class="container">
+        <div class="row header text-center">
+            <div class="col-md-12">
+                <h1>Only for artica users</h1>
+                <p class="lead">Just log in with your mendeley account.</p>
+                <a class="btn btn-large btn-primary" href="{{ url_for('login', query=query) }}">Let's go</a>
+            </div>
+        </div>
+
+    </div>{% endblock %}
