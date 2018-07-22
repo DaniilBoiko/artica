@@ -15,13 +15,11 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement, _literal_as_text
 from sqlalchemy_searchable import search
 
-import random
 from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_journal,get_springer, main
-from multiprocessing.dummy import Pool as ThreadPool
+from app.springer import get_article, get_journal,get_springer
 
 count_pattern = re.compile(r'rows=(\d+)')
 
