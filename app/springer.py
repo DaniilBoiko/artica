@@ -11,9 +11,10 @@ from app import app
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
-'''logging.basicConsig(level=logging.INFO, format='%(threadName)s %(relativeCreated)6d %(message)s')'''
+'''logging.basicConsig(level=logging.INFO, format='%(asctime)s %(threadName)s %(message)s')'''
 
 proxy = []
+dead_proxy = []
 def main():
     proxy_req = requests.get('https://free-proxy-list.net')
     soup = BeautifulSoup(proxy_req.content, 'html.parser')
@@ -21,20 +22,18 @@ def main():
     for item in proxy_table.find('tbody').find_all('tr'):
         proxy.append({'ip': item.find_all('td')[0].get_text(), 'port': item.find_all('td')[1].get_text()})
 
-
 def get_article(url):
-    response = None
-    pr = None
-    while response is None:
-        if proxy.length() == 0:
+    i = True
+    while i:
+        if len(proxy) == 0:
             main()
-
+        pr = random.choice(proxy)
         try:
             response = requests.get('https://link.springer.com' + url, proxies = pr)
+            i = False
             soup = BeautifulSoup(response.content, 'html.parser')
-
             title = soup.find('h1', class_='ArticleTitle').get_text()
-            print(title, pr)
+            '''logging.info(pr+' '+title+' '+'Article found')'''
             doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
             # Проверяем наличие статьи в базе
             if doi is not None:
@@ -193,26 +192,27 @@ def get_article(url):
                             article.authors.append(author_db)
                             db.session.commit()
             db.session.commit()
+            print(title, pr, len(proxy), len(dead_proxy))
 
         except:
-            dead_proxy.append(proxy.pop(index(pr)))
-            pr = random.choice(proxy)
+            print(url, pr, 'Article is not available')
+            dead_proxy.append(proxy.pop(proxy.index(pr)))
 
 def get_journal(url):
     with app.app_context():
-        response = None
-        pr = None
-        while response is None:
-            if proxy.length() == 0:
+        i = True
+        while i:
+            if len(proxy) == 0:
                 main()
-
+            pr = random.choice(proxy)
             try:
                 response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies = pr)
+                i = False
                 soup = BeautifulSoup(response.content, 'html.parser')
                 title = soup.find('div', id='publication-title').find('h1').get_text()
-
                 if Journal.query.filter_by(name=title).first() is None:
                     new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
+
                     db.session.add(new_journal)
                     db.session.commit()
 
@@ -232,13 +232,14 @@ def get_journal(url):
                             k = True
 
                     if (journal.last_issue is None) or k:
-                        response = None
-                        while response is None:
-                            if proxy.length() == 0:
+                        i = True
+                        while i:
+                            if len(proxy) == 0:
                                 main()
-
+                            pr = random.choice(proxy)
                             try:
                                 response = requests.get('https://link.springer.com' + issue_item, proxies = pr)
+                                i = False
                                 soup = BeautifulSoup(response.content, 'html.parser')
                                 results = soup.find('div', class_='toc')
                                 for article_item in results.find_all('li'):
@@ -252,13 +253,13 @@ def get_journal(url):
                                 k = True
 
                             except:
-                                dead_proxy.append(proxy.pop(index(pr)))
-                                pr = random.choice(proxy)
+                                print(issue_item, pr, 'Issue is not available')
+                                dead_proxy.append(proxy.pop(proxy.index(pr)))
+
 
             except:
-                dead_proxy.append(proxy.pop(index(pr)))
-                pr = random.choice(proxy)
-
+                print(url, pr, 'Journal is not available')
+                dead_proxy.append(proxy.pop(proxy.index(pr)))
 
 def get_springer(start, end):
     for item in range(int(start), int(end)):
@@ -267,9 +268,12 @@ def get_springer(start, end):
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_='content-item-list')
         links = []
+        proxy = []
+        dead_proxy = []
+        if len(proxy) == 0:
+            main()
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
-        pool_count = 10
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
 

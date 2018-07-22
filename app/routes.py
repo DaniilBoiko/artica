@@ -269,9 +269,9 @@ def update_journals():
 
 
     if task == 'springer':
+
         start = request.args.get('start')
         end = request.args.get('end')
-
 
         get_springer(start,end)
 
