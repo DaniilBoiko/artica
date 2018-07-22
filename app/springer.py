@@ -26,6 +26,9 @@ def get_article(url):
     response = None
     pr = None
     while response is None:
+        if proxy.length() == 0:
+            main()
+
         try:
             response = requests.get('https://link.springer.com' + url, proxies = pr)
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -200,7 +203,9 @@ def get_journal(url):
         response = None
         pr = None
         while response is None:
-            if proxy
+            if proxy.length() == 0:
+                main()
+
             try:
                 response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies = pr)
                 soup = BeautifulSoup(response.content, 'html.parser')
@@ -229,6 +234,9 @@ def get_journal(url):
                     if (journal.last_issue is None) or k:
                         response = None
                         while response is None:
+                            if proxy.length() == 0:
+                                main()
+
                             try:
                                 response = requests.get('https://link.springer.com' + issue_item, proxies = pr)
                                 soup = BeautifulSoup(response.content, 'html.parser')
