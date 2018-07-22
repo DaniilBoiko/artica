@@ -29,7 +29,7 @@
                 max-width: 900px;
             }
 
-            #search-input {
+            .twitter-typeahead {
                 width: calc(100% - 90px);
                 max-width: 500px;
 
@@ -47,7 +47,7 @@
                 max-width: 1100px;
             }
 
-            #search-input {
+            .twitter-typeahead {
                 width: calc(100% - 90px);
                 max-width: 500px;
             }
@@ -59,7 +59,7 @@
         }
 
         @media screen and (max-width: 992px) {
-            #search-input {
+            .twitter-typeahead {
                 width: calc(100% - 90px);
                 max-width: 500px;
             }
@@ -82,17 +82,72 @@
             padding-right: 15px !important;
         }
 
-        #search-input {
+        .twitter-typeahead {
             margin-right: 8px;
         }
 
         body {
-            overflow-x:hidden;
-        }
-        html {
-            overflow-x:hidden;
+            overflow-x: hidden;
         }
 
+        html {
+            overflow-x: hidden;
+        }
+
+        .twitter-typeahead .tt-query,
+        .twitter-typeahead .tt-hint {
+            margin-bottom: 0;
+        }
+
+        .tt-dropdown-menu {
+            min-width: 160px;
+            margin-top: 8px;
+            padding: 5px 0;
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            *border-right-width: 2px;
+            *border-bottom-width: 2px;
+            -webkit-border-radius: 6px;
+            -moz-border-radius: 6px;
+            border-radius: 6px;
+            -webkit-box-shadow: 0 5px 10px #ced4da;
+            -moz-box-shadow: 0 5px 10px #ced4da;
+            box-shadow: 0 5px 10px #ced4da;
+            -webkit-background-clip: padding-box;
+            -moz-background-clip: padding;
+            background-clip: padding-box;
+        }
+
+        .tt-suggestion {
+            display: block;
+            padding: 3px 20px;
+        }
+
+        .tt-suggestion.tt-is-under-cursor {
+            color: #111;
+            background-color: #fff;
+        }
+
+        .tt-suggestion.tt-is-under-cursor a {
+            color: #111;
+        }
+
+        .tt-suggestion p {
+            margin: 0;
+        }
+
+        .suggestion-header {
+            margin: 5px 5px;
+            border-bottom: 1px #CCCCCC solid;
+        }
+
+        #search-input {
+            width:100%;
+        }
+
+        .tt-hint {
+            width:100% !important;
+        }
 
     </style>
     <nav class="navbar navbar-light navbar-expand-md pl-0 pr-0 bg-light">
@@ -102,7 +157,7 @@
         <div class="container">
             <form class="form-inline" action="/search" method="get">
                 <input id="search-input" name="query" type="text" class="form-control mb-0 mr-sm-2"
-                       value="{{ query }}"/>
+                       value="{{ query }}" data-provide="typeahead"/>
                 <button type="submit" class="btn btn-primary mb-0">Search</button>
             </form>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText"
@@ -127,5 +182,76 @@
     <div class="container" style="margin-top: 20px">
         {% block app_content %}{% endblock %}
     </div>
+    <form action="#">
+        <div class="form-group">
+            <label for="location-1">Search for a location</label>
+            <span class="twitter-typeahead" style="position: relative; display: inline-block;"><input
+                    class="tt-hint input form-control" type="text" autocomplete="off" spellcheck="off" disabled=""
+                    style="position: absolute; top: 0px; left: 0px; border-color: transparent; box-shadow: none; background: none 0% 0% / auto repeat scroll padding-box border-box rgb(255, 255, 255);"><input
+                    id="location-1" type="text" class="form-control typeahead tt-query" placeholder="Cannes"
+                    data-provide="typeahead" autocomplete="off" spellcheck="false" dir="auto"
+                    style="position: relative; vertical-align: top; background-color: transparent;"><span
+                    style="position: absolute; left: -9999px; visibility: hidden; white-space: nowrap; font-family: &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant: normal; font-weight: 400; word-spacing: 0px; letter-spacing: 0px; text-indent: 0px; text-rendering: auto; text-transform: none;"></span><span
+                    class="tt-dropdown-menu"
+                    style="position: absolute; top: 100%; left: 0px; z-index: 100; display: none;"></span></span>
+        </div>
+    </form>
 
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script src="//cdn.jsdelivr.net/typeahead.js/0.9.3/typeahead.min.js"></script>
+    <script src="//cdn.jsdelivr.net/hogan.js/2.0.0/hogan.common.js"></script>
+
+
+
+    <script>
+        var geoNamesUsername = 'uberboomtest';
+
+        /**
+         * Initialize typeahead.js
+         */
+        $('#search-input').typeahead([{
+            name: 'posts',
+            remote: {
+                url: 'https://search-artica-am3httq7pyuvo2fptmi77bwrj4.us-east-2.es.amazonaws.com/articles/article/_search?from=0&size=3&q=%QUERY*',
+                filter: function (parsedResponse) {
+                    var result = [];
+                    $.each(parsedResponse.hits.hits, function () {
+                        var item = $(this)[0]._source;
+                        result.push({
+                            id: item.iD,
+                            article_title: item.title,
+                            article_journal_name: item.journal_name
+                        });
+                    });
+                    return result;
+                }
+            },
+            cache: false,
+            template: [
+                '<p class="">{{ '{{' }}article_title{{ '}}' }}</p>',
+                '<p class="text-secondary">{{ '{{' }}article_journal_name{{ '}}' }}</p>'
+            ].join(''),
+            engine: Hogan
+        }]);
+
+
+        /**
+         * Fix tt hint
+         */
+        $('#search-input').on('typeahead:initialized', function (e, data) {
+            // fix for using twitter bootstrap
+            var hint = $(e.target).prev('.tt-hint');
+            var small = $(e.target).is('.input-sm');
+            var large = $(e.target).is('.input-lg');
+            if (small) {
+                hint.addClass('input-sm');
+            } else if (large) {
+                hint.addClass('input-lg');
+            } else {
+                hint.addClass('input');
+            }
+            hint.addClass('form-control');
+        });
+        //# sourceURL=pen.js
+    </script>
 {% endblock %}
