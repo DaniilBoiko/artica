@@ -172,6 +172,7 @@ def get_article(url):
                     # Select author in db
                     author_db = Author.query.filter_by(name=author_name.get_text()).first()
 
+
                     af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
                     for af_item in af_section.find_all('li'):
                         new_aff = Affilation(aff=af_name[int(af_item.get_text()) - 1])
@@ -284,6 +285,46 @@ def get_journal(url):
             if issue_item == journal.last_issue:
                 k = True
 
+def get_journal(url):
+    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    title = soup.find('div', id='publication-title').find('h1').get_text()
+    print(title)
+    if Journal.query.filter_by(name=title).first() is None:
+        new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
+        db.session.add(new_journal)
+        db.session.commit()
+
+    journal = Journal.query.filter_by(name=title).first()
+
+    issue_block = []
+    volume_tab = soup.find('div', class_='volumes tab-content')
+    for volume_item in volume_tab.find_all('div', class_='volume-item'):
+        issue_list = volume_item.find('ul', class_='issues-list')
+        for issue_item in issue_list.find_all('li', class_='issue-item'):
+            issue_block.append(issue_item.find('a', class_='title')['href'])
+
+    k = False
+    for issue_item in issue_block:
+        if journal.last_issue is not None:
+            if issue_item == journal.last_issue:
+                k = True
+
+        if (journal.last_issue is None) or k:
+            response = requests.get('https://link.springer.com' + issue_item)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = soup.find('div', class_='toc')
+            for article_item in results.find_all('li'):
+                article_link = article_item.find('h3', class_='title').find('a')['href']
+                if Article.query.filter_by(doi=article_link[9:]).first() is None:
+                    get_article(article_link)
+
+            journal.last_issue = issue_item
+            db.session.commit()
+
+            k = True
+
+
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
@@ -365,9 +406,9 @@ def get_springer(start, end):
 
             '''while not res.ready():
 
-        '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
+        engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
         session_factory - sessionmaker(bind = engine)
-        Session = scoped_session(session_factory)'''
+        Session = scoped_session(session_factory)
 
         pool_count = 2
         with Pool(pool_count) as p:
