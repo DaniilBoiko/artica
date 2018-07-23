@@ -201,7 +201,8 @@ def get_article(url):
             dead_proxy.append(proxy.pop(proxy.index(pr)))
 
 def get_journal(url):
-<<<<<<< HEAD
+
+
     with app.app_context():
         i = True
         while i:
@@ -258,7 +259,31 @@ def get_journal(url):
                             except:
                                 print(issue_item, pr, 'Issue is not available')
                                 dead_proxy.append(proxy.pop(proxy.index(pr)))
-=======
+
+    response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    title = soup.find('div', id='publication-title').find('h1').get_text()
+    print(title)
+    if Journal.query.filter_by(name=title).first() is None:
+        new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
+        db.session.add(new_journal)
+        db.session.commit()
+
+    journal = Journal.query.filter_by(name=title).first()
+
+    issue_block = []
+    volume_tab = soup.find('div', class_='volumes tab-content')
+    for volume_item in volume_tab.find_all('div', class_='volume-item'):
+        issue_list = volume_item.find('ul', class_='issues-list')
+        for issue_item in issue_list.find_all('li', class_='issue-item'):
+            issue_block.append(issue_item.find('a', class_='title')['href'])
+
+    k = False
+    for issue_item in issue_block:
+        if journal.last_issue is not None:
+            if issue_item == journal.last_issue:
+                k = True
+
     response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('div', id='publication-title').find('h1').get_text()
@@ -296,7 +321,22 @@ def get_journal(url):
             db.session.commit()
 
             k = True
->>>>>>> parent of 8796bab... -
+
+
+        if (journal.last_issue is None) or k:
+            response = requests.get('https://link.springer.com' + issue_item)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = soup.find('div', class_='toc')
+            for article_item in results.find_all('li'):
+                article_link = article_item.find('h3', class_='title').find('a')['href']
+                if Article.query.filter_by(doi=article_link[9:]).first() is None:
+                    get_article(article_link)
+
+            journal.last_issue = issue_item
+            db.session.commit()
+
+            k = True
+
 
 
             except:
@@ -316,7 +356,7 @@ def get_springer(start, end):
             main()
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
-<<<<<<< HEAD
+
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
 
@@ -324,7 +364,7 @@ def get_springer(start, end):
 
 
             '''while not res.ready():
-=======
+
         '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
         session_factory - sessionmaker(bind = engine)
         Session = scoped_session(session_factory)'''
@@ -334,7 +374,7 @@ def get_springer(start, end):
             with app.app_context():
                 res = p.map(get_journal, links)
             while not res.ready():
->>>>>>> parent of 8796bab... -
+
                 sys.stdout.flush()
             res.wait(0.1)
         Session.remove()
