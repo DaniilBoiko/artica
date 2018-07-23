@@ -13,6 +13,8 @@ headers = {'User-Agent': user_agent}
 
 '''logging.basicConsig(level=logging.INFO, format='%(asctime)s %(threadName)s %(message)s')'''
 
+
+
 proxy = []
 dead_proxy = []
 def main():
