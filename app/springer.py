@@ -1,4 +1,4 @@
-import requests, datetime, sys
+import requests, datetime, sys, random
 from bs4 import BeautifulSoup
 from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
@@ -10,13 +10,25 @@ from app import app
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
+proxy_list = []
+proxies = {}
+
+
+def proxy_gen():
+    proxy_req = requests.get('https://free-proxy-list.net', headers={
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Cafari/537.36'}
+                             )
+    soup = BeautifulSoup(proxy_req.content, 'html.parser')
+    proxies_table = soup.find(id='proxylisttable')
+    for item in proxies_table.find('tbody').find_all('tr'):
+        proxy_list.append({'ip': item.find_all('td')[0].get_text(), 'port': item.find_all('td')[1].get_text()})
+
 
 def get_article(url):  # счетчик
-    response = requests.get('https://link.springer.com' + url)
+    response = requests.get('https://link.springer.com' + url, proxies=proxies)
     soup = BeautifulSoup(response.content, 'html.parser')
 
     title = soup.find('h1', class_='ArticleTitle').get_text()
-    print(title)
     doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
     # Проверяем наличие статьи в базе
     if doi is not None:
@@ -175,6 +187,7 @@ def get_article(url):  # счетчик
                     article.authors.append(author_db)
                     db.session.commit()
     db.session.commit()
+    print(title, proxies)
 
 
 def get_journal(url):
@@ -210,7 +223,19 @@ def get_journal(url):
                 for article_item in results.find_all('li'):
                     article_link = article_item.find('h3', class_='title').find('a')['href']
                     if Article.query.filter_by(doi=article_link[9:]).first() is None:
-                        get_article(article_link)
+                        i = True
+                        while i:
+                            if len(proxy_list) == 0:
+                                proxy_gen()
+
+                            proxies = {
+                                'https': 'http://' + random.choice(proxy_list)['ip'] + ':' + random.choice(proxy_list)[
+                                    'port']}
+                            try:
+                                get_article(article_link)
+                                i = False
+                            except:
+                                print(article_link, proxies, 'Article is not available')
 
                 journal.last_issue = issue_item
                 db.session.commit()
@@ -224,6 +249,8 @@ def get_springer(start, end):
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_='content-item-list')
         links = []
+        proxy_list = []
+        proxies = {}
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
 
@@ -231,10 +258,7 @@ def get_springer(start, end):
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
 
-
-
         '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
                 session_factory - sessionmaker(bind = engine)
                 Session = scoped_session(session_factory)
                 Session.remove()'''
-        
