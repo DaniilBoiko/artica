@@ -12,6 +12,7 @@ headers = {'User-Agent': user_agent}
 
 proxy_list = []
 def proxy_gen():
+    global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Cafari/537.36'}
                              )
@@ -19,13 +20,14 @@ def proxy_gen():
     proxies_table = soup.find(id='proxylisttable')
     for item in proxies_table.find('tbody').find_all('tr'):
         proxy_list.append({'ip': item.find_all('td')[0].get_text(), 'port': item.find_all('td')[1].get_text()})
-    proxy_init = random.choice(proxy_list)
-    proxy = 'http://' + proxy_init['ip'] + ':' + proxy_init['port']
 
-    return {'https': proxy}
+def create_proxies():
+    proxy_item = random.choice(proxy_list)
+    global proxies
+    proxies = {'https': 'http://' + proxy_item['ip'] + ':' + proxy_item['port']}
 
-def get_article(url):  # счетчик
-    proxies = proxy_gen()
+def get_article(url):
+    create_proxies()
     response = requests.get('https://link.springer.com' + url, proxies=proxies)
     soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -196,6 +198,7 @@ def get_article(url):  # счетчик
 
 def get_journal(url):
     with app.app_context():
+        create_proxies()
         response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
         soup = BeautifulSoup(response.content, 'html.parser')
         journal_title = soup.find('div', id='publication-title').find('h1').get_text()
@@ -221,6 +224,7 @@ def get_journal(url):
                     k = True
 
             if (journal.last_issue is None) or k:
+                create_proxies()
                 response = requests.get('https://link.springer.com' + issue_item)
                 soup = BeautifulSoup(response.content, 'html.parser')
                 results = soup.find('div', class_='toc')

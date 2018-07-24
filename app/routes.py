@@ -19,7 +19,7 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_journal,get_springer, headers, proxy_gen
+from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies
 import random
 import threading
 
@@ -272,8 +272,8 @@ def update_journals():
 
         start = request.args.get('start')
         end = request.args.get('end')
+        proxy_gen()
         proxy_list = []
-
         get_springer(start,end)
 
         '''
