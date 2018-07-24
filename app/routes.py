@@ -21,6 +21,7 @@ from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
 from app.springer import get_article, get_journal,get_springer, headers, proxy_gen
 import random
+import threading
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -271,6 +272,7 @@ def update_journals():
 
         start = request.args.get('start')
         end = request.args.get('end')
+        proxy_list = []
 
         get_springer(start,end)
 

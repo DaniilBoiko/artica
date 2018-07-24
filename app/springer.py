@@ -1,4 +1,4 @@
-import requests, datetime, sys, random
+import requests, datetime, sys, random, threading
 from bs4 import BeautifulSoup
 from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
@@ -11,9 +11,6 @@ user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
 proxy_list = []
-proxies = {}
-
-
 def proxy_gen():
     proxy_req = requests.get('https://free-proxy-list.net', headers={
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Cafari/537.36'}
@@ -22,27 +19,31 @@ def proxy_gen():
     proxies_table = soup.find(id='proxylisttable')
     for item in proxies_table.find('tbody').find_all('tr'):
         proxy_list.append({'ip': item.find_all('td')[0].get_text(), 'port': item.find_all('td')[1].get_text()})
+    proxy_init = random.choice(proxy_list)
+    proxy = 'http://' + proxy_init['ip'] + ':' + proxy_init['port']
 
+    return {'https': proxy}
 
 def get_article(url):  # счетчик
+    proxies = proxy_gen()
     response = requests.get('https://link.springer.com' + url, proxies=proxies)
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    title = soup.find('h1', class_='ArticleTitle').get_text()
+    article_title = soup.find('h1', class_='ArticleTitle').get_text()
     doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
     # Проверяем наличие статьи в базе
     if doi is not None:
         article = Article.query.filter_by(doi=doi).first()
         if article is None:
-            article = Article(doi=doi, title=title)
+            article = Article(doi=doi, title=article_title)
             db.session.add(article)
             db.session.commit()
         else:
-            article.title = title
+            article.title = article_title
     else:
-        article = Article.query.filter_by(title=title).first()
+        article = Article.query.filter_by(title=article_title).first()
         if article is None:
-            article = Article(doi=doi, title=title)
+            article = Article(doi=doi, title=article_title)
             db.session.add(article)
             db.session.commit()
     # проверили
@@ -96,6 +97,8 @@ def get_article(url):  # счетчик
         volume = soup.find('span', class_='ArticleCitation_Volume').get_text().replace(',', '\t')[6:]
         issue = soup.find('a', class_='ArticleCitation_Issue').get_text().replace(',', '\t')[5:]
         pp = soup.find('span', class_='ArticleCitation_Pages').get_text().replace(',', '\t')[3:]
+        article.volume = volume
+        article.issue = issue
         article.pages = pp
     elif soup.find('span', class_='ArticleCitation_Volume') is not None:
         volume = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(0)
@@ -103,9 +106,10 @@ def get_article(url):  # счетчик
         if issue[0] == '0':
             issue = issue[1:]
         number = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(1)
+        article.volume = volume
+        article.issue = issue
         article.technical_info = number
-    article.volume = volume
-    article.issue = issue
+
 
     ISSN = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
     article.issn = ISSN
@@ -187,21 +191,21 @@ def get_article(url):  # счетчик
                     article.authors.append(author_db)
                     db.session.commit()
     db.session.commit()
-    print(title, proxies)
+    print(article_title, proxies, threading.active_count())
 
 
 def get_journal(url):
     with app.app_context():
-
         response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url)
         soup = BeautifulSoup(response.content, 'html.parser')
-        title = soup.find('div', id='publication-title').find('h1').get_text()
-        if Journal.query.filter_by(name=title).first() is None:
-            new_journal = Journal(name=title, link='https://link.springer.com/journal/' + url, publisher='Springer')
+        journal_title = soup.find('div', id='publication-title').find('h1').get_text()
+        print(journal_title, threading.active_count())
+        if Journal.query.filter_by(name=journal_title).first() is None:
+            new_journal = Journal(name=journal_title, link='https://link.springer.com/journal/' + url,
+                                  publisher='Springer')
             db.session.add(new_journal)
             db.session.commit()
-
-        journal = Journal.query.filter_by(name=title).first()
+        journal = Journal.query.filter_by(name=journal_title).first()
 
         issue_block = []
         volume_tab = soup.find('div', class_='volumes tab-content')
@@ -223,19 +227,21 @@ def get_journal(url):
                 for article_item in results.find_all('li'):
                     article_link = article_item.find('h3', class_='title').find('a')['href']
                     if Article.query.filter_by(doi=article_link[9:]).first() is None:
-                        i = True
+                        '''i = True
                         while i:
-                            if len(proxy_list) == 0:
-                                proxy_gen()
+                        if len(proxy_list) == 0:
+                            proxy_gen()
 
-                            proxies = {
-                                'https': 'http://' + random.choice(proxy_list)['ip'] + ':' + random.choice(proxy_list)[
-                                    'port']}
-                            try:
-                                get_article(article_link)
-                                i = False
-                            except:
-                                print(article_link, proxies, 'Article is not available')
+                        proxies = {
+                            'https': 'http://' + random.choice(proxy_list)['ip'] + ':' + random.choice(proxy_list)[
+                                'port']}'''
+
+                        get_article(article_link)
+
+                        '''i = False
+
+                        except:
+                            print(article_link, proxies, threading.active_count(), 'Article is not available')'''
 
                 journal.last_issue = issue_item
                 db.session.commit()
@@ -249,11 +255,8 @@ def get_springer(start, end):
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_='content-item-list')
         links = []
-        proxy_list = []
-        proxies = {}
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
-
         pool_count = 10
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
