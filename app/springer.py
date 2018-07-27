@@ -11,6 +11,7 @@ user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
 proxy_list = []
+
 def proxy_gen():
     global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
@@ -201,9 +202,9 @@ def get_article(url):
 
             n = False
 
-        except ConnectionError:
+        except OSError:
             proxy_list.remove(proxy_item)
-            print(url, proxies, 'ConnectionError')
+            print(url, proxies, 'Article ConnectionError')
 
 
 def get_journal(url):
@@ -252,15 +253,15 @@ def get_journal(url):
                                 j = False
 
                                 k = True
-                            except ConnectionError:
+                            except OSError:
                                 proxy_list.remove(proxy_item)
-                                print(url, issue_item, proxies, 'ConnectionError')
+                                print(url, issue_item, proxies, 'Issue ConnectionError')
 
                 i = False
                 print(journal_title, proxies)
-            except ConnectionError:
+            except OSError:
                 proxy_list.remove(proxy_item)
-                print(url, proxies, 'ConnectionError')
+                print(url, proxies, 'Journal ConnectionError')
 
 def get_springer(start, end):
     for item in range(int(start), int(end)):
@@ -270,7 +271,9 @@ def get_springer(start, end):
         links = []
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
-        pool_count = 10
+
+
+        pool_count = 50
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
 
