@@ -1,4 +1,4 @@
-import requests, datetime, sys, random, threading
+import requests, datetime, sys, random, threading, time
 from bs4 import BeautifulSoup
 from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
@@ -10,7 +10,9 @@ from app import app
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
+ready_list = []
 proxy_list = []
+
 
 def proxy_gen():
     global proxy_list
@@ -22,11 +24,13 @@ def proxy_gen():
     for item in proxies_table.find('tbody').find_all('tr'):
         proxy_list.append({'ip': item.find_all('td')[0].get_text(), 'port': item.find_all('td')[1].get_text()})
 
+
 def create_proxies():
     global proxies
     global proxy_item
     proxy_item = random.choice(proxy_list)
     proxies = {'https': 'http://' + proxy_item['ip'] + ':' + proxy_item['port']}
+
 
 def get_article(url):
     n = True
@@ -37,7 +41,8 @@ def get_article(url):
             soup = BeautifulSoup(response.content, 'html.parser')
 
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
-            doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
+            doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[
+                  16:]
             # Проверяем наличие статьи в базе
             if doi is not None:
                 article = Article.query.filter_by(doi=doi).first()
@@ -117,7 +122,6 @@ def get_article(url):
                 article.issue = issue
                 article.technical_info = number
 
-
             ISSN = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
             article.issn = ISSN
 
@@ -138,33 +142,34 @@ def get_article(url):
             author_section = soup.find('div', class_='content authors-affiliations u-interface')
             if author_section is not None:
                 af_name_section = soup.find('ol', class_='test-affiliations')
-                for af_name_item in af_name_section.find_all('li', class_='affiliation'):
-                    af_name_dep = af_name_item.find('span', class_='affiliation__department')
-                    if af_name_dep is not None:
-                        af_dep = af_name_dep.get_text() + ', '
-                    else:
-                        af_dep = ''
-                    af_name_name = af_name_item.find('span', class_='affiliation__name')
-                    if af_name_name is not None:
-                        af_n = af_name_name.get_text() + ', '
-                    else:
-                        af_n = ''
-                    af_name_city = af_name_item.find('span', class_='affiliation__city')
-                    if af_name_city is not None:
-                        af_city = af_name_city.get_text() + ', '
-                    else:
-                        af_city = ''
-                    af_name_country = af_name_item.find('span', class_='affiliation__country')
-                    if af_name_country is not None:
-                        af_country = af_name_country.get_text()
-                    else:
-                        af_country = ''
-                    af_name.append(af_dep + af_n + af_city + af_country)
-                for aff in af_name:
-                    if Affilation.query.filter_by(aff=aff).first() is None:
-                        new_aff = Affilation(aff=aff)
-                        db.session.add(new_aff)
-                        db.session.commit()
+                if af_name_section is not None:
+                    for af_name_item in af_name_section.find_all('li', class_='affiliation'):
+                        af_name_dep = af_name_item.find('span', class_='affiliation__department')
+                        if af_name_dep is not None:
+                            af_dep = af_name_dep.get_text() + ', '
+                        else:
+                            af_dep = ''
+                        af_name_name = af_name_item.find('span', class_='affiliation__name')
+                        if af_name_name is not None:
+                            af_n = af_name_name.get_text() + ', '
+                        else:
+                            af_n = ''
+                        af_name_city = af_name_item.find('span', class_='affiliation__city')
+                        if af_name_city is not None:
+                            af_city = af_name_city.get_text() + ', '
+                        else:
+                            af_city = ''
+                        af_name_country = af_name_item.find('span', class_='affiliation__country')
+                        if af_name_country is not None:
+                            af_country = af_name_country.get_text()
+                        else:
+                            af_country = ''
+                        af_name.append(af_dep + af_n + af_city + af_country)
+                    for aff in af_name:
+                        if Affilation.query.filter_by(aff=aff).first() is None:
+                            new_aff = Affilation(aff=aff)
+                            db.session.add(new_aff)
+                            db.session.commit()
 
                 # Check and add author
                 for author_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
@@ -177,12 +182,14 @@ def get_article(url):
                     author_db = Author.query.filter_by(name=author_name.get_text()).first()
 
                     af_section = author_item.find('ul', class_='authors-affiliations__indexes u-inline-list')
-                    for af_item in af_section.find_all('li'):
-                        new_aff = Affilation(aff=af_name[int(af_item.get_text()) - 1])
-                        db.session.add(new_aff)
-                        db.session.commit()
-                        author_db.affilations.append(new_aff)  # Добавляем aff для автора из списка aff_name по номеру aff
-                        db.session.commit()
+                    if af_section is not None:
+                        for af_item in af_section.find_all('li'):
+                            new_aff = Affilation(aff=af_name[int(af_item.get_text()) - 1])
+                            db.session.add(new_aff)
+                            db.session.commit()
+                            author_db.affilations.append(
+                                new_aff)  # Добавляем aff для автора из списка aff_name по номеру aff
+                            db.session.commit()
 
                     email_block = author_item.find('span', class_='author-information')
                     if email_block is not None:
@@ -198,13 +205,11 @@ def get_article(url):
                             article.authors.append(author_db)
                             db.session.commit()
             db.session.commit()
-            print(article_title, proxies, threading.active_count())
 
             n = False
 
         except OSError:
             proxy_list.remove(proxy_item)
-            print(url, proxies, 'Article ConnectionError')
 
 
 def get_journal(url):
@@ -213,7 +218,7 @@ def get_journal(url):
         while i:
             create_proxies()
             try:
-                response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies = proxies)
+                response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies=proxies)
                 soup = BeautifulSoup(response.content, 'html.parser')
                 journal_title = soup.find('div', id='publication-title').find('h1').get_text()
                 if Journal.query.filter_by(name=journal_title).first() is None:
@@ -241,7 +246,7 @@ def get_journal(url):
                         while j:
                             create_proxies()
                             try:
-                                response = requests.get('https://link.springer.com' + issue_item, proxies = proxies)
+                                response = requests.get('https://link.springer.com' + issue_item, proxies=proxies)
                                 soup = BeautifulSoup(response.content, 'html.parser')
                                 results = soup.find('div', class_='toc')
                                 for article_item in results.find_all('li'):
@@ -255,13 +260,13 @@ def get_journal(url):
                                 k = True
                             except OSError:
                                 proxy_list.remove(proxy_item)
-                                print(url, issue_item, proxies, 'Issue ConnectionError')
 
                 i = False
-                print(journal_title, proxies)
+                ready_list.append(url)
+
             except OSError:
                 proxy_list.remove(proxy_item)
-                print(url, proxies, 'Journal ConnectionError')
+
 
 def get_springer(start, end):
     for item in range(int(start), int(end)):
@@ -272,12 +277,21 @@ def get_springer(start, end):
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
 
+        class RunThread(threading.Thread):
+            def __init__(self):
+                threading.Thread.__init__(self)
 
+            def run(self):
+                while len(ready_list) != len(links):
+                    print(time.strftime('%X'),
+                        '  number of proxies: ', len(proxy_list), '  number of threads: ', threading.active_count(),
+                        '  ready: ', len(ready_list)/len(links)*100, '%')
+                    time.sleep(5)
+                print(item, ' is ready')
+
+        running = RunThread()
+        running.start()
         pool_count = 50
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
-
-        '''engine = sqlalchemy.create_engine('artica-core.caur5thdijuo.us-east-2.rds.amazonaws.com')
-                session_factory - sessionmaker(bind = engine)
-                Session = scoped_session(session_factory)
-                Session.remove()'''
+        runnig.join()
