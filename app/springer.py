@@ -13,7 +13,6 @@ headers = {'User-Agent': user_agent}
 ready_list = []
 proxy_list = []
 
-
 def proxy_gen():
     global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
@@ -221,11 +220,13 @@ def get_journal(url):
                 response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies=proxies)
                 soup = BeautifulSoup(response.content, 'html.parser')
                 journal_title = soup.find('div', id='publication-title').find('h1').get_text()
+
                 if Journal.query.filter_by(name=journal_title).first() is None:
                     new_journal = Journal(name=journal_title, link='https://link.springer.com/journal/' + url,
                                           publisher='Springer')
                     db.session.add(new_journal)
                     db.session.commit()
+
                 journal = Journal.query.filter_by(name=journal_title).first()
 
                 issue_block = []
@@ -268,26 +269,30 @@ def get_journal(url):
                 proxy_list.remove(proxy_item)
 
 
+class RunThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        while len(ready_list) != len(links):
+            if len(proxy_list)<50:
+                proxy_gen()
+            print(time.strftime('%X'),
+                  '  number of proxies: ', len(proxy_list), '  number of threads: ', threading.active_count(),
+                  '  ready: ', len(ready_list) / len(links) * 100, '%')
+            time.sleep(10)
+        print(item, ' is ready')
+
+
 def get_springer(start, end):
     for item in range(int(start), int(end)):
         response = requests.get('https://link.springer.com/search/page/' + str(item) + '?facet-content-type="Journal"')
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_='content-item-list')
+        global links
         links = []
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
-
-        class RunThread(threading.Thread):
-            def __init__(self):
-                threading.Thread.__init__(self)
-
-            def run(self):
-                while len(ready_list) != len(links):
-                    print(time.strftime('%X'),
-                        '  number of proxies: ', len(proxy_list), '  number of threads: ', threading.active_count(),
-                        '  ready: ', len(ready_list)/len(links)*100, '%')
-                    time.sleep(5)
-                print(item, ' is ready')
 
         running = RunThread()
         running.start()
