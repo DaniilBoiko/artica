@@ -13,6 +13,7 @@ headers = {'User-Agent': user_agent}
 ready_list = []
 proxy_list = []
 
+
 def proxy_gen():
     global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
@@ -269,19 +270,26 @@ def get_journal(url):
                 proxy_list.remove(proxy_item)
 
 
-class RunThread(threading.Thread):
+class Overwatch(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
+        thread_dict = {}
+        thread_list = []
+        a = 1
         while len(ready_list) != len(links):
-            if len(proxy_list)<50:
+            if len(proxy_list) < 50:
                 proxy_gen()
             print(time.strftime('%X'),
                   '  number of proxies: ', len(proxy_list), '  number of threads: ', threading.active_count(),
                   '  ready: ', len(ready_list) / len(links) * 100, '%')
+            for item in threading.enumerate():
+                if (item.ident in thread_list) is False:
+                    thread_list.append(item.ident)
+                    thread_dict['Thread-' + str(a)] = item.ident
+                    a += 1
             time.sleep(10)
-        print(item, ' is ready')
 
 
 def get_springer(start, end):
@@ -293,10 +301,9 @@ def get_springer(start, end):
         links = []
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
-
-        running = RunThread()
-        running.start()
+        observer = Overwatch()
+        observer.start()
         pool_count = 50
         with ThreadPool(pool_count) as p:
             res = p.map(get_journal, links)
-        runnig.join()
+        observer.join()
