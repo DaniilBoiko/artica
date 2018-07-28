@@ -258,14 +258,12 @@ def update_journals():
         else:
             return 'Describe all args', 404
 
-
     if task == 'springer':
-
         start = request.args.get('start')
         end = request.args.get('end')
         proxy_gen()
         proxy_list = []
-        get_springer(start,end)
+        get_springer(start, end)
 
         '''
         job = q.enqueue_call(
@@ -377,6 +375,22 @@ def get_results_wiley(job_key):
                            start=job.meta['start'],
                            end=job.meta['end'], index=job.meta['index'], year=job.meta['year']), 202
 
+
+@app.route('/api/info', methods=['GET'])
+def api_info():
+    return {'n_threads': 10, 'enqueued': 10, 'done': 10}
+
+
+@app.route('/api/run', methods=['GET'])
+def api_run():
+    start = request.args.get('start')
+    end = request.args.get('end')
+    try:
+        get_springer(start, end)
+    except:
+        return 202
+    else:
+        return 200
 
 
 def parse_them_all():
@@ -1208,6 +1222,3 @@ def elsevier_to_text(obj):
         return obj.text
     else:
         return obj
-
-
-
