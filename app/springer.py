@@ -13,7 +13,7 @@ headers = {'User-Agent': user_agent}
 ready_list = []
 proxy_list = []
 links = []
-
+articles = 0
 
 def proxy_gen():
     global proxy_list
@@ -212,18 +212,19 @@ def get_article(url):
         except OSError:
             proxy_list.remove(proxy_item)
 
+    global articles
+    articles += 1
 
 def get_journal():
     with app.app_context():
-        while len(links) != 0:
-            lock.acquire()
-            link = links.pop()
-            lock.release()
+        lock.acquire()
+        link = links.pop()
+        lock.release()
         i = True
         while i:
             create_proxies()
             try:
-                response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies=proxies)
+                response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + link, proxies=proxies)
                 soup = BeautifulSoup(response.content, 'html.parser')
                 journal_title = soup.find('div', id='publication-title').find('h1').get_text()
 
@@ -269,7 +270,7 @@ def get_journal():
                                 proxy_list.remove(proxy_item)
 
                 i = False
-                ready_list.append(url)
+                #ready_list.append(url)
 
             except OSError:
                 proxy_list.remove(proxy_item)
@@ -280,20 +281,26 @@ class Overwatch(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        #thread_dict = {}
-        #thread_list = []
+        '''thread_dict = {}
+        thread_list = []
         a = 1
         while len(ready_list) != len(links):
             if len(proxy_list) < 50:
                 proxy_gen()
-            '''print(time.strftime('%X'),
+            print(time.strftime('%X'),
                   '  number of proxies: ', len(proxy_list), '  number of threads: ', threading.active_count(),
-                  '  ready: ', len(ready_list) / len(links) * 100, '%')'''
-            '''for item in threading.enumerate():
+                  '  ready: ', len(ready_list) / len(links) * 100, '%')
+            for item in threading.enumerate():
                 if (item.ident in thread_list) is False:
                     thread_list.append(item.ident)
                     thread_dict['Thread-' + str(a)] = item.ident
                     a += 1'''
+        while len(links) != 0:
+            if len(proxy_list) < 50:
+                proxy_gen()
+            print(time.strftime('%X'),
+                  '  proxies: ', len(proxy_list), '  threads: ', threading.active_count(),
+                  '  links: ', len(links), '  ready articles: ', articles)
             time.sleep(10)
 
 lock = threading.Lock()
@@ -308,11 +315,10 @@ def get_springer(start, end):
             links.append(result.find('a')['href'][9:])
         observer = Overwatch()
         observer.start()
-        for it in range(2):
+        for it in range(10):
             name = 'Thread-' + str(it)
             t = threading.Thread(name=name, target=get_journal)
             t.start()
-        print(len(links))
         '''pool_count = 30
         cont_thread = 10
         with ThreadPool(pool_count) as p:
