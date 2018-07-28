@@ -12,6 +12,7 @@ headers = {'User-Agent': user_agent}
 
 ready_list = []
 proxy_list = []
+links = []
 
 
 def proxy_gen():
@@ -212,8 +213,12 @@ def get_article(url):
             proxy_list.remove(proxy_item)
 
 
-def get_journal(url):
+def get_journal():
     with app.app_context():
+        while len(links) != 0:
+            lock.acquire()
+            link = links.pop()
+            lock.release()
         i = True
         while i:
             create_proxies()
@@ -275,22 +280,23 @@ class Overwatch(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        thread_dict = {}
-        thread_list = []
+        #thread_dict = {}
+        #thread_list = []
         a = 1
         while len(ready_list) != len(links):
             if len(proxy_list) < 50:
                 proxy_gen()
-            print(time.strftime('%X'),
+            '''print(time.strftime('%X'),
                   '  number of proxies: ', len(proxy_list), '  number of threads: ', threading.active_count(),
-                  '  ready: ', len(ready_list) / len(links) * 100, '%')
-            for item in threading.enumerate():
+                  '  ready: ', len(ready_list) / len(links) * 100, '%')'''
+            '''for item in threading.enumerate():
                 if (item.ident in thread_list) is False:
                     thread_list.append(item.ident)
                     thread_dict['Thread-' + str(a)] = item.ident
-                    a += 1
+                    a += 1'''
             time.sleep(10)
 
+lock = threading.Lock()
 
 def get_springer(start, end):
     for item in range(int(start), int(end)):
@@ -298,12 +304,17 @@ def get_springer(start, end):
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_='content-item-list')
         global links
-        links = []
         for result in results.find_all('li'):
             links.append(result.find('a')['href'][9:])
         observer = Overwatch()
         observer.start()
-        pool_count = 50
+        for it in range(2):
+            name = 'Thread-' + str(it)
+            t = threading.Thread(name=name, target=get_journal)
+            t.start()
+        print(len(links))
+        '''pool_count = 30
+        cont_thread = 10
         with ThreadPool(pool_count) as p:
-            res = p.map(get_journal, links)
+            res = p.map(get_journal, links)'''
         observer.join()
