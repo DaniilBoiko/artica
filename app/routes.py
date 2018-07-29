@@ -17,9 +17,10 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies
+from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies, worker, Overwatch, log
 import random
 import threading
+
 
 count_pattern = re.compile(r'rows=(\d+)')
 
@@ -259,17 +260,30 @@ def update_journals():
             return 'Describe all args', 404
 
     if task == 'springer':
+
         start = request.args.get('start')
         end = request.args.get('end')
+        log('start='+str(start)+', end='+str(end))
         proxy_gen()
         proxy_list = []
-        get_springer(start, end)
 
         '''
         job = q.enqueue_call(
             func=get_springer, args=(start, end), result_ttl=50000, timeout=360000
         )
         '''
+
+        watcher = Overwatch()
+        watcher.start()
+        log('watcher start')
+
+        for item in range(10):
+            name = 'Worker-' + str(item+1)
+            t = threading.Thread(name=name, target=worker)
+            t.start()
+            log(name+' start')
+
+        get_springer(start,end)
 
         return redirect(
             url_for('index'))

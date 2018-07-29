@@ -1,0 +1,212 @@
+04:49:01 start=1, end=2
+04:49:03 watcher start
+04:49:03 Worker-1 start
+04:49:03 Worker-2 start
+04:49:03 Worker-3 start
+04:49:03 Worker-4 start
+04:49:03 Worker-5 start
+04:49:03 Worker-6 start
+04:49:03 Worker-7 start
+04:49:03 Worker-8 start
+04:49:03 Worker-9 start
+04:49:03 Worker-10 start
+04:49:03 response page 1
+04:49:03 journal_link: 41870
+04:49:09 response journal 41870  proxies: http://189.8.88.125:65301
+04:49:09 41870 journal_title: International Journal of Information Technology
+04:49:09 select International Journal of Information Technology
+04:49:09 add issue_link: /journal/41870/10/4/page/1
+04:49:09 add issue_link: /journal/41870/10/3/page/1
+04:49:09 add issue_link: /journal/41870/10/2/page/1
+04:49:09 add issue_link: /journal/41870/10/1/page/1
+04:49:09 add issue_link: /journal/41870/9/4/page/1
+04:49:09 add issue_link: /journal/41870/9/3/page/1
+04:49:09 add issue_link: /journal/41870/9/2/page/1
+04:49:09 add issue_link: /journal/41870/9/1/page/1
+04:49:09 issue_link: /journal/41870/10/4/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/10/3/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/10/2/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/10/1/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/9/4/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/9/3/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/9/2/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 issue_link: /journal/41870/9/1/page/1
+04:49:09 International Journal of Information Technology last issue is not None
+04:49:09 /journal/41870/9/1/page/1 is last_issue
+04:49:24 41870 response issue /journal/41870/9/1/page/1  proxies: http://122.54.65.150:8080
+04:49:24 article_link: /article/10.1007/s41870-017-0002-2
+04:49:25 article_link: /article/10.1007/s41870-017-0006-y
+04:49:25 article_link: /article/10.1007/s41870-017-0008-9
+04:49:26 article_link: /article/10.1007/s41870-017-0003-1
+04:49:26 article_link: /article/10.1007/s41870-017-0007-x
+04:49:27 article_link: /article/10.1007/s41870-017-0009-8
+04:49:27 article_link: /article/10.1007/s41870-017-0005-z
+04:49:28 article_link: /article/10.1007/s41870-017-0012-0
+04:49:28 article_link: /article/10.1007/s41870-017-0011-1
+04:49:29 article_link: /article/10.1007/s41870-017-0004-0
+04:49:29 article_link: /article/10.1007/s41870-017-0001-3
+04:49:30 article_link: /article/10.1007/s41870-017-0010-2
+04:49:30 issue /journal/41870/9/1/page/1 commit
+04:49:30 journal_link: 40843
+04:49:51 Con_Error 40843
+04:49:51 http://178.212.49.81:8080 delete
+04:50:07 Con_Error 40843
+04:50:07 http://81.107.70.221:80 delete
+04:50:17 Con_Error 40843
+04:50:17 http://185.86.202.185:53281 delete
+04:50:28 response journal 40843  proxies: http://122.54.65.150:8080
+04:50:28 40843 journal_title: Science China Materials
+04:50:29 select Science China Materials
+04:50:29 add issue_link: /journal/40843/61/8/page/1
+04:50:29 add issue_link: /journal/40843/61/7/page/1
+04:50:29 add issue_link: /journal/40843/61/6/page/1
+04:50:29 add issue_link: /journal/40843/61/5/page/1
+04:50:29 add issue_link: /journal/40843/61/4/page/1
+04:50:29 add issue_link: /journal/40843/61/3/page/1
+04:50:29 add issue_link: /journal/40843/61/2/page/1
+04:50:29 add issue_link: /journal/40843/61/1/page/1
+04:50:29 add issue_link: /journal/40843/60/12/page/1
+04:50:29 add issue_link: /journal/40843/60/11/page/1
+04:50:29 add issue_link: /journal/40843/60/10/page/1
+04:50:29 add issue_link: /journal/40843/60/9/page/1
+04:50:29 add issue_link: /journal/40843/60/8/page/1
+04:50:29 add issue_link: /journal/40843/60/7/page/1
+04:50:29 add issue_link: /journal/40843/60/6/page/1
+04:50:29 add issue_link: /journal/40843/60/5/page/1
+04:50:29 add issue_link: /journal/40843/60/4/page/1
+04:50:29 add issue_link: /journal/40843/60/3/page/1
+04:50:29 add issue_link: /journal/40843/60/2/page/1
+04:50:29 add issue_link: /journal/40843/60/1/page/1
+04:50:29 add issue_link: /journal/40843/59/12/page/1
+04:50:29 add issue_link: /journal/40843/59/11/page/1
+04:50:29 add issue_link: /journal/40843/59/10/page/1
+04:50:29 add issue_link: /journal/40843/59/9/page/1
+04:50:29 add issue_link: /journal/40843/59/8/page/1
+04:50:29 add issue_link: /journal/40843/59/7/page/1
+04:50:29 add issue_link: /journal/40843/59/6/page/1
+04:50:29 add issue_link: /journal/40843/59/5/page/1
+04:50:29 add issue_link: /journal/40843/59/4/page/1
+04:50:29 add issue_link: /journal/40843/59/3/page/1
+04:50:29 add issue_link: /journal/40843/59/2/page/1
+04:50:29 add issue_link: /journal/40843/59/1/page/1
+04:50:29 add issue_link: /journal/40843/58/12/page/1
+04:50:29 add issue_link: /journal/40843/58/11/page/1
+04:50:29 add issue_link: /journal/40843/58/10/page/1
+04:50:29 add issue_link: /journal/40843/58/9/page/1
+04:50:29 add issue_link: /journal/40843/58/8/page/1
+04:50:29 add issue_link: /journal/40843/58/7/page/1
+04:50:29 add issue_link: /journal/40843/58/6/page/1
+04:50:29 add issue_link: /journal/40843/58/5/page/1
+04:50:29 add issue_link: /journal/40843/58/4/page/1
+04:50:29 add issue_link: /journal/40843/58/3/page/1
+04:50:29 add issue_link: /journal/40843/58/2/page/1
+04:50:29 add issue_link: /journal/40843/58/1/page/1
+04:50:29 add issue_link: /journal/40843/57/1/page/1
+04:50:29 issue_link: /journal/40843/61/8/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/7/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/6/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/5/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/4/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/3/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/2/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/61/1/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/12/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/11/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/10/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/9/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/8/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/7/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/6/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/5/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/4/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/3/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/2/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/60/1/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/12/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/11/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/10/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/9/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/8/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/7/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/6/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/5/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/4/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/3/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/2/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/59/1/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/12/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/11/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/10/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/9/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/8/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/7/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/6/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/5/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/4/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/3/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/2/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/58/1/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 issue_link: /journal/40843/57/1/page/1
+04:50:29 Science China Materials last issue is not None
+04:50:29 /journal/40843/57/1/page/1 is last_issue
+04:51:02 40843 response issue /journal/40843/57/1/page/1  proxies: http://103.194.89.161:8080
+04:51:03 article_link: /article/10.1007/s40843-014-0007-1
+04:51:03 article_link: /article/10.1007/s40843-014-0005-z
+04:51:03 article_link: /article/10.1007/s40843-014-0011-4
+04:51:04 article_link: /article/10.1007/s40843-014-0010-5
+04:51:04 article_link: /article/10.1007/s40843-014-0002-y
+04:51:05 article_link: /article/10.1007/s40843-014-0001-3
+04:51:05 article_link: /article/10.1007/s40843-014-0006-0
+04:51:05 article_link: /article/10.1007/s40843-014-0004-2
+04:51:06 article_link: /article/10.1007/s40843-014-0003-1

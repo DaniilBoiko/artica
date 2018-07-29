@@ -13,6 +13,7 @@ links = []
 articles = 0
 art = 0
 
+
 def proxy_gen():
     global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
@@ -36,16 +37,21 @@ def get_article(url):
     while n:
         create_proxies()
         try:
+            log('check '+url)
             response = requests.get('https://link.springer.com' + url, proxies=proxies)
-            global  art
+            log('response article')
+            log(str(threading.current_thread())+'  response article ' + url + '  proxies: ' + proxies['https'])
+            global art
             lock.acquire()
             art += 1
             lock.release()
             soup = BeautifulSoup(response.content, 'html.parser')
 
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
+            log(url + ' article_title: ' + article_title)
             doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[
                   16:]
+            log(doi)
             # Проверяем наличие статьи в базе
             if doi is not None:
                 article = Article.query.filter_by(doi=doi).first()
@@ -53,6 +59,7 @@ def get_article(url):
                     article = Article(doi=doi, title=article_title)
                     db.session.add(article)
                     db.session.commit()
+
                 else:
                     article.title = article_title
             else:
@@ -61,6 +68,7 @@ def get_article(url):
                     article = Article(doi=doi, title=article_title)
                     db.session.add(article)
                     db.session.commit()
+            log(str(threading.current_thread()) + ' check article' + url)
             # проверили
             if article.abstract is not None:
                 abstract = ''
@@ -219,75 +227,88 @@ def get_article(url):
     articles += 1
     lock.release()
 
-def get_journal():
-    with app.app_context():
-        global links
-        while True:
-            if len(links)!=0:
-                lock.acquire()
-                link = links.pop()
-                lock.release()
-                i = True
-                while i:
-                    create_proxies()
-                    try:
-                        response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + link, proxies=proxies)
-                        soup = BeautifulSoup(response.content, 'html.parser')
-                        journal_title = soup.find('div', id='publication-title').find('h1').get_text()
 
-                        if Journal.query.filter_by(name=journal_title).first() is None:
-                            new_journal = Journal(name=journal_title, link='https://link.springer.com/journal/' + url,
-                                                  publisher='Springer')
-                            db.session.add(new_journal)
+def get_journal(url):
+    i = True
+    while i:
+        create_proxies()
+        try:
+            response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + url, proxies=proxies)
+            log('response journal '+url+'  proxies: '+proxies['https'])
+            soup = BeautifulSoup(response.content, 'html.parser')
+            journal_title = soup.find('div', id='publication-title').find('h1').get_text()
+            log(url+' journal_title: '+journal_title)
+            log('check '+journal_title)
+            if Journal.query.filter_by(name=journal_title).first() is None:
+                log(journal_title+' is not in the db')
+                new_journal = Journal(name=journal_title, link='https://link.springer.com/journal/' + url,
+                                      publisher='Springer')
+                log('create '+journal_title)
+                db.session.add(new_journal)
+                log('add '+journal_title)
+                db.session.commit()
+                log(journal_title+': commit')
+
+            journal = Journal.query.filter_by(name=journal_title).first()
+            log('select '+journal_title)
+            issue_block = []
+            volume_tab = soup.find('div', class_='volumes tab-content')
+            for volume_item in volume_tab.find_all('div', class_='volume-item'):
+                issue_list = volume_item.find('ul', class_='issues-list')
+                for issue_item in issue_list.find_all('li', class_='issue-item'):
+                    issue_block.append(issue_item.find('a', class_='title')['href'])
+                    log('add issue_link: '+issue_item.find('a', class_='title')['href'])
+
+            k = False
+            for issue_item in issue_block:
+                log('issue_link: '+issue_item)
+                log('check '+issue_item)
+                if journal.last_issue is not None:
+                    if issue_item == journal.last_issue:
+                        log(issue_item+' is last_issue')
+                        k = True
+
+                if (journal.last_issue is None) or k:
+                    j = True
+                    while j:
+                        create_proxies()
+                        try:
+                            response = requests.get('https://link.springer.com' + issue_item, proxies=proxies)
+                            log(url+' response issue '+issue_item+'  proxies: '+proxies['https'])
+                            soup = BeautifulSoup(response.content, 'html.parser')
+                            results = soup.find('div', class_='toc')
+                            for article_item in results.find_all('li'):
+                                article_link = article_item.find('h3', class_='title').find('a')['href']
+                                log('article_link: '+article_link)
+                                if Article.query.filter_by(doi=article_link[9:]).first() is None:
+                                    log(article_link+' is not in the db')
+                                    links.append(article_link)
+                                    log('{!} add '+article_link)
+
+                            journal.last_issue = issue_item
                             db.session.commit()
+                            log('issue '+issue_item+' commit')
+                            j = False
 
-                        journal = Journal.query.filter_by(name=journal_title).first()
+                            k = True
+                        except OSError:
+                            log('Con_Error '+url+' '+issue_item)
+                            proxy_list.remove(proxy_item)
+                            log(proxies['https']+' delete')
 
-                        issue_block = []#
-                        volume_tab = soup.find('div', class_='volumes tab-content')
-                        for volume_item in volume_tab.find_all('div', class_='volume-item'):
-                            issue_list = volume_item.find('ul', class_='issues-list')
-                            for issue_item in issue_list.find_all('li', class_='issue-item'):
-                                issue_block.append(issue_item.find('a', class_='title')['href'])
+            i = False
 
-                        k = False
-                        for issue_item in issue_block:
-                            if journal.last_issue is not None:
-                                if issue_item == journal.last_issue:
-                                    k = True
-
-                            if (journal.last_issue is None) or k:
-                                j = True
-                                while j:
-                                    create_proxies()
-                                    try:
-                                        response = requests.get('https://link.springer.com' + issue_item, proxies=proxies)
-                                        soup = BeautifulSoup(response.content, 'html.parser')
-                                        results = soup.find('div', class_='toc')
-                                        for article_item in results.find_all('li'):
-                                            article_link = article_item.find('h3', class_='title').find('a')['href']
-                                            if Article.query.filter_by(doi=article_link[9:]).first() is None:
-                                                get_article(article_link)
-                                        journal.last_issue = issue_item
-                                        db.session.commit()
-                                        j = False
-
-                                        k = True
-                                    except OSError:
-                                        proxy_list.remove(proxy_item)
-
-                        i = False
-
-                    except OSError:
-                        proxy_list.remove(proxy_item)
-
+        except OSError:
+            log('Con_Error ' +url)
+            proxy_list.remove(proxy_item)
+            log(proxies['https'] + ' delete')
 
 class Overwatch(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        while len(links) != 0:
+        while True:
             if len(proxy_list) < 50:
                 proxy_gen()
             print(time.strftime('%X'),
@@ -295,25 +316,44 @@ class Overwatch(threading.Thread):
                   '  links: ', len(links), '  ready articles: ', articles, ' try articles: ', art)
             time.sleep(10)
 
+
 lock = threading.Lock()
 
-def get_springer(start, end):
 
-    #get list of journal links
+def get_springer(start, end):
+    # get list of journal links
 
     for item in range(int(start), int(end)):
         response = requests.get('https://link.springer.com/search/page/' + str(item) + '?facet-content-type="Journal"')
+        log('response page '+str(item))
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find('ol', class_='content-item-list')
-        global links
+        # global links
         for result in results.find_all('li'):
-            links.append(result.find('a')['href'][9:])
+            journal_link = result.find('a')['href'][9:]
+            log('journal_link: '+journal_link)
+            get_journal(journal_link)
+            # links.append(result.find('a')['href'][9:])
 
-        observer = Overwatch()
+        '''observer = Overwatch()
         observer.start()
         for it in range(10):
             name = 'Thread-' + str(it)
             t = threading.Thread(name=name, target=get_journal)
             t.start()
         
-        observer.join()
+        observer.join()'''
+
+
+def worker():
+    with app.app_context():
+        while len(links) != 0:
+            lock.acquire()
+            link = links.pop()
+            lock.release()
+            get_article(link)
+
+def log(s):
+    f = open('logs.txt', 'a')
+    f.write(time.strftime('%X')+' '+s+'\n')
+    f.close()
