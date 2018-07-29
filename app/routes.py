@@ -399,7 +399,7 @@ def get_results_wiley(job_key):
 
 @app.route('/api/info', methods=['GET'])
 def api_info():
-    return {'n_threads': 10, 'enqueued': 10, 'done': 10}
+    return jsonify({'n_threads': threading.active_count(), 'enqueued': 10, 'done': len(links)})
 
 
 @app.route('/api/run', methods=['GET'])
