@@ -17,7 +17,7 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies, worker, Overwatch, log
+from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies, worker, Overwatch, log, mainer
 import random
 import threading
 
@@ -277,14 +277,20 @@ def update_journals():
         watcher.start()
         log('watcher start')
 
-        for item in range(100):
+        for item in range(75):
             name = 'Worker-' + str(item+1)
             t = threading.Thread(name=name, target=worker)
-            log(name+' created')
+            t.start()
+            log(name+' start')
+
+        for item in range(5):
+            name = 'Mainer-'+str(item+1)
+            t = threading.Thread(name=name, target=mainer)
             t.start()
             log(name+' start')
 
         get_springer(start,end)
+        time.sleep(10000)
 
         return redirect(
             url_for('index'))
