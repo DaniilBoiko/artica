@@ -17,7 +17,7 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies, worker, Overwatch, log
+from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies, worker, Overwatch, log, links
 import random
 import threading
 
@@ -393,7 +393,7 @@ def get_results_wiley(job_key):
 
 @app.route('/api/info', methods=['GET'])
 def api_info():
-    return {'n_threads': 10, 'enqueued': 10, 'done': 10}
+    return jsonify({'n_threads': threading.active_count(), 'enqueued': 10, 'done': len(links)})
 
 
 @app.route('/api/run', methods=['GET'])

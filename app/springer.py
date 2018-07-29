@@ -13,7 +13,6 @@ links = []
 articles = 0
 art = 0
 
-
 def proxy_gen():
     global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
