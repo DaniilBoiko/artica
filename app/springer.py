@@ -145,7 +145,7 @@ def get_article(url):
                 if key_section is not None:
                     for key_item in key_section.find_all('span', class_='Keyword'):
                         keywords.append(key_item.get_text())
-                article.keyword = ",".join(keywords)
+                article.keyword = keywords
                 log(str(threading.current_thread()) + ' keywords ' + str(url))
                 authors = []
                 af = []
