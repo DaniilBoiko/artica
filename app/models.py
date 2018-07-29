@@ -1,5 +1,4 @@
 from app import db
-from sqlalchemy.dialects.postgresql import JSON, ARRAY
 from sqlalchemy_utils import TSVectorType
 from flask.ext.sqlalchemy import BaseQuery
 
@@ -37,10 +36,10 @@ class UserDocument(db.Model):
     type = db.Column(db.Text)
     source = db.Column(db.Text)
     year = db.Column(db.Text)
-    identifiers = db.Column(db.JSON)
-    keywords = db.Column(db.JSON)
+    identifiers = db.Column(db.Text)
+    keywords = db.Column(db.Text)
     abstract = db.Column(db.Text)
-    authors = db.Column(db.JSON)
+    authors = db.Column(db.Text)
     user = db.Column(db.Integer)
 
     def __repr__(self):
@@ -67,8 +66,7 @@ class Article(db.Model):
     issn = db.Column(db.Text)
     isbn = db.Column(db.Text)
     technical_info = db.Column(db.String)
-    keyword = db.Column(ARRAY(db.String))
-    search_vector = db.Column(TSVectorType('title', 'abstract'))
+    keyword = db.Column(db.Text)
     doi = db.Column(db.String)
     doctype = db.Column(db.String)
     crossref = db.Column(db.Text)
@@ -97,7 +95,7 @@ class Journal(db.Model):
     issn = db.Column(db.Text)
     isbn = db.Column(db.Text)
     technical_info = db.Column(db.String)
-    keyword = db.Column(ARRAY(db.String))
+    keyword = db.Column(db.Text)
     job_id = db.Column(db.String)
     articles = db.relationship('Article', backref='article', lazy=True)
 
