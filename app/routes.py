@@ -277,9 +277,10 @@ def update_journals():
         watcher.start()
         log('watcher start')
 
-        for item in range(10):
+        for item in range(100):
             name = 'Worker-' + str(item+1)
             t = threading.Thread(name=name, target=worker)
+            log(name+' created')
             t.start()
             log(name+' start')
 

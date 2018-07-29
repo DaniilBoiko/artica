@@ -37,10 +37,9 @@ def get_article(url):
     while n:
         create_proxies()
         try:
-            log('check '+url)
+            log(str(threading.current_thread())+' start '+str(url))
             response = requests.get('https://link.springer.com' + url, proxies=proxies)
-            log('response article')
-            log(str(threading.current_thread())+'  response article ' + url + '  proxies: ' + proxies['https'])
+            log(str(threading.current_thread())+'  response article ' + str(url) + '  proxies: ' + proxies['https'])
             global art
             lock.acquire()
             art += 1
@@ -48,10 +47,10 @@ def get_article(url):
             soup = BeautifulSoup(response.content, 'html.parser')
 
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
-            log(url + ' article_title: ' + article_title)
+            log(str(threading.current_thread())+' '+str(url))
             doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[
                   16:]
-            log(doi)
+            log(str(threading.current_thread())+' '+str(doi))
             # Проверяем наличие статьи в базе
             if doi is not None:
                 article = Article.query.filter_by(doi=doi).first()
@@ -68,7 +67,7 @@ def get_article(url):
                     article = Article(doi=doi, title=article_title)
                     db.session.add(article)
                     db.session.commit()
-            log(str(threading.current_thread()) + ' check article' + url)
+            log(str(threading.current_thread()) + ' check article ' + str(url))
             # проверили
             if article.abstract is not None:
                 abstract = ''
@@ -80,9 +79,10 @@ def get_article(url):
                     article.abstract = None
                 else:
                     article.abstract = abstract
-
+            log(str(threading.current_thread())+' '+str(url)+' abstract')
             ref = []
             ref_section = soup.find('section', class_='Section1 RenderAsSection1', id='Bib1')
+
             if ref_section is not None:
                 for ref_item in ref_section.find_all('li', class_='Citation'):
                     ref_doi = ref_item.find('span', class_='RefSource')
@@ -105,7 +105,7 @@ def get_article(url):
                                             citing=article.id)
                         db.session.add(citation)
                         db.session.commit()
-
+            log(str(threading.current_thread()) + ' ref '+str(url))
             date = []
             date = soup.find('span', class_='article-dates__first-online')
             if date is not None:
@@ -115,7 +115,7 @@ def get_article(url):
                 day = date_time.pop(0)
                 date = datetime.date(year=int(year), month=int(month), day=int(day))
                 article.pubdate = date
-
+            log(str(threading.current_thread())+ ' date '+str(url))
             if soup.find('a', class_='ArticleCitation_Issue') is not None:
                 volume = soup.find('span', class_='ArticleCitation_Volume').get_text().replace(',', '\t')[6:]
                 issue = soup.find('a', class_='ArticleCitation_Issue').get_text().replace(',', '\t')[5:]
@@ -135,17 +135,17 @@ def get_article(url):
 
             ISSN = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
             article.issn = ISSN
-
+            log(str(threading.current_thread())+' technical '+str(url))
             journal = soup.find('span', class_='JournalTitle').get_text()
             article.journal_id = Journal.query.filter_by(name=journal).first().id
-
+            log(str(threading.current_thread()) + ' journal ' + str(url))
             key_section = soup.find('div', class_='KeywordGroup', lang="en")
             keywords = []
             if key_section is not None:
                 for key_item in key_section.find_all('span', class_='Keyword'):
                     keywords.append(key_item.get_text())
             article.keyword = keywords
-
+            log(str(threading.current_thread()) + ' keywords ' + str(url))
             authors = []
             af = []
             emails = []
@@ -216,7 +216,7 @@ def get_article(url):
                             article.authors.append(author_db)
                             db.session.commit()
             db.session.commit()
-
+            log(str(threading.current_thread()) + ' authors and affiliations ' + str(url))
             n = False
 
         except OSError:
@@ -347,11 +347,12 @@ def get_springer(start, end):
 
 def worker():
     with app.app_context():
-        while len(links) != 0:
-            lock.acquire()
-            link = links.pop()
-            lock.release()
-            get_article(link)
+        while True:
+            while len(links) != 0:
+                lock.acquire()
+                link = links.pop()
+                lock.release()
+                get_article(link)
 
 def log(s):
     f = open('logs.txt', 'a')
