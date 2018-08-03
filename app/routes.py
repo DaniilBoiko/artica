@@ -17,7 +17,7 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_journal, get_springer, headers, proxy_gen, create_proxies, worker, Overwatch, log, mainer
+from app.springer import get_article, get_article_pool, get_journal_pool, headers, proxy_gen, create_proxies, Worker, Overwatch, log, Miner
 import random
 import threading
 
@@ -260,12 +260,13 @@ def update_journals():
             return 'Describe all args', 404
 
     if task == 'springer':
-
         start = request.args.get('start')
         end = request.args.get('end')
         log('start='+str(start)+', end='+str(end))
-        proxy_gen()
+
         proxy_list = []
+        proxy_gen()
+        log('proxy_list created')
 
         '''
         job = q.enqueue_call(
@@ -275,21 +276,21 @@ def update_journals():
 
         watcher = Overwatch()
         watcher.start()
-        log('watcher start')
+        log('watcher started')
 
-        for item in range(75):
-            name = 'Worker-' + str(item+1)
-            t = threading.Thread(name=name, target=worker)
-            t.start()
-            log(name+' start')
+        for item in range(60):
+            worker_name = 'Worker-' + str(item+1)
+            worker = Worker(worker_name)
+            worker.start()
+            log(worker_name + ' started')
 
-        for item in range(5):
-            name = 'Mainer-'+str(item+1)
-            t = threading.Thread(name=name, target=mainer)
-            t.start()
-            log(name+' start')
+        for item in range(15):
+            miner_name = 'Miner-' + str(item+1)
+            miner = Miner(miner_name)
+            miner.start()
+            log(miner_name + ' started')
 
-        get_springer(start,end)
+        get_journal_pool(start,end)
         time.sleep(10000)
 
         return redirect(
