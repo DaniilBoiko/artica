@@ -16,6 +16,7 @@ from app import q
 from app.models import Article, User, UserDocument, Journal
 from app.tools import distance
 from app.search import ESCondition
+from app.feed import create_initial_feed
 
 from app.search import add_to_index
 from sqlalchemy import desc
@@ -311,6 +312,9 @@ def auth_return():
                                         user=User.query.filter_by(email=mendeley_session.profiles.me.email).first().id)
                 db.session.add(user_doc)
                 db.session.commit()
+
+        create_initial_feed(User.query.filter_by(email=mendeley_session.profiles.me.email).first().id)
+
     return redirect('/listDocuments')
 
 
@@ -412,4 +416,42 @@ def logout():
 def feed():
     query = request.args.get('query', '')
 
-    return render_template('feed/feed.html', title='Feed', query=query)
+    if 'token' not in session:
+        return redirect('/')
+
+    try:
+        mendeley_session = get_session_from_cookies()
+        name = mendeley_session.profiles.me.display_name
+    except:
+        return redirect('/logout')
+
+    user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
+
+    articles = []
+    for id in user.feed:
+        article = Article.query.get(id)
+
+        article.title = str(article.title).encode('latin1').decode("utf-8")
+
+        if article.pubdate is not None:
+            pub_date = article.pubdate.strftime('Published at %d, %b %Y')
+        else:
+            pub_date = ''
+
+        if article.journal_id is not None:
+            journal_name = Journal.query.get_or_404(article.journal_id).name
+        else:
+            journal_name = ''
+
+        articles.append({
+            'id': article.id,
+            'title': str(article.title).encode('latin1').decode("utf-8"),
+            'abstract': article.abstract,
+            'authors': article.authors,
+            'pub_date': pub_date,
+            'journal_name': journal_name,
+            'src': article.src,
+            'journal_id': article.journal_id
+        })
+
+    return render_template('feed/feed.html', title='Feed', query=query, articles=articles)

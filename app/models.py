@@ -60,6 +60,7 @@ class User(db.Model):
     email = db.Column(db.String)
     last_sync = db.Column(db.DateTime)
     created = db.Column(db.DateTime)
+    feed = db.Column(ARRAY(db.Integer))
 
     def __repr__(self):
         return '<User {}>'.format(self.last_name)
