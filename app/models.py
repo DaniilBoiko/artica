@@ -109,6 +109,7 @@ class Article(SearchableMixin, db.Model):
     doctype = db.Column(db.String)
     crossref = db.Column(db.Text)
     meta_data = db.Column(db.Text)
+    ml_vector = db.Column(ARRAY(db.Float))
 
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
