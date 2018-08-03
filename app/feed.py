@@ -3,6 +3,7 @@ from flask import current_app
 from app import db, app
 from app.models import User, Article
 from app.routes import session, get_session_from_cookies, redirect, request
+from config import Config
 
 
 def create_initial_feed(user_id, depth=1000, length=20):
@@ -50,7 +51,7 @@ def create_initial_feed(user_id, depth=1000, length=20):
             user_doc_ids.append(document.id)
 
         articles_to_check = Article.query.order_by(Article.pubdate).limit(depth)
-        fetch_data_for_user = json.loads(requests.get(NIKITA_SERVER + str(user_doc_ids)[1:-1]).content)
+        fetch_data_for_user = json.loads(requests.get(Config.NIKITA_SERVER + str(user_doc_ids)[1:-1]).content)
 
         feed_to_return = []
 
@@ -80,7 +81,7 @@ def get_vectors(ids):
 
     with app.app_context():
         NIKITA_SERVER = 'https://ec2-18-219-191-88.us-east-2.compute.amazonaws.com:8080/get_vectors?articles_id='
-        fetch_data = json.loads(requests.get(NIKITA_SERVER + str(ids)[1:-1]).content)
+        fetch_data = json.loads(requests.get(Config.NIKITA_SERVER + str(ids)[1:-1]).content)
         for index in fetch_data:
             article = Article.get(index)
             article.ml_vector = fetch_data[index]
