@@ -73,7 +73,7 @@ def create_initial_feed(user_id, depth=1000, length=20):
                 )
                 score += numpy.exp(neg_distance)
 
-            if length(feed_to_return) < length:
+            if len(feed_to_return) < length:
                 feed_to_return.append({'id':article,'score':score})
             else:
                 feed_to_return = sorted(feed_to_return, key=lambda k: k['score'])
