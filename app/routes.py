@@ -457,7 +457,7 @@ def feed():
 @app.route('/ml/index')
 def ml_index():
     start = request.args.get('start')
-    end = request.args.get('start')
+    end = request.args.get('end')
 
     batch_size = 0
     article_ids = []
