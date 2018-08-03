@@ -7,11 +7,7 @@ from app.routes import session, get_session_from_cookies, redirect, request
 
 def create_initial_feed(user_id, depth=1000, length=20):
     with app.app_context():
-        NIKITA_SERVER = 'https://ec2-18-219-191-88.us-east-2.compute.amazonaws.com:8080/get_vectors'
-
-        user = User.query.get(user_id)
-        if user is None:
-            return
+        NIKITA_SERVER = 'https://ec2-18-219-191-88.us-east-2.compute.amazonaws.com:8080/get_vectors?articles_id='
 
         if 'token' not in session:
             return redirect('/')
