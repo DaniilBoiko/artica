@@ -31,7 +31,7 @@ def create_initial_feed(user_id, depth=1000, length=20):
 
             if (document is None) or (doc['identifiers']['doi'] is None):
 
-                print('Firing printing')
+                print('Indexing user articles')
                 authors = []
                 if document.authors is not None:
                     for author in document.authors:
@@ -50,6 +50,7 @@ def create_initial_feed(user_id, depth=1000, length=20):
             document = Article.query.filter_by(Article.doi == doc['identifiers']['doi']).first()
             user_doc_ids.append(document.id)
 
+        print('Get data')
         articles_to_check = Article.query.order_by(Article.pubdate).limit(depth)
         fetch_data_for_user = json.loads(requests.get(Config.NIKITA_SERVER + str(user_doc_ids)[1:-1]).content)
 

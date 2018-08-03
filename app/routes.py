@@ -16,7 +16,7 @@ from app import q
 from app.models import Article, User, UserDocument, Journal
 from app.tools import distance
 from app.search import ESCondition
-from app.feed import create_initial_feed
+from app.feed import create_initial_feed, get_vectors
 
 from app.search import add_to_index
 from sqlalchemy import desc
@@ -96,29 +96,27 @@ def es_reindex():
 
 
 def es_reindex():
-    # Create index
-    '''
     current_app.elasticsearch.indices.create(index='articles',
-                                        body={
-                                            "settings": {
-                                                "number_of_shards": 1
-                                            },
-                                            "mappings": {
-                                                "article": {
-                                                    "properties": {
-                                                        "title": {"type": "text", "analyzer": "english"},
-                                                        "abstract": {"type": "text", "analyzer": "english"},
-                                                        "doi": {"type": "keyword"},
-                                                        "authors": {"type": "keyword"},
-                                                        "journal_name":{"type": "keyword"},
-                                                        "pubdate": {
-                                                            "type": "date"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        )
+                                             body={
+                                                 "settings": {
+                                                     "number_of_shards": 1
+                                                 },
+                                                 "mappings": {
+                                                     "article": {
+                                                         "properties": {
+                                                             "title": {"type": "text", "analyzer": "english"},
+                                                             "abstract": {"type": "text", "analyzer": "english"},
+                                                             "doi": {"type": "keyword"},
+                                                             "authors": {"type": "keyword"},
+                                                             "journal_name": {"type": "keyword"},
+                                                             "pubdate": {
+                                                                 "type": "date"
+                                                             }
+                                                         }
+                                                     }
+                                                 }
+                                             }
+                                             )
 
     with app.app_context():
         journal_id = 100000000000
@@ -141,7 +139,6 @@ def es_reindex():
             }
 
             current_app.elasticsearch.index('articles', doc_type='article', id=article.id, body=body)
-    '''
 
 
 @app.route('/admin', methods=['GET'])
@@ -224,7 +221,7 @@ def article():
         pub_date = ''
 
     return render_template('search/article.html', title=article.title, journal=journal, article=article, query=query,
-                       pub_date=pub_date)
+                           pub_date=pub_date)
 
 
 @app.route("/add_data", methods=['GET'])
@@ -455,3 +452,23 @@ def feed():
         })
 
     return render_template('feed/feed.html', title='Feed', query=query, articles=articles)
+
+
+@app.route('/ml/index')
+def ml_index():
+    start = request.args.get('start')
+    end = request.args.get('start')
+
+    batch_size = 0
+    article_ids = []
+    for i in range(start, end + 1):
+        print(i)
+        if (batch_size > 1000) or (i == end):
+            get_vectors(article_ids)
+            article_ids = 0
+            batch_size = 0
+        else:
+            article = Article.query.get(i)
+            if article is not None:
+                article_ids.append(article.id)
+            batch_size += 1
