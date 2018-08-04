@@ -16,7 +16,6 @@ from app import q
 from app.models import Article, User, UserDocument, Journal
 from app.tools import distance
 from app.search import ESCondition
-from app.feed import create_initial_feed, get_vectors
 
 from app.search import add_to_index
 from sqlalchemy import desc
@@ -28,6 +27,7 @@ def get_session_from_cookies():
 
 mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
 
+from app.feed import create_initial_feed, get_vectors
 
 @app.route('/')
 @app.route('/index')
@@ -310,7 +310,8 @@ def auth_return():
                 db.session.add(user_doc)
                 db.session.commit()
 
-        create_initial_feed(User.query.filter_by(email=mendeley_session.profiles.me.email).first().id)
+    if User.query.filter_by(email=mendeley_session.profiles.me.email).first().feed is None:
+        create_initial_feed(mendeley_session)
 
     return redirect('/listDocuments')
 
@@ -456,19 +457,24 @@ def feed():
 
 @app.route('/ml/index')
 def ml_index():
-    start = request.args.get('start')
-    end = request.args.get('end')
+    start = int(request.args.get('start'))
+    end = int(request.args.get('end'))
 
     batch_size = 0
     article_ids = []
     for i in range(start, end + 1):
         print(i)
         if (batch_size > 1000) or (i == end):
-            get_vectors(article_ids)
-            article_ids = 0
+            if len(article_ids) != 0:
+                get_vectors(article_ids)
+            article_ids = []
             batch_size = 0
         else:
             article = Article.query.get(i)
             if article is not None:
-                article_ids.append(article.id)
+                if (article.abstract is not None) and (article.abstract != ''):
+                    article_ids.append(article.id)
             batch_size += 1
+
+
+    return redirect(url_for('index'))
