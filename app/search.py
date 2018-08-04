@@ -66,7 +66,6 @@ class ESQueryObject:
         else:
             raise Exception('Already quered')
 
-
     def filter_(self, *conditions):
         if not self.filter:
             if not self.search:
@@ -143,6 +142,8 @@ class ESQueryObject:
 
 class ESCondition():
     # This class provides important function for .filter method of ESQueryObject
+    def exst_(self, field):
+        return {'exists': {"field": field}}
 
     def btw_(self, field, start, end, strict=False):
         return {'range', {field: {'gte': start, 'lte': end}}} if not strict else {'range', {

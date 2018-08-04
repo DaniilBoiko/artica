@@ -14,7 +14,7 @@ from app.search import add_to_index, remove_from_index, ESQueryObject
 
 class SearchableMixin(object):
     @classmethod
-    def queryES(cls, index = None, doctype = None):
+    def queryES(cls, index=None, doctype=None):
         if index is None:
             index = cls.__name__.lower()
         if doctype is None:
@@ -61,7 +61,7 @@ class User(db.Model):
     email = db.Column(db.String)
     last_sync = db.Column(db.DateTime)
     created = db.Column(db.DateTime)
-    feed = db.Column(ARRAY(db.Integer))
+    feed = db.Column(db.Text)
 
     def __repr__(self):
         return '<User {}>'.format(self.last_name)

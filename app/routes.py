@@ -87,10 +87,7 @@ def search():
 
 @app.route('/es_reindex')
 def es_reindex():
-    job = q.enqueue_call(
-        func=es_reindex, args=(), result_ttl=50000, timeout=360000
-    )
-    print(job.get_id())
+    es_reindex()
 
     return redirect(url_for('index'))
 
@@ -111,6 +108,9 @@ def es_reindex():
                                                              "journal_name": {"type": "keyword"},
                                                              "pubdate": {
                                                                  "type": "date"
+                                                             },
+                                                             "ml_vector": {
+                                                                 "type": "float"
                                                              }
                                                          }
                                                      }
@@ -135,7 +135,8 @@ def es_reindex():
                 "doi": article.doi,
                 "authors": article.authors,
                 "journal_name": journal_name,
-                "pubdate": article.pubdate
+                "pubdate": article.pubdate,
+                "ml_vector":article.ml_vector
             }
 
             current_app.elasticsearch.index('articles', doc_type='article', id=article.id, body=body)
@@ -311,7 +312,12 @@ def auth_return():
                 db.session.commit()
 
     if User.query.filter_by(email=mendeley_session.profiles.me.email).first().feed is None:
-        create_initial_feed(mendeley_session)
+        feed = str(create_initial_feed(mendeley_session,depth=10000))[1:-1]
+        user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
+        print(user)
+        user.feed = feed
+        print(user.feed)
+        db.session.commit()
 
     return redirect('/listDocuments')
 
@@ -407,7 +413,7 @@ def logout():
     query = request.args.get('query', '')
 
     session.pop('token', None)
-    return redirect('/', query=query)
+    return redirect('/')
 
 
 @app.route('/feed')
@@ -424,10 +430,10 @@ def feed():
         return redirect('/logout')
 
     user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
-
+    feed = user.feed.split(', ')
     articles = []
-    for id in user.feed:
-        article = Article.query.get(id)
+    for id in feed:
+        article = Article.query.get(int(id))
 
         article.title = str(article.title).encode('latin1').decode("utf-8")
 
