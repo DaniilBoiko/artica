@@ -7,6 +7,7 @@ from app.search import ESCondition
 from mendeley.session import MendeleySession
 from config import Config
 from scipy.spatial.distance import cosine
+
 es_condition = ESCondition()
 
 
@@ -87,7 +88,7 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Getting artilces_to_check', 'Start'))
         articles_to_check, total_articles_to_check = Article.queryES(index='articles', doctype='article').filter_(
-            es_condition.exst_('ml_vector'),es_condition.exst_('abstract')).sort_(
+            es_condition.exst_('ml_vector'), es_condition.exst_('abstract')).sort_(
             'pubdate', 'desc').limit_(depth)
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Getting artilces_to_check', 'End'))
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Getting fetch_data_for_user', 'Start'))
@@ -105,7 +106,7 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
             if article.ml_vector is not None:
                 for user_article in fetch_data_for_user:
-                    dist =cosine(
+                    dist = cosine(
                         numpy.array(fetch_data_for_user[user_article]),
                         numpy.array(article.ml_vector)
                     )
@@ -145,7 +146,11 @@ def get_vectors(ids):
 
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Adding to database', 'Start'))
         for index in fetch_data:
-            article = Article.query.get(index)
+            article = Article.query.get(int(index))
+            print("%-15s %-45s %-15s %-15s" % (time.strftime('%X'), 'Adding to database', int(index), article))
             article.ml_vector = fetch_data[index]
+            if int(index) == 84:
+                print(article.ml_vector)
+                print(fetch_data[index])
             db.session.commit()
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Adding to database', 'End'))

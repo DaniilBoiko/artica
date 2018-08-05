@@ -495,3 +495,25 @@ def ml_index():
             batch_size += 1
 
     return redirect(url_for('index'))
+
+
+@app.route('/ml/index/last')
+def ml_index_last():
+    es_condition = ESCondition()
+    article_ids = []
+
+    articles_to_check, total_articles_to_check = Article.queryES(index='articles', doctype='article').filter_(
+        es_condition.exst_('ml_vector'), es_condition.exst_('abstract')).sort_(
+        'pubdate', 'desc').limit_(5000)
+
+    for article in articles_to_check:
+        article_ids.append(article.id)
+
+    for i in range(50):
+        start = 100*i
+        end = 100*i + 99
+        get_vectors(article_ids[start:end])
+
+    print(article_ids)
+
+    return redirect(url_for('index'))
