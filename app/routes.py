@@ -259,6 +259,16 @@ def add_data():
     return "OK", 200
 
 
+@app.route("/terms")
+def terms():
+    return render_template('law/terms.html')
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template('law/privacy.html')
+
+
 # Mendeley
 
 @app.route('/login')

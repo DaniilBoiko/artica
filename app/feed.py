@@ -6,7 +6,7 @@ from app.routes import session, redirect, request
 from app.search import ESCondition
 from mendeley.session import MendeleySession
 from config import Config
-
+from scipy.spatial.distance import cosine
 es_condition = ESCondition()
 
 
@@ -105,11 +105,11 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
             if article.ml_vector is not None:
                 for user_article in fetch_data_for_user:
-                    neg_distance = -numpy.linalg.norm(
-                        numpy.array(fetch_data_for_user[user_article]) - \
+                    dist =cosine(
+                        numpy.array(fetch_data_for_user[user_article]),
                         numpy.array(article.ml_vector)
                     )
-                    score += numpy.exp(neg_distance)
+                    score += dist
 
                 if (article.abstract is not None) and (article.abstract != ''):
                     if len(feed_to_return) < length:
@@ -120,9 +120,9 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
                         print(feed_to_return[0]['score'])
                         print(feed_to_return[-1]['score'])
                         print(score)
-                        if feed_to_return[0]['score'] < score:
+                        if feed_to_return[-1]['score'] > score:
                             print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Checking articles', 'Add'))
-                            feed_to_return.pop(0)
+                            feed_to_return.pop(-1)
                             feed_to_return.append({'id': article.id, 'score': score})
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Checking articles', 'End'))
         feed_to_return = sorted(feed_to_return, key=lambda k: k['score'])
