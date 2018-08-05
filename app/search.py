@@ -80,7 +80,7 @@ class ESQueryObject:
 
     def sort_(self, row, type):
         if not self.sort:
-            self.body['sort'] = row
+            self.body['sort'] = [{row: type}]
             return self
         else:
             raise Exception('Already sorted')

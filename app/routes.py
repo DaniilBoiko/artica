@@ -29,6 +29,7 @@ mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-ea
 
 from app.feed import create_initial_feed, get_vectors
 
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -93,7 +94,7 @@ def es_reindex():
 
 
 def es_reindex():
-    current_app.elasticsearch.indices.create(index='articles',
+    '''current_app.elasticsearch.indices.create(index='articles',
                                              body={
                                                  "settings": {
                                                      "number_of_shards": 1
@@ -116,7 +117,7 @@ def es_reindex():
                                                      }
                                                  }
                                              }
-                                             )
+                                             )'''
 
     with app.app_context():
         journal_id = 100000000000
@@ -129,17 +130,17 @@ def es_reindex():
                 journal_name = Journal.query.get_or_404(article.journal_id).name
                 journal_id = article.journal_id
 
-            body = {
+            body = {"doc": {
                 "title": article.title,
                 "abstract": article.abstract,
                 "doi": article.doi,
                 "authors": article.authors,
                 "journal_name": journal_name,
                 "pubdate": article.pubdate,
-                "ml_vector":article.ml_vector
+                "ml_vector": article.ml_vector}
             }
 
-            current_app.elasticsearch.index('articles', doc_type='article', id=article.id, body=body)
+            current_app.elasticsearch.update('articles', doc_type='article', id=article.id, body=body)
 
 
 @app.route('/admin', methods=['GET'])
@@ -312,7 +313,7 @@ def auth_return():
                 db.session.commit()
 
     if User.query.filter_by(email=mendeley_session.profiles.me.email).first().feed is None:
-        feed = str(create_initial_feed(mendeley_session,depth=10000))[1:-1]
+        feed = str(create_initial_feed(mendeley_session, depth=10000))[1:-1]
         user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
         print(user)
         user.feed = feed
@@ -478,9 +479,9 @@ def ml_index():
         else:
             article = Article.query.get(i)
             if article is not None:
-                if (article.abstract is not None) and (article.abstract != ''):
-                    article_ids.append(article.id)
+                if (article.abstract is not None):
+                    if len(article.abstract) > 15:
+                        article_ids.append(article.id)
             batch_size += 1
-
 
     return redirect(url_for('index'))
