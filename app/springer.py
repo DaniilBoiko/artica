@@ -12,12 +12,44 @@ from stem import Signal
 from stem.control import Controller
 from stem.connection import authenticate_none, authenticate_password
 
+class TorInterface():
+    controller = 'Not launched'
+    password = "1234"
+
+    def __init__(self):
+        self.controller = Controller.from_port(port=9051)
+
+    def connectTor(self):
+        socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "localhost", 9050, True)
+        socket.socket = socks.socksocket
+        print('Connection estabilished')
+
+    def renewTor(self):
+        self.controller.authenticate(self.password)
+        self.controller.signal(Signal.NEWNYM)
+        print ('New Tor circuit estabilished')
+
+    def showMyIp(self):
+        url = "http://www.showmyip.gr/"
+        r = requests.Session()
+        page = r.get(url)
+        soup = BeautifulSoup(page.content, "html")
+        ip_address = soup.find("span", {"class": "ip_address"}).text.strip()
+        print(ip_address)
+
+tor = TorInterface()
+
 user_agent = 'Googlebot'
 headers = {'User-Agent': user_agent}
 
+'''
+controller = Controller.from_port(port=9051)
+
+
+
 socks.set_default_proxy(socks.SOCKS5, 'localhost', 9050)
 socket.socket = socks.socksocket
-controller = Controller.from_port(port=9051)
+
 
 def connectTor():
     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5 , "localhost", 9050, True)
@@ -49,7 +81,7 @@ def show_my_ip():
     soup = BeautifulSoup(page.content, "lxml")
     ip_address = soup.find("span",{"class":"ip_address"}).text.strip()
     print(ip_address)
-
+'''
 
 proxy_list = []
 article_pool = []
@@ -440,7 +472,7 @@ class Helper(threading.Thread):
                 global req_number
                 if req_number > 100:
                     lock.acquire()
-                    renew_tor()
+                    tor.renewTor()
                     lock.release()
                 time.sleep(1)
 

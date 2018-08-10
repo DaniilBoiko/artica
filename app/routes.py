@@ -18,12 +18,11 @@ from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
 from app.springer import get_article, get_article_pool, get_journal_pool, headers, proxy_gen, create_proxies, Worker, \
-    Overwatch, log, Miner, Helper
+    Overwatch, log, Miner, Helper, tor
 import random
 import threading
 
 count_pattern = re.compile(r'rows=(\d+)')
-
 
 def extract_analyze_count(rows):
     for row in rows:
@@ -261,13 +260,14 @@ def update_journals():
 
     if task == 'springer':
 
-        controller = Controller.from_port()
-        Password = "1234"
+        #controller = Controller.from_port()
+        #Password = "1234"
 
+        tor.connectTor()
 
-        for i in range(10000):
-            print (" Attempt n. : %i " % i)
-            renew_tor()
+        #for i in range(10000):
+            #tor.showMyIp()
+            #tor.renewTor()
 
         start = request.args.get('start')
         end = request.args.get('end')
@@ -276,12 +276,6 @@ def update_journals():
         '''proxy_list = []
         proxy_gen()
         log('proxy_list created')'''
-
-
-        job = q.enqueue_call(
-            func=get_springer, args=(start, end), result_ttl=50000, timeout=360000
-        )
-
 
         watcher = Overwatch()
         watcher.start()
