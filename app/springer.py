@@ -89,7 +89,7 @@ journal_pool = []
 ready_articles = 0
 try_articles = 0
 req_number = 0
-
+'''
 def proxy_gen():
     global proxy_list
     proxy_req = requests.get('https://free-proxy-list.net', headers={
@@ -106,7 +106,7 @@ def create_proxies():
     global proxy_item
     proxy_item = random.choice(proxy_list)
     proxies = {'https': 'http://' + proxy_item['ip'] + ':' + proxy_item['port']}
-
+'''
 
 def get_article(url):
     #n = True
@@ -136,7 +136,7 @@ def get_article(url):
           16:]
     log(str(threading.current_thread())+'  '+str(url)+'  doi parsed')
     # Проверяем наличие статьи в базе
-    if doi is not None:
+    '''if doi is not None:
         article = Article.query.filter_by(doi=doi).first()
         if article is None:
             log(str(threading.current_thread()) + '  ' + str(url) + '  article not found in db')
@@ -160,20 +160,20 @@ def get_article(url):
             db.session.commit()
     # проверили
     log(str(threading.current_thread())+'  '+str(url)+'  article selected in db')
-
-    if article.abstract is None:
-        abstract = ''
-        abstract_section = soup.find('section', class_='Abstract')
-        if abstract_section is not None:
-            for abstract_par in abstract_section.find_all('p'):
-                abstract = abstract + abstract_par.get_text() + '\n'
-            log(str(threading.current_thread()) + '  ' + str(url) + '  abstract parsed')
-        if abstract == '':
+    
+    if article.abstract is None:'''
+    abstract = ''
+    abstract_section = soup.find('section', class_='Abstract')
+    if abstract_section is not None:
+        for abstract_par in abstract_section.find_all('p'):
+            abstract = abstract + abstract_par.get_text() + '\n'
+        log(str(threading.current_thread()) + '  ' + str(url) + '  abstract parsed')
+        '''if abstract == '':
             article.abstract = None
         else:
             article.abstract = abstract
         log(str(threading.current_thread()) + '  ' + str(url) + '  abstract added to article')
-
+    '''
     ref = []
     ref_section = soup.find('section', class_='Section1 RenderAsSection1', id='Bib1')
 
@@ -192,7 +192,7 @@ def get_article(url):
                     ref.append(ref_doi.find('a', class_='gtm-reference')['href'][16:])
 
         log(str(threading.current_thread()) + '  ' + str(url) + '  references_doi parsed')
-
+        '''
         for doi_item in ref:
             if Article.query.filter_by(doi=doi_item).first() is None:
                 log(str(threading.current_thread()) + '  ' + str(doi_item) + '  article not found in db')
@@ -207,7 +207,7 @@ def get_article(url):
                 db.session.add(citation)
                 db.session.commit()
     log(str(threading.current_thread())+'  '+str(url)+'  references added to db, commit db')
-
+        '''
     date = []
     date = soup.find('span', class_='article-dates__first-online')
     if date is not None:
@@ -215,38 +215,38 @@ def get_article(url):
         year = date_time.pop(0)
         month = date_time.pop(0)
         day = date_time.pop(0)
-        date = datetime.date(year=int(year), month=int(month), day=int(day))
+        '''date = datetime.date(year=int(year), month=int(month), day=int(day))
         article.pubdate = date
-    log(str(threading.current_thread())+ ' date '+str(url))
+    log(str(threading.current_thread())+ ' date '+str(url))'''
     if soup.find('a', class_='ArticleCitation_Issue') is not None:
         volume = soup.find('span', class_='ArticleCitation_Volume').get_text().replace(',', '\t')[6:]
         issue = soup.find('a', class_='ArticleCitation_Issue').get_text().replace(',', '\t')[5:]
         pp = soup.find('span', class_='ArticleCitation_Pages').get_text().replace(',', '\t')[3:]
-        article.volume = volume
+        '''article.volume = volume
         article.issue = issue
-        article.pages = pp
+        article.pages = pp'''
     elif soup.find('span', class_='ArticleCitation_Volume') is not None:
         volume = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(0)
         issue = soup.find('time')['datetime'].split('-').pop(1).strip()
         if issue[0] == '0':
             issue = issue[1:]
         number = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(1)
-        article.volume = volume
+        '''article.volume = volume
         article.issue = issue
-        article.technical_info = number
-    log(str(threading.current_thread()) + '  ' + str(url) + '  pubdate added to artica')
+        article.technical_info = number'''
+    log(str(threading.current_thread()) + '  ' + str(url) + '  pubdate added to article')
 
     if soup.find('span', class_='bibliographic-information__value', id='electronic-issn') is not None:
         ISSN = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
     else:
         ISSN = soup.find('span', class_='bibliographic-information__value', id='print-issn').get_text()
-    article.issn = ISSN
+    #article.issn = ISSN
     log(str(threading.current_thread())+'  '+str(url)+'  technical_info added to article')
 
     journal = soup.find('div', class_='enumeration')
     journal_url = journal.find_all('a')[0]
     log(str(threading.current_thread())+'  '+str((journal_url)['href']))
-    article.journal_id = Journal.query.filter_by(link='https://link.springer.com'+str(journal_url['href'])).first().id
+    #article.journal_id = Journal.query.filter_by(link='https://link.springer.com'+str(journal_url['href'])).first().id
     log(str(threading.current_thread())+'  '+str(url)+'  journal_id added to atrticle')
 
     key_section = soup.find('div', class_='KeywordGroup', lang="en")
@@ -254,7 +254,7 @@ def get_article(url):
     if key_section is not None:
         for key_item in key_section.find_all('span', class_='Keyword'):
             keywords.append(key_item.get_text())
-    article.keyword = keywords
+    #article.keyword = keywords
     log(str(threading.current_thread())+'  '+str(url)+'  keywords added to article')
 
     authors = []
@@ -287,15 +287,16 @@ def get_article(url):
                 else:
                     af_country = ''
                 af_name.append(af_dep + af_n + af_city + af_country)
-            for aff in af_name:
+            '''for aff in af_name:
                 if Affilation.query.filter_by(aff=aff).first() is None:
                     new_aff = Affilation(aff=aff)
                     db.session.add(new_aff)
-                    db.session.commit()
+                    db.session.commit()'''
 
         # Check and add author
         for author_item in author_section.find_all('li', class_='u-mb-2 u-pt-4 u-pb-4'):
             author_name = author_item.find('span', class_='authors-affiliations__name')
+            '''
             if Author.query.filter_by(name=author_name.get_text()).first() is None:
                 new_author = Author(name=author_name.get_text())
                 db.session.add(new_author)
@@ -328,7 +329,7 @@ def get_article(url):
                     db.session.commit()
     db.session.commit()
     log(str(threading.current_thread())+' '+str(url)+'  authors and affiliations added, commit db')
-
+            '''
     '''n = False
 
 except (OSError, requests.exceptions.RequestException):
@@ -367,7 +368,7 @@ def get_article_pool(url):
     journal_title = soup.find('div', id='publication-title').find('h1').get_text()
     log(str(threading.current_thread())+'  '+str(url)+'  journal_title parsed')
 
-    if Journal.query.filter_by(name=journal_title).first() is None:
+    '''if Journal.query.filter_by(name=journal_title).first() is None:
         log(str(threading.current_thread())+'  '+str(url)+'  journal not found in db')
         new_journal = Journal(name=journal_title, link='https://link.springer.com/journal/' + url,
                               publisher='Springer')
@@ -378,7 +379,7 @@ def get_article_pool(url):
         log(str(threading.current_thread())+'  '+str(url)+'  commit to db')
 
     journal = Journal.query.filter_by(name=journal_title).first()
-    log(str(threading.current_thread())+'  '+str(url)+'  journal selected in db')
+    log(str(threading.current_thread())+'  '+str(url)+'  journal selected in db')'''
     issue_block = []
     volume_tab = soup.find('div', class_='volumes tab-content')
     for volume_item in volume_tab.find_all('div', class_='volume-item'):
@@ -390,32 +391,32 @@ def get_article_pool(url):
     k = False
     for issue_item in issue_block:
         log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  issue_item selected in issue_pool')
-        if journal.last_issue is not None:
+        '''if journal.last_issue is not None:
             if issue_item == journal.last_issue:
                 log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  last_issue found')
-                k = True
+                k = True'''
 
-        if (journal.last_issue is None) or k:
-            '''j = True
-            while j:
-                try:'''
-            t = time.strftime('%X')
-            response = requests.get('https://link.springer.com' + issue_item, timeout=60)
-            log(str(t)+' -- '+str(time.strftime('%X'))+'  '+str(threading.current_thread()) + '  ' + str(url) + '  ' +str(issue_item)+ '  issue requested')
-            soup = BeautifulSoup(response.content, 'html.parser')
-            results = soup.find('div', class_='toc')
-            for article_item in results.find_all('li'):
-                article_link = article_item.find('h3', class_='title').find('a')['href']
-                log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  '+str(article_link)+'  article_link parsed')
-                if Article.query.filter_by(doi=article_link[9:]).first() is None:
-                    log(str(threading.current_thread())+'  '+str(article_link)+'  article not found in db')
-                    article_pool.append(article_link)
-                    log('(*)'+str(threading.current_thread())+'  '+str(article_link)+'  article_link added to article_pool')
+        #if (journal.last_issue is None) or k:
+        '''j = True
+        while j:
+            try:'''
+        t = time.strftime('%X')
+        response = requests.get('https://link.springer.com' + issue_item, timeout=60)
+        log(str(t)+' -- '+str(time.strftime('%X'))+'  '+str(threading.current_thread()) + '  ' + str(url) + '  ' +str(issue_item)+ '  issue requested')
+        soup = BeautifulSoup(response.content, 'html.parser')
+        results = soup.find('div', class_='toc')
+        for article_item in results.find_all('li'):
+            article_link = article_item.find('h3', class_='title').find('a')['href']
+            log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  '+str(article_link)+'  article_link parsed')
+            #if Article.query.filter_by(doi=article_link[9:]).first() is None:
+            #log(str(threading.current_thread())+'  '+str(article_link)+'  article not found in db')
+            article_pool.append(article_link)
+            log('(*)'+str(threading.current_thread())+'  '+str(article_link)+'  article_link added to article_pool')
 
-            journal.last_issue = issue_item
+            '''journal.last_issue = issue_item
             log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  '+'  last_issue determined')
             db.session.commit()
-            log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  '+'  commit to db')
+            log(str(threading.current_thread())+'  '+str(url)+'  '+str(issue_item)+'  '+'  commit to db')'''
             #j = False
 
             k = True
@@ -452,11 +453,7 @@ class Overwatch(threading.Thread):
 
     def run(self):
         while True:
-            if len(proxy_list) < 50:
-                proxy_gen()
-                log('proxy_list created')
-            print(time.strftime('%X'), ' |',
-                  '  proxies: ', len(proxy_list), ' |', '  threads: ', threading.active_count(), ' |',
+            print(time.strftime('%X'), ' |', '  threads: ', threading.active_count(), ' |',
                   '  article_pool: ', len(article_pool), ' |', '  ready: ', ready_articles, ' |', ' try: ', try_articles)
 
             time.sleep(10)
