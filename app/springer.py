@@ -19,12 +19,12 @@ class TorInterface():
     def __init__(self):
         self.controller = Controller.from_port(port=9051)
 
-    def connect(self):
+    def connectTor(self):
         socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "localhost", 9050, True)
         socket.socket = socks.socksocket
         print('Connection estabilished')
 
-    def renew(self):
+    def renewTor(self):
         self.controller.authenticate(self.password)
         self.controller.signal(Signal.NEWNYM)
         print ('New Tor circuit estabilished')
@@ -469,7 +469,7 @@ class Helper(threading.Thread):
                 global req_number
                 if req_number > 100:
                     lock.acquire()
-                    tor.renew()
+                    tor.renewTor()
                     lock.release()
                 time.sleep(1)
 

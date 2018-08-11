@@ -263,7 +263,7 @@ def update_journals():
         #controller = Controller.from_port()
         #Password = "1234"
 
-        tor.connect()
+        tor.connectTor()
 
         #for i in range(10000):
             #tor.showMyIp()
