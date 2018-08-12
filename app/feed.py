@@ -17,7 +17,7 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
     with app.app_context():
         NIKITA_SERVER = 'https://ec2-18-222-191-117.us-east-2.compute.amazonaws.com:8080/get_vectors?articles_id='
 
-        docs = mendeley_session.documents.list(view='client').items
+        docs = mendeley_session.documents.iter()
 
         user_doc_ids = []
 
@@ -183,7 +183,7 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
 def find_nearest_in(mendeley_session, article_id):
     with app.app_context():
-        docs = mendeley_session.documents.list(view='client').items
+        docs = mendeley_session.documents.iter()
 
         user_doc_ids = []
 

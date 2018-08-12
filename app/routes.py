@@ -346,7 +346,7 @@ def list_documents():
     except:
         return redirect('/logout')
 
-    docs = mendeley_session.documents.list(view='client').items
+    docs= mendeley_session.documents.iter()
 
     return render_template('user/library.html', name=name, docs=docs, title='Library', query=query)
 
