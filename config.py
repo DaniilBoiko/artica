@@ -14,5 +14,5 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = 'postgresql://%(user)s:%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     ELASTICSEARCH_URL = 'https://search-artica-am3httq7pyuvo2fptmi77bwrj4.us-east-2.es.amazonaws.com'
-    NIKITA_SERVER = 'http://ec2-18-219-191-88.us-east-2.compute.amazonaws.com:8080/get_vectors?articles_id='
+    NIKITA_SERVER = 'http://ec2-18-222-191-117.us-east-2.compute.amazonaws.com:8080/get_vectors?articles_id='
     POSTS_PER_PAGE = 25

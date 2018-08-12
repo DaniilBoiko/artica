@@ -27,7 +27,7 @@ def get_session_from_cookies():
 
 mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
 
-from app.feed import create_initial_feed, get_vectors
+from app.feed import create_initial_feed, get_vectors, find_nearest_in
 
 
 @app.route('/')
@@ -323,7 +323,7 @@ def auth_return():
                 db.session.commit()
 
     if User.query.filter_by(email=mendeley_session.profiles.me.email).first().feed is None:
-        feed = str(create_initial_feed(mendeley_session, depth=10000))[1:-1]
+        feed = str(create_initial_feed(mendeley_session, depth=5000))[1:-1]
         user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
         print(user)
         user.feed = feed
@@ -458,6 +458,8 @@ def feed():
         else:
             journal_name = ''
 
+        article_similar = find_nearest_in(mendeley_session, id)
+
         articles.append({
             'id': article.id,
             'title': str(article.title).encode('latin1').decode("utf-8"),
@@ -466,7 +468,10 @@ def feed():
             'pub_date': pub_date,
             'journal_name': journal_name,
             'src': article.src,
-            'journal_id': article.journal_id
+            'journal_id': article.journal_id,
+            'similar': {'title': article_similar.title,
+                        'abstract': article_similar.abstract,
+                        'id': article_similar.id}
         })
 
     return render_template('feed/feed.html', title='Feed', query=query, articles=articles)
@@ -509,10 +514,9 @@ def ml_index_last():
     for article in articles_to_check:
         article_ids.append(article.id)
 
-    for i in range(50):
-        start = 100*i
-        end = 100*i + 99
-        get_vectors(article_ids[start:end])
+    article_ids = sorted(article_ids)
+
+    get_vectors(article_ids)
 
     print(article_ids)
 
