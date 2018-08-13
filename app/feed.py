@@ -102,7 +102,6 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Checking articles', 'Start'))
         i = 0
 
-        '''
         for article in articles_to_check:
             score = 0
             i += 1
@@ -110,10 +109,10 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
             if article.ml_vector is not None:
                 for user_article in fetch_data_for_user:
-                    dist = numpy.power(cosine(
+                    dist = cosine(
                         numpy.array(fetch_data_for_user[user_article]),
                         numpy.array(article.ml_vector)
-                    ),0.1)
+                    )
                     score += dist
 
                 if (article.abstract is not None) and (article.abstract != ''):
@@ -170,6 +169,7 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
                     print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Checking articles', 'Add'))
                     feed_to_return.pop(0)
                     feed_to_return.append({'id': articles_to_check[index[0]].id, 'score': x})
+        '''
 
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Checking articles', 'End'))
         feed_to_return = sorted(feed_to_return, key=lambda k: k['score'])
@@ -261,6 +261,7 @@ def find_nearest_in(mendeley_session, article_id):
         fetch_data_for_user = requests.get(Config.NIKITA_SERVER + str(user_doc_ids)[1:-1]).json()
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Getting fetch_data_for_user', 'End'))
 
+        '''
         i = 0
 
         matrix = []
@@ -287,8 +288,18 @@ def find_nearest_in(mendeley_session, article_id):
                 id_score = score_value
                 id = i
             i += 1
+        
+        '''
 
-        return Article.query.get(ids[id])
+        id = -1
+        score = 0
+        for user_article in fetch_data_for_user:
+            score_i = cosine(numpy.array(article.ml_vector),numpy.array(fetch_data_for_user[user_article]))
+            if (id == -1) or (score_i < score):
+                score = score_i;
+                id = user_article
+
+        return Article.query.get(id)
 
 
 def get_vectors(ids):
