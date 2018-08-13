@@ -18,7 +18,7 @@ from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
 from app.springer import get_article, get_article_pool, get_journal_pool, headers, Worker, \
-    Overwatch, log, Miner, Helper, tor
+    Overwatch, log, Miner, tor
 import random
 import threading
 
@@ -281,9 +281,9 @@ def update_journals():
         watcher.start()
         log('watcher started')
 
-        helper = Helper()
+        '''helper = Helper()
         helper.start()
-        log('helper started')
+        log('helper started')'''
 
         for item in range(60):
             worker_name = 'Worker-' + str(item + 1)
@@ -291,7 +291,7 @@ def update_journals():
             worker.start()
             log(worker_name + ' started')
 
-        for item in range(15):
+        for item in range(10):
             miner_name = 'Miner-' + str(item + 1)
             miner = Miner(miner_name)
             miner.start()
