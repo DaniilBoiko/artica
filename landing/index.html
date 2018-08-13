@@ -8,6 +8,12 @@
 </head>
 <body>
 <style>
+    html, body {
+        height: 100%;
+        margin: 0px;
+        padding: 0px;
+    }
+
     body {
         font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
     }
@@ -45,10 +51,73 @@
         padding-bottom: 20px;
     }
 
+    #heading {
+        height: 100%;
+        background-color: #F2F2F2;
+        padding-top: 0px !important;
+        background-image: url(images/heading-background.svg);
+        background-repeat: no-repeat;
+        background-position: right calc(100px) bottom -10px;
+        background-size: auto 600px;
+        color: white;
+    }
+
+    .head-quote-wrapper {
+        position: relative;
+        height:100%;
+    }
+    .head-quote {
+        position: absolute;
+        bottom: 130px;
+    }
+
+    .head-quote h1 {
+        font-size: 45px;
+    }
+
+    .head-quote p{
+        width:50%;
+    }
+
+    .heading-menu {
+        background-color: #E6E6E6;
+        padding-top: 30px;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .logo {
+        height: 45px;
+    }
+
     #features {
         padding-top: 50px;
         padding-bottom: 50px;
-        background-color: #F2F2F2;
+        background-image: url(images/second-backgound.svg);
+        background-repeat: no-repeat;
+        background-position: right calc(100px) top -5px;
+        background-size: auto 2044.61px;
+        height:650px;
+    }
+
+    #features h1 {
+        color:white;
+        font-size: 80px;
+    }
+
+    .feature-list {
+        margin-top: 180px;
+    }
+
+    .feature-header {
+        position: relative;
+    }
+
+    .planet {
+        width: 250px;
+        position: absolute;
+        bottom: -100px;
+        right: 30px;
     }
 
     #plans {
@@ -192,29 +261,40 @@
         background-color: #F7931E;
     }
 </style>
-<div class="container">
+<section id="heading">
+    <div class="heading-menu">
+        <div class="container">
 
-    <div class="row">
-        <div class="col-md-6">
-            <p>Hey</p>
-        </div>
-        <div class="col-md-6">
-            <p>Bye</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <img src="images/logo.svg" class="logo">
+                </div>
+                <div class="col-md-6">
+                    <p>Bye</p>
+                </div>
+            </div>
         </div>
     </div>
-
-    <div class="row">
-        <div class="col-md-12"></div>
+    <div class="container head-quote-wrapper">
+        <div class="row head-quote">
+            <div class="col-md-12">
+                <h1>The whole is more than the sum of its parts</h1>
+                <p class="lead">Aristotle</p>
+                <p>We combine a number of services in oder to make you sure, that you can push all your efforts to
+                    invetigate, research, discover without any problem.</p>
+            </div>
+        </div>
     </div>
-</div>
+</section>
 <section id="features">
     <div class="container">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-md-12 feature-header">
                 <h1>artica is a</h1>
+                <img class="planet" src="images/planet.gif">
             </div>
         </div>
-        <div class="row">
+        <div class="row feature-list">
             <div class="col-md-4">
                 <h2>Powerful<br>search engine</h2>
                 <p>Fast and precise: you can be sure, that you’ll never miss something important.</p>
