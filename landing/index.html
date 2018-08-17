@@ -16,6 +16,11 @@
 
     body {
         font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+        background-image: url(images/second-backgound.svg);
+        background-repeat: no-repeat;
+        background-position: right calc(100px) bottom calc(100%);
+        background-size: 200% auto;
+        height:100%;
     }
 
     .container {
@@ -47,36 +52,36 @@
     }
 
     section {
-        padding-top: 20px;
         padding-bottom: 20px;
     }
 
     #heading {
-        height: 100%;
-        background-color: #F2F2F2;
+        #background-color: #F2F2F2;
         padding-top: 0px !important;
-        background-image: url(images/heading-background.svg);
-        background-repeat: no-repeat;
-        background-position: right calc(100px) bottom -10px;
-        background-size: auto 600px;
         color: white;
     }
 
     .head-quote-wrapper {
-        position: relative;
-        height:100%;
+        height: 100%;
+        margin-top:17%;
     }
+
     .head-quote {
-        position: absolute;
-        bottom: 130px;
     }
 
     .head-quote h1 {
         font-size: 45px;
     }
 
-    .head-quote p{
-        width:50%;
+    .head-quote p {
+        width: 50%;
+    }
+
+    .head-quote-inside {
+    }
+
+    #aristotle {
+        width: 250px;
     }
 
     .heading-menu {
@@ -93,15 +98,11 @@
     #features {
         padding-top: 50px;
         padding-bottom: 50px;
-        background-image: url(images/second-backgound.svg);
-        background-repeat: no-repeat;
-        background-position: right calc(100px) top -5px;
-        background-size: auto 2044.61px;
-        height:650px;
+        height: 650px;
     }
 
     #features h1 {
-        color:white;
+        color: white;
         font-size: 80px;
     }
 
@@ -118,6 +119,23 @@
         position: absolute;
         bottom: -100px;
         right: 30px;
+        animation-name: floating;
+        animation-duration: 3s;
+        animation-iteration-count: infinite;
+        animation-timing-function: ease-in-out;
+
+    }
+
+    @keyframes floating {
+        from {
+            transform: translate(0, 0px);
+        }
+        65% {
+            transform: translate(0, 15px);
+        }
+        to {
+            transform: translate(0, -0px);
+        }
     }
 
     #plans {
@@ -236,6 +254,18 @@
         background-color: #29ABE2;
     }
 
+    @keyframes floating1 {
+        from {
+            transform: translate(0, 0px);
+        }
+        65% {
+            transform: translate(0, 5px);
+        }
+        to {
+            transform: translate(0, -0px);
+        }
+    }
+
     .plan-free a:hover {
         background-color: #29a1d8;
     }
@@ -247,6 +277,11 @@
 
     .plan-1 a {
         background-color: #F15A24;
+        animation-name: floating1;
+        animation-duration: 3s;
+        animation-iteration-count: infinite;
+        animation-timing-function: ease-in-out;
+
     }
 
     .plan-1 a:hover {
@@ -254,7 +289,7 @@
     }
 
     #features {
-        background-color: #E6E6E6;
+        #background-color: #E6E6E6;
     }
 
     #subscribe {
@@ -277,7 +312,8 @@
     </div>
     <div class="container head-quote-wrapper">
         <div class="row head-quote">
-            <div class="col-md-12">
+            <div class="col-md-12 head-quote-inside">
+                <img id="aristotle" src="images/aristotle.png">
                 <h1>The whole is more than the sum of its parts</h1>
                 <p class="lead">Aristotle</p>
                 <p>We combine a number of services in oder to make you sure, that you can push all your efforts to
