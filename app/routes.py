@@ -18,7 +18,7 @@ from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
 from app.springer import get_article, get_article_pool, get_journal_pool, headers, Worker, \
-    Overwatch, log, Miner, tor
+    Overwatch, log, Miner, tor, TorCommander
 import random
 import threading
 
@@ -260,38 +260,27 @@ def update_journals():
 
     if task == 'springer':
 
-        #controller = Controller.from_port()
-        #Password = "1234"
-
         tor.connectTor()
-
-        #for i in range(10000):
-            #tor.showMyIp()
-            #tor.renewTor()
 
         start = request.args.get('start')
         end = request.args.get('end')
         log('start=' + str(start) + ', end=' + str(end))
 
-        '''proxy_list = []
-        proxy_gen()
-        log('proxy_list created')'''
-
         watcher = Overwatch()
         watcher.start()
         log('watcher started')
 
-        '''helper = Helper()
-        helper.start()
-        log('helper started')'''
+        commander = TorCommander()
+        commander.start()
+        log('commander started')
 
-        for item in range(60):
+        for item in range(50):
             worker_name = 'Worker-' + str(item + 1)
             worker = Worker(worker_name)
             worker.start()
             log(worker_name + ' started')
 
-        for item in range(10):
+        for item in range(5):
             miner_name = 'Miner-' + str(item + 1)
             miner = Miner(miner_name)
             miner.start()
@@ -415,7 +404,7 @@ def api_run():
     start = request.args.get('start')
     end = request.args.get('end')
     try:
-        get_springer(start, end)
+        get_journal_pool(start, end)
     except:
         return 202
     else:
