@@ -17,12 +17,15 @@ from app import app
 from app import db
 from app import q, Job, conn, get_current_job
 from app.models import Article, User, UserDocument, Journal, Citation, Author, Affilation
-from app.springer import get_article, get_article_pool, get_journal_pool, headers, Worker, \
-    Overwatch, log, Miner, tor, TorCommander
+from app.springer import Source, headers, Worker, \
+    Overwatch, log, Miner, tor, TorCommander, springer_parser
 import random
 import threading
+import time
+import multiprocessing as mp
 
 count_pattern = re.compile(r'rows=(\d+)')
+
 
 def extract_analyze_count(rows):
     for row in rows:
@@ -259,14 +262,19 @@ def update_journals():
             return 'Describe all args', 404
 
     if task == 'springer':
-
         tor.connectTor()
 
         start = request.args.get('start')
         end = request.args.get('end')
         log('start=' + str(start) + ', end=' + str(end))
 
-        watcher = Overwatch()
+        springer_parser.first = start
+        springer_parser.last = end
+
+        springer_parser.start()
+
+
+        '''watcher = Overwatch()
         watcher.start()
         log('watcher started')
 
@@ -274,20 +282,32 @@ def update_journals():
         commander.start()
         log('commander started')
 
-        for item in range(50):
-            worker_name = 'Worker-' + str(item + 1)
-            worker = Worker(worker_name)
-            worker.start()
-            log(worker_name + ' started')
+        for item in range(int(start), int(end)):
+            name = 'Source-' + str(item)
+            source = Source(name, item)
+            source.start()
+            log(name + ' started')
 
-        for item in range(5):
-            miner_name = 'Miner-' + str(item + 1)
-            miner = Miner(miner_name)
+        for item in range(10):
+            name = 'Miner-' + str(item + 1)
+            miner = Miner(name)
             miner.start()
-            log(miner_name + ' started')
+            log(name + ' started')
 
-        get_journal_pool(start, end)
-        time.sleep(10000)
+        #mp.set_start_method('fork')
+        output = mp.Queue()
+        processes = [mp.Process(target=creator) for x in range(1)]
+        #p.daemon = True
+        for p in processes:
+            p.start()
+            p.join()
+        [output.get() for p in processes]'''
+
+        '''for item in range(500):
+            name = 'Worker-' + str(item + 1)
+            worker = Worker(name)
+            worker.start()
+            log(name + ' started')'''
 
         return redirect(
             url_for('index'))
