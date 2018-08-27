@@ -271,43 +271,15 @@ def update_journals():
         springer_parser.first = start
         springer_parser.last = end
 
-        springer_parser.start()
-
-
-        '''watcher = Overwatch()
-        watcher.start()
-        log('watcher started')
-
-        commander = TorCommander()
-        commander.start()
-        log('commander started')
-
-        for item in range(int(start), int(end)):
-            name = 'Source-' + str(item)
-            source = Source(name, item)
-            source.start()
-            log(name + ' started')
-
-        for item in range(10):
-            name = 'Miner-' + str(item + 1)
-            miner = Miner(name)
-            miner.start()
-            log(name + ' started')
-
-        #mp.set_start_method('fork')
-        output = mp.Queue()
-        processes = [mp.Process(target=creator) for x in range(1)]
-        #p.daemon = True
-        for p in processes:
-            p.start()
-            p.join()
-        [output.get() for p in processes]'''
-
-        '''for item in range(500):
-            name = 'Worker-' + str(item + 1)
-            worker = Worker(name)
-            worker.start()
-            log(name + ' started')'''
+        springer_parser.create_watcher()
+        springer_parser.create_commander()
+        springer_parser.create_sources()
+        while springer_parser.source_count != 0:
+            time.sleep(1)
+        print('Sources are off')
+        log('Sourses are off')
+        springer_parser.create_miners()
+        springer_parser.create_workers()
 
         return redirect(
             url_for('index'))
