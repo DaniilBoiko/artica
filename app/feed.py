@@ -184,7 +184,7 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
 def create_initial_feed_tf_idf(mendeley_session, depth=1000, length=20):
     with app.app_context():
-        NIKITA_SERVER = 'https://ec2-18-222-191-117.us-east-2.compute.amazonaws.com:8080/get_vectors?'
+        NIKITA_SERVER = 'http://ec2-18-222-191-117.us-east-2.compute.amazonaws.com:8080/get_vectors?'
 
         docs = mendeley_session.documents.iter()
 
@@ -280,7 +280,10 @@ def create_initial_feed_tf_idf(mendeley_session, depth=1000, length=20):
         for article in articles_to_check:
             score = 0
             for key in fetch_data_for_user:
-                score += 1 - fetch_data_for_user[str(key)][str(article.id)]
+                a = fetch_data_for_user[key]
+                print(article.id)
+                print(str(article.id))
+                score += 1 - a[str(article.id)][0]
 
             print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Checking articles', i))
 

@@ -27,7 +27,7 @@ def get_session_from_cookies():
 
 mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
 
-from app.feed import create_initial_feed, get_vectors, find_nearest_in
+from app.feed import create_initial_feed, get_vectors, find_nearest_in,create_initial_feed_tf_idf
 
 
 @app.route('/')
@@ -88,13 +88,13 @@ def search():
 
 @app.route('/es_reindex')
 def es_reindex():
-    es_reindex()
+    es_0reindex()
 
     return redirect(url_for('index'))
 
 
-def es_reindex():
-    '''current_app.elasticsearch.indices.create(index='articles',
+def es_0reindex():
+    current_app.elasticsearch.indices.create(index='articles',
                                              body={
                                                  "settings": {
                                                      "number_of_shards": 1
@@ -117,7 +117,7 @@ def es_reindex():
                                                      }
                                                  }
                                              }
-                                             )'''
+                                             )
 
     with app.app_context():
         journal_id = 100000000000
@@ -130,17 +130,17 @@ def es_reindex():
                 journal_name = Journal.query.get_or_404(article.journal_id).name
                 journal_id = article.journal_id
 
-            body = {"doc": {
+            body = {
                 "title": article.title,
                 "abstract": article.abstract,
                 "doi": article.doi,
                 "authors": article.authors,
                 "journal_name": journal_name,
                 "pubdate": article.pubdate,
-                "ml_vector": article.ml_vector}
+                "ml_vector": article.ml_vector
             }
 
-            current_app.elasticsearch.update('articles', doc_type='article', id=article.id, body=body)
+            current_app.elasticsearch.index('articles', doc_type='article', id=article.id, body=body)
 
 
 @app.route('/admin', methods=['GET'])
@@ -323,7 +323,7 @@ def auth_return():
                 db.session.commit()
 
     if User.query.filter_by(email=mendeley_session.profiles.me.email).first().feed is None:
-        feed = str(create_initial_feed(mendeley_session, depth=5000))[1:-1]
+        feed = str(create_initial_feed_tf_idf(mendeley_session, depth=5000))[1:-1]
         user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
         print(user)
         user.feed = feed
@@ -458,7 +458,7 @@ def feed():
         else:
             journal_name = ''
 
-        article_similar = find_nearest_in(mendeley_session, id)
+        #article_similar = find_nearest_in(mendeley_session, id)
 
         articles.append({
             'id': article.id,
@@ -469,9 +469,9 @@ def feed():
             'journal_name': journal_name,
             'src': article.src,
             'journal_id': article.journal_id,
-            'similar': {'title': article_similar.title,
-                        'abstract': article_similar.abstract,
-                        'id': article_similar.id}
+            'similar': {'title': 'article_similar.title',
+                        'abstract': 'article_similar.abstract',
+                        'id': 'article_similar.id'}
         })
 
     return render_template('feed/feed.html', title='Feed', query=query, articles=articles)
@@ -521,3 +521,19 @@ def ml_index_last():
     print(article_ids)
 
     return redirect(url_for('index'))
+
+
+@app.route('/comment')
+def comment():
+    if 'token' not in session:
+        return redirect('/')
+
+    mendeley_session = get_session_from_cookies()
+
+    article_id = request.args.get('post_id',int)
+    message = request.args.get('comment', str)
+
+    article_id = Article.get_or_404(article_id)
+    comment = Comment(article_id = article_id, message = message)
+    db.session.add(comment)
+    db.session.commit()

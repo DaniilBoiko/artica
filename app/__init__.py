@@ -19,7 +19,7 @@ migrate = Migrate(app, db)
 bootstrap = Bootstrap(app)
 q = Queue(connection=conn)
 
-app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']], use_ssl=True, ca_certs=certifi.where()) \
+app.elasticsearch = Elasticsearch(hosts=[app.config['ELASTICSEARCH_URL']], use_ssl=True, ca_certs=certifi.where()) \
     if app.config['ELASTICSEARCH_URL'] else None
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
