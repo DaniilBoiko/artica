@@ -80,11 +80,13 @@ def create_initial_feed(mendeley_session, depth=1000, length=20):
 
             if new_document is not None:
                 if new_document.abstract is not None:
-                    user_doc_ids.append(new_document.id)
+                    if len(new_document.abstract) > 15:
+                        user_doc_ids.append(new_document.id)
             else:
                 if total != 0:
                     if documents[0].abstract is not None:
-                        user_doc_ids.append(documents[0].id)
+                        if len(documents[0].abstract) > 15:
+                            user_doc_ids.append(documents[0].id)
 
         print("%-15s %-45s %-15s" % (time.strftime('%X'), 'Indexing user articles', 'End'))
 
