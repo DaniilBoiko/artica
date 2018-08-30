@@ -271,13 +271,14 @@ def update_journals():
         springer_parser.first = start
         springer_parser.last = end
 
-        springer_parser.create_watcher()
         springer_parser.create_commander()
         springer_parser.create_sources()
         while springer_parser.source_count != 0:
             time.sleep(1)
         print('Sources are off')
         log('Sourses are off')
+
+        springer_parser.create_watcher()
         springer_parser.create_miners()
         springer_parser.create_workers()
 

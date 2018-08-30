@@ -1,4 +1,4 @@
-import requests, datetime, sys, random, threading, time, json, codecs
+import math, requests, datetime, sys, random, threading, time, json, codecs
 from bs4 import BeautifulSoup
 from app.models import Article, Citation, Author, Journal, Affilation
 from app import db
@@ -115,6 +115,7 @@ class Overwatch(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.name = 'Overwatch'
+        self.zero = len(springer_parser.journal_pool)
 
     def run(self):
         while True:
@@ -123,11 +124,11 @@ class Overwatch(threading.Thread):
             if springer_parser.times:
                 min_rtime = str(min(springer_parser.times))
                 max_rtime = str(max(springer_parser.times))
-            print(time.strftime('%X'), '|',
-                  threading.active_count(), '|', min_rtime, '/', max_rtime, '|', 'pool:', len(springer_parser.article_pool), '|', 'jrls:',
+            print('th',
+                  threading.active_count(), '|', 'pool:', len(springer_parser.article_pool), '|', 'jrls:',
                   len(springer_parser.journal_pool), '|', 'ready:', str(springer_parser.ready_articles))
             springer_parser.times = []
-            time.sleep(5)
+            time.sleep(1)
 
 
 class TorCommander(threading.Thread):
@@ -142,7 +143,6 @@ class TorCommander(threading.Thread):
             lock.acquire()
             tor.renewTor()
             lock.release()
-            tor.showMyIp()
 
 
 class Source(threading.Thread):
