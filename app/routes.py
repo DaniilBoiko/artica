@@ -266,21 +266,25 @@ def update_journals():
 
         start = request.args.get('start')
         end = request.args.get('end')
-        log('start=' + str(start) + ', end=' + str(end))
+        miner_count = request.args.get('miner')
+        first_year = request.args.get('begin')
+        last_year = request.args.get('finish')
+        log('start=' + str(start) + ', end=' + str(end)+', miner_count='+str(miner_count)+', years: '+str(first_year)+'-'+str(last_year))
 
         springer_parser.first = start
         springer_parser.last = end
-
+        springer_parser.miner_count = miner_count
+        springer_parser.years = range(int(first_year), int(last_year))
         springer_parser.create_commander()
         springer_parser.create_sources()
         while springer_parser.source_count != 0:
             time.sleep(1)
-        print('Sources are off')
         log('Sourses are off')
 
         springer_parser.create_watcher()
+
         springer_parser.create_miners()
-        springer_parser.create_workers()
+        #springer_parser.create_workers()
 
         return redirect(
             url_for('index'))

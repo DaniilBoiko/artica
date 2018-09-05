@@ -58,7 +58,7 @@ feeds = []
 
 class SpringerParser():
 
-    def __init__(self, miner_count, worker_count):
+    def __init__(self):
         self.name = 'SpringerParser'
         self.first = 0
         self.last = 0
@@ -67,9 +67,12 @@ class SpringerParser():
         self.article_pool = []
         self.journal_pool = []
         self.source_count = 0
-        self.miner_count = miner_count
-        self.worker_count = worker_count
         self.times = []
+        self.count = 0
+        self.miner_count = 0
+        self.worker_count = 0
+        self.years = []
+        self.errors = 0
         log('Parser created')
 
     def create_watcher(self):
@@ -93,10 +96,10 @@ class SpringerParser():
             time.sleep(0.3)
 
     def create_miners(self):
-        for i in range(self.miner_count):
+        for i in range(int(self.miner_count)):
             miner = Miner(name='Miner-' + str(i + 1))
             miner.start()
-            log('Miner-' + str(i + 1) + ' screated')
+            log('Miner-' + str(i + 1) + ' created')
             time.sleep(0.3)
 
     def create_workers(self):
@@ -107,7 +110,7 @@ class SpringerParser():
             time.sleep(0.3)
 
 
-springer_parser = SpringerParser(miner_count=2, worker_count=20)
+springer_parser = SpringerParser()
 
 
 class Overwatch(threading.Thread):
@@ -115,18 +118,28 @@ class Overwatch(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.name = 'Overwatch'
-        self.zero = len(springer_parser.journal_pool)
+        self.timestart = int(time.time())
+        self.start_count = len(springer_parser.journal_pool)
 
     def run(self):
+        '''bar = progressbar.ProgressBar(maxval=self.start_count,
+                                      widgets=[progressbar.Percentage(),
+                                      progressbar.Bar(left='|', marker='#',
+                                      fill='-', right='|')]).start()'''
+
         while True:
-            min_rtime = 'None'
+            '''min_rtime = 'None'
             max_rtime = 'None'
             if springer_parser.times:
                 min_rtime = str(min(springer_parser.times))
-                max_rtime = str(max(springer_parser.times))
-            print('th',
-                  threading.active_count(), '|', 'pool:', len(springer_parser.article_pool), '|', 'jrls:',
-                  len(springer_parser.journal_pool), '|', 'ready:', str(springer_parser.ready_articles))
+                max_rtime = str(max(springer_parser.times))'''
+            print('threads ',
+                  threading.active_count(),
+                  ' | ready ',
+                  springer_parser.count, '/', self.start_count, ' | errors ',
+                  springer_parser.errors)
+
+            #bar.update(springer_parser.count)
             springer_parser.times = []
             time.sleep(1)
 
@@ -184,7 +197,6 @@ class Miner(threading.Thread):
         return str(label.split('(')[1])
 
     def get_article_pool(self):
-        year = ['2017', '2018']
         try:
             t = int(time.time())
             response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(self.url), timeout=60)
@@ -194,9 +206,9 @@ class Miner(threading.Thread):
 
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            '''journal_title = soup.find('div', id='publication-title').find('h1').get_text()
-            log(thread_name() + ' ' + str(url) + ' journal_title parsed')
-    
+            journal_title = soup.find('div', id='publication-title').find('h1').get_text()
+            '''log(thread_name() + ' ' + str(url) + ' journal_title parsed')
+
             if Journal.query.filter_by(name=journal_title).first() is None:
                 log(thread_name() + ' ' + str(url) + ' journal not found in db')
                 new_journal = Journal(name=journal_title, link='https://link.springer.com/journal/' + url,
@@ -206,7 +218,7 @@ class Miner(threading.Thread):
                 log(thread_name() + ' ' + str(url) + ' journal added to db')
                 db.session.commit()
                 log(thread_name() + ' ' + str(url) + ' commit to db')
-    
+
             journal = Journal.query.filter_by(name=journal_title).first()
             log(thread_name() + ' ' + str(url) + ' journal selected in db')'''
 
@@ -216,8 +228,8 @@ class Miner(threading.Thread):
                 issue_list = volume_item.find('ul', class_='issues-list')
                 for issue_item in issue_list.find_all('li', class_='issue-item'):
                     issue_date = issue_item.find('a', class_='title').get_text().split(',')[0]
-                    issue_year = str(issue_date.split(' ')[-1])
-                    if issue_year in year:
+                    issue_year = int(issue_date.split(' ')[-1])
+                    if issue_year in springer_parser.years:
                         issue_block.append(issue_item.find('a', class_='title')['href'])
                         log(self.thread_name() + ' ' + str(self.url) + ' ' + str(
                             issue_item.find('a', class_='title')['href']) + ' issue_link added to issue_pool')
@@ -236,7 +248,7 @@ class Miner(threading.Thread):
                 response = requests.get('https://link.springer.com' + issue_item, timeout=60)
                 rtime = int(time.time()) - t
                 springer_parser.times.append(rtime)
-                log(self.thread_name() + ' ' + str(rtime) + ' ' + str(self.url) + ' ' + str(issue_item) + ' issue requested')
+                #log(self.thread_name() + ' ' + str(rtime) + ' ' + str(self.url) + ' ' + str(issue_link) + ' issue requested')
 
                 soup = BeautifulSoup(response.content, 'html.parser')
                 results = soup.find('div', class_='toc')
@@ -246,9 +258,13 @@ class Miner(threading.Thread):
                         article_link) + ' article_link parsed')
                     # if Search(Article, 'doi', article_link[9:]) is None:
                     # if Article.query.filter_by(doi=article_link[9:]).first() is None:
-                    while len(springer_parser.article_pool) > 500:
-                        time.sleep(20)
-                    springer_parser.article_pool.append(article_link)
+                    #while len(springer_parser.article_pool) > 500:
+                        #time.sleep(20)
+                    #springer_parser.article_pool.append(article_link)
+                    journal_title = str(journal_title).replace(' ', '_')
+                    with open('article_links/'+str(journal_title), 'a') as outfile:
+                        outfile.write(codecs.encode(article_link, 'translit/one')+'\n')
+
                     log(self.thread_name() + ' ' + str(
                         article_link) + ' article_link added to article_pool')
 
@@ -257,12 +273,14 @@ class Miner(threading.Thread):
                 pages = int(art_number) // 20
                 for item in range(0, pages):
                     issue_link = ''
+
                     for i in range(1, (len(issue_item.split('/')) - 1)):
                         issue_link += ('/' + str(issue_item.split('/')[i]))
                     issue_link += ('/' + str(int(issue_item.split('/')[(len(issue_item.split('/')) - 1)]) + item))
-                    issue_item = issue_link
                     t = int(time.time())
-                    response = requests.get('https://link.springer.com' + issue_item, timeout=60)
+                    response = requests.get('https://link.springer.com' + issue_link, timeout=60)
+                    log(self.thread_name() + ' ' + str(rtime) + ' ' + str(self.url) + ' ' + str(
+                        issue_link) + ' issue requested')
                     rtime = int(time.time()) - t
                     springer_parser.times.append(rtime)
                     log(str(threading.current_thread())+ ' ' + str(rtime) + ' ' + str(self.url) + ' ' + str(issue_item) + ' issue requested')
@@ -273,20 +291,30 @@ class Miner(threading.Thread):
                         article_link = article_item.find('h3', class_='title').find('a')['href']
                         log(self.thread_name() + ' ' + str(self.url) + ' ' + str(issue_item) + ' ' + str(
                             article_link) + ' article_link parsed')
-                        while len(springer_parser.article_pool) > 500:
-                            time.sleep(20)
-                        springer_parser.article_pool.append(article_link)
+                        #while len(springer_parser.article_pool) > 500:
+                            #time.sleep(20)
+                        #springer_parser.article_pool.append(article_link)
+                        journal_title = str(journal_title).replace(' ', '_')
+                        with open('article_links/'+str(journal_title), 'a') as outfile:
+                            outfile.write(codecs.encode(article_link, 'translit/one')+'\n')
+
+                        log(self.thread_name() + ' ' + str(
+                            article_link) + ' article_link added to article_pool')
 
                         # if Search(Article, 'doi', article_link[9:]) is None:
                         # if Article.query.filter_by(doi=article_link[9:]).first() is None:
                         # log(self.thread_name() + ' ' + str(
                         #    article_link) + ' article not found in db')
-                        log(self.thread_name() + ' ' + str(
-                            article_link) + ' article_link added to article_pool')
-                # k = True
+
+            springer_parser.count += 1
+
+            #k = True
 
         except Exception as e:
             log('ERROR: ' + self.thread_name() + ' ' + str(self.url) + ' ' + str(e))
+            springer_parser.errors += 1
+            with open('article_links/except', 'a') as outfile:
+                outfile.write(codecs.encode(str(self.url), 'translit/one')+'\n')
 
     def run(self):
         with app.app_context():
@@ -297,6 +325,7 @@ class Miner(threading.Thread):
                     lock.release()
                     log(self.thread_name() + ' in ' + str(self.url))
                     self.get_article_pool()
+                    #springer_parser.count += 1
                 time.sleep(0.3)
 
 
