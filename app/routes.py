@@ -27,7 +27,7 @@ def get_session_from_cookies():
 
 mendeley = Mendeley('5691', 'Q87rg9xQ58L2HDav', 'http://ec2-18-220-156-220.us-east-2.compute.amazonaws.com:8080/oauth')
 
-from app.feed import create_initial_feed, get_vectors, find_nearest_in,create_initial_feed_tf_idf
+from app.feed import create_initial_feed, get_vectors, find_nearest_in, create_initial_feed_tf_idf
 
 
 @app.route('/')
@@ -346,7 +346,7 @@ def list_documents():
     except:
         return redirect('/logout')
 
-    docs= mendeley_session.documents.iter()
+    docs = mendeley_session.documents.iter()
 
     return render_template('user/library.html', name=name, docs=docs, title='Library', query=query)
 
@@ -458,7 +458,7 @@ def feed():
         else:
             journal_name = ''
 
-        #article_similar = find_nearest_in(mendeley_session, id)
+        # article_similar = find_nearest_in(mendeley_session, id)
 
         articles.append({
             'id': article.id,
@@ -530,10 +530,10 @@ def comment():
 
     mendeley_session = get_session_from_cookies()
 
-    article_id = request.args.get('post_id',int)
-    message = request.args.get('comment', str)
+    article_id = request.args.get('post_id', int)
+    content = request.args.get('content', str)
 
-    article_id = Article.get_or_404(article_id)
-    comment = Comment(article_id = article_id, message = message)
-    db.session.add(comment)
-    db.session.commit()
+    article = Article.get_or_404(article_id)
+    user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
+
+    article.comment(user_id=user.id, content=content)

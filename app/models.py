@@ -1,3 +1,5 @@
+import datetime
+
 from app import db
 
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
@@ -113,6 +115,21 @@ class Article(SearchableMixin, db.Model):
     meta_data = db.Column(db.Text)
     ml_vector = db.Column(ARRAY(db.Float))
 
+    def comment(self, user_id, content):
+        comment = Comment(
+            user_id=user_id,
+            article_id = self.id,
+            content=content,
+            published=datetime.datetime.now()
+        )
+
+        try:
+            db.session.add(comment)
+            db.session.commit()
+            return True
+        except:
+            return False
+
     def __repr__(self):
         return '<Aticle {}>'.format(self.title)
 
@@ -135,3 +152,32 @@ class Journal(db.Model):
 
     def __repr__(self):
         return '<Journal {}>'.format(self.name)
+
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer)
+    article_id = db.Column(db.Integer)
+    content = db.Column(db.Text)
+    published = db.Column(db.DateTime)
+    status = db.Column(db.Integer)
+
+    def hide(self):
+        self.status = 1
+        try:
+            db.session.commit()
+            return True
+        except:
+            return False
+
+    def delete(self):
+        self.status = 666
+
+        try:
+            db.session.commit()
+            return True
+        except:
+            return False
+
+    def __repr__(self):
+        return '<Comment {}>'.format(self.id)
