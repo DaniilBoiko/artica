@@ -122,11 +122,6 @@ class Overwatch(threading.Thread):
         self.start_count = len(springer_parser.journal_pool)
 
     def run(self):
-        '''bar = progressbar.ProgressBar(maxval=self.start_count,
-                                      widgets=[progressbar.Percentage(),
-                                      progressbar.Bar(left='|', marker='#',
-                                      fill='-', right='|')]).start()'''
-
         while True:
             '''min_rtime = 'None'
             max_rtime = 'None'
