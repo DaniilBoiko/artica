@@ -13,7 +13,7 @@ from mendeley.session import MendeleySession
 from app import app
 from app import db
 from app import q
-from app.models import Article, User, UserDocument, Journal
+from app.models import Article, User, UserDocument, Journal, Comment, Like
 from app.tools import distance
 from app.search import ESCondition
 
@@ -222,8 +222,10 @@ def article():
     else:
         pub_date = ''
 
+    comments = Comment.query.filter_by(article_id=id).all()
+
     return render_template('search/article.html', title=article.title, journal=journal, article=article, query=query,
-                           pub_date=pub_date)
+                           pub_date=pub_date, comments=comments)
 
 
 @app.route("/add_data", methods=['GET'])
@@ -525,15 +527,31 @@ def ml_index_last():
 
 @app.route('/comment')
 def comment():
-    if 'token' not in session:
-        return redirect('/')
+    user = get_user()
+    if not user: return redirect('/')
 
-    mendeley_session = get_session_from_cookies()
-
-    article_id = request.args.get('post_id', int)
-    content = request.args.get('content', str)
-
+    article_id = request.form.get('article_id', int)
+    content = request.form.get('content', str)
     article = Article.get_or_404(article_id)
-    user = User.query.filter_by(email=mendeley_session.profiles.me.email).first()
+    if article.comment(user_id=user.id, content=content):
+        return redirect(url_for('article', id=article_id))
+    else:
+        return 403
 
-    article.comment(user_id=user.id, content=content)
+
+@app.route('/vote')
+def vote():
+    user = get_user()
+    if not user: return redirect('/')
+
+    type = request.args.get('type')
+    article_id = request.args.get('article_id')
+    like = Like(article_id=article_id, type=type, user_id=user.id)
+    return
+
+
+def get_user():
+    if 'token' not in session:
+        return None
+    mendeley_session = get_session_from_cookies()
+    return User.query.filter_by(email=mendeley_session.profiles.me.email).first()
