@@ -114,6 +114,8 @@ class Article(SearchableMixin, db.Model):
     crossref = db.Column(db.Text)
     meta_data = db.Column(db.Text)
     ml_vector = db.Column(ARRAY(db.Float))
+    rating  = db.Column(db.Integer)
+    confidence = db.Column(db.Boolean)
 
     def comment(self, user_id, content):
         comment = Comment(
