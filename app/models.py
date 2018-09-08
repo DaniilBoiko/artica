@@ -181,3 +181,12 @@ class Comment(db.Model):
 
     def __repr__(self):
         return '<Comment {}>'.format(self.id)
+
+class Like(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer)
+    article_id = db.Column(db.Integer)
+    type = db.Column(db.Boolean)
+
+    def __repr__(self):
+        return '<Like {}>'.format(self.id)
