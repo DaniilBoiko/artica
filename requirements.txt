@@ -1,3 +1,5 @@
+stem
+bs4
 alembic==0.9.9
 awscli==1.15.10
 awsebcli==3.12.4
