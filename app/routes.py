@@ -547,7 +547,26 @@ def vote():
     type = request.args.get('type')
     article_id = request.args.get('article_id')
     like = Like(article_id=article_id, type=type, user_id=user.id)
-    return
+
+    return redirect(url_for('article', id = article_id))
+
+
+@app.route('/add_user_doc')
+def add_user_doc():
+    user = get_user()
+    if not user: return redirect('/')
+
+    article_id = request.form.get('id')
+    article = Article.query.get(article_id)
+
+    mendeley_session = get_session_from_cookies()
+    try:
+        mendeley_session.documents.create(title=article.title, type='article', year=article.pubdate,
+                                             identifiers={'doi': article.doi}, abstract=article.abstract)
+    except:
+        return 403
+
+    return redirect(url_for('article', id = article_id))
 
 
 def get_user():

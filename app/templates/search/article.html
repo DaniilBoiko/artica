@@ -98,7 +98,7 @@
                             </button>
                             {% endraw %}
                             {% raw %}
-                            <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a>
+                            <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a> <a class="btn btn-link pl-0" href="{{ url_for('add_user_doc', id = article.id) }}">Add to Mendeley</a>
                             {% endraw %}
 
                         </div>
