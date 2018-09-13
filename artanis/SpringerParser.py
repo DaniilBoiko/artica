@@ -1,6 +1,6 @@
 import time
 from argparse import ArgumentParser
-from Springer import keeper, TorInterface, Overwatch, Source, Miner, Worker
+from Classes import keeper, TorInterface, Overwatch, Source, Miner, Worker
 import os
 
 
@@ -68,10 +68,6 @@ class SpringerParser(ArgumentParser):
             keeper.file_list = [file for file in os.walk('article_links')][0][2]
             self.create_workers()
             while True:
-                time.sleep(120)
-                if keeper.dead_workers == self.worker_count:
-                    keeper.dead_workers = 0
-                    self.create_workers()
-
+                time.sleep(1)
         else:
             raise ValueError('Unacceptable mode')

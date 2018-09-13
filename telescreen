@@ -1,0 +1,15 @@
+#!/bin/bash
+
+while [ 1 -gt 0 ]
+do
+n=0
+for i in $(cat instances)
+do
+prog=$(ssh -vi /home/michelle/key -q 'ubuntu@'$i tail -n 1 /home/ubuntu/screenlog.0)
+echo $prog | tr -s '\r' '\n' > screen_data
+echo $i'|'$(tail -n 1 screen_data) >> allscreens
+let n=$n+1
+done
+clear
+tail -n $n allscreens
+done

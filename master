@@ -1,0 +1,17 @@
+#!/bin/bash
+
+for i in $(cat instances)
+do
+scp -vi ~/key artanis.tar.gz 'ubuntu@'$i':/home/ubuntu/'
+ssh -vi ~/key 'ubuntu@'$i tar -xvzf artanis.tar.gz
+ssh -vi ~/key 'ubuntu@'$i sudo apt update
+ssh -vi ~/key 'ubuntu@'$i sudo apt install python-pip --assume-yes
+ssh -vi ~/key 'ubuntu@'$i pip install translitcodec
+ssh -vi ~/key 'ubuntu@'$i pip install requests
+ssh -vi ~/key 'ubuntu@'$i pip install bs4
+ssh -vi ~/key 'ubuntu@'$i pip install stem
+ssh -vi ~/key 'ubuntu@'$i pip install PySocks
+ssh -vi ~/key 'ubuntu@'$i sudo apt install tor --assume-yes
+ssh -vi ~/key 'ubuntu@'$i sudo cp artanis/torrc /etc/tor/
+ssh -vi ~/key 'ubuntu@'$i sudo service tor restart
+done

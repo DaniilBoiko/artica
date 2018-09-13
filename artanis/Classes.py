@@ -296,17 +296,20 @@ class Worker(BaseClass):
                         })
             self.log(str(url) + ' authors and affiliations parsed')
             
-            with codecs.open('Springer/' + journal_title, 'a', encoding='utf-8') as outfile:
-                data = dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
-                            title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
-                            abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
-                        'day': day,
-                        'month': month,
-                        'year': year
-                        }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
-                            pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
-                            ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors)
-                json.dump(data, outfile, ensure_ascii=False)
+            with open('Springer/' + journal_title, 'r') as outfile:
+                data = json.load(outfile)
+                
+            data.append(dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
+                        title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
+                        abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
+                    'day': day,
+                    'month': month,
+                    'year': year
+                    }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
+                        pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
+                        ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
+            with open('Springer/' + journal_title, 'w') as outfile:
+                outfile.write(json.dumps(data))
             keeper.update('ready_articles', 1)
         
         except Exception as e:
@@ -316,7 +319,7 @@ class Worker(BaseClass):
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
     
     def run(self):
-        for age in range(20):
+        while True:
             self.lock.acquire()
             if keeper.file_list:
                 self.journal = keeper.file_list.pop()
@@ -332,4 +335,3 @@ class Worker(BaseClass):
                     file.write(text)
                 self.get_article(url)
                 time.sleep(0.3)
-        return keeper.update('dead_workers', 1)

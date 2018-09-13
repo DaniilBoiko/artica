@@ -1,0 +1,13 @@
+#!/bin/bash
+
+start=1
+end=11
+for i in $(cat instances)
+do
+ssh -vi ~/key 'ubuntu@'$i screen -dmL
+ssh -vi ~/key 'ubuntu@'$i 'screen -X stuff "cd artanis\n"'
+sleep 2
+ssh -vi ~/key 'ubuntu@'$i 'screen -X stuff "python artanis.py -s "'$start'" -e "'$end'" -f 2013 -l 2014 -m articles\n"'
+let start=$start+10
+let end=$end+10
+done

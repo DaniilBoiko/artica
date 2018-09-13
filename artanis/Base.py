@@ -9,12 +9,12 @@ class BaseClass(threading.Thread):
         self.name = name
         self.log('started')
         self.lock = threading.Lock()
-        self.file_list = [] 
         self.start()
     
     def log( self, log ):
-        with open('logs', 'a') as logs:
-            logs.write(time.strftime('%X') + ' ' + self.name + ' ' + str(log) + '\n')
+        ''
+       # with open('logs', 'a') as logs:
+           # logs.write(time.strftime('%X') + ' ' + self.name + ' ' + str(log) + '\n')
     
     def terminate( self ):
         raise RuntimeError()
@@ -32,7 +32,7 @@ class Keeper(BaseClass):
         self.errors = 0
         self.try_articles = 0
         self.ready_articles = 0
-        self.dead_workers = 0
+        self.file_list = [] 
         BaseClass.__init__(self, name='Keeper')
     
     def update( self, attr, value ):
