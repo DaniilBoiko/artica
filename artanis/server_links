@@ -1,0 +1,22 @@
+#!/bin/bash
+
+source venv/bin/activate
+sudo apt update
+
+pip install translitcodec --user
+pip install requests --user
+pip install bs4 --user
+pip install PySocks --user
+pip install stem --user
+
+sudo apt-get install tor --assume-yes
+sudo cp /home/ubuntu/artica/torrc /etc/tor/
+sudo service tor restart
+
+screen -dmS parser -L
+sleep 2
+screen -S parser -p 0 -X stuff 'cd artanis\n'
+sleep 2
+screen -S parser -p 0 -X stuff 'source venv/bin/activate\n'
+sleep 2
+screen -S parser -p 0 -X stuff 'python artanis.py -s '$1' -e '$2' -f '$3' -l '$4' -m links\n'
