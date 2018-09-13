@@ -31,8 +31,9 @@ class TorInterface(BaseClass):
         self.lock.acquire()
         self.controller.authenticate(self.password)
         self.controller.signal(Signal.NEWNYM)
-        self.lock.release()  #self.log('Tor renewed: ' + self.show_ip())
-
+        self.lock.release()
+        self.log('Tor renewed: ' + self.show_ip())
+    
     def show_ip(self):
         return BeautifulSoup(requests.get('http://www.showmyip.gr/').content, 'html.parser').find('span', {
             'class': 'ip_address'
@@ -59,8 +60,9 @@ class Overwatch(BaseClass):
                 self.max_rtime = str(max(keeper.times))
                 keeper.times = []
             print(time.strftime('%X') + ' ' + self.min_rtime + '/' + self.max_rtime + ' threading ' + str(
-                    threading.active_count()) + " | " + "journals " + str(len(keeper.pool)) + ' | articles ' + str(
-                    keeper.ready_articles) + ' errors ' + str(keeper.errors))
+                    threading.active_count()) + " | " + "journals " + str(
+                    int(keeper.start_pool) - int(len(keeper.pool))) + '/' + str(
+                    keeper.start_pool) + ' | articles ' + str(keeper.ready_articles) + ' errors ' + str(keeper.errors))
             time.sleep(5)
 
 
@@ -75,10 +77,12 @@ class Source(BaseClass):
         t = int(time.time())
         response = requests.get(page_link)
         rtime = int(time.time()) - t
-        keeper.times.append(rtime)
-        #self.log(str(rtime) + ' page requested')
+        keeper.update(attr='times', value=rtime)
+        self.log(str(rtime) + ' page requested')
         results = BeautifulSoup(response.content, 'html.parser').find('ol', class_='content-item-list')
-        keeper.pool += [result.find('a')['href'][9:] for result in results.find_all('li')]
+        keeper.update(attr='pool', value=[result.find('a')['href'][9:] for result in results.find_all('li')])
+        keeper.update(attr='source_ready', value=1)
+        self.log(' off')
 
 
 class Miner(BaseClass):
@@ -91,8 +95,8 @@ class Miner(BaseClass):
             t = int(time.time())
             response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url), timeout=60)
             rtime = int(time.time()) - t
-            keeper.times.append(rtime)
-            #self.log(str(rtime) + ' ' + str(url) + ' journal requested')
+            keeper.update('times', rtime)
+            self.log(str(rtime) + ' ' + str(url) + ' journal requested')
             soup = BeautifulSoup(response.content, 'html.parser')
             journal_title = soup.find('div', id='publication-title').find('h1').get_text()
             issue_block = []
@@ -102,46 +106,47 @@ class Miner(BaseClass):
                     issue_year = int(issue_item.find('a', class_='title').get_text().split(',')[0].split(' ')[-1])
                     if issue_year in keeper.years:
                         issue_block.append(issue_item.find('a', class_='title')['href'])
-                        for issue in issue_block:
-                            t = int(time.time())
-                            response = requests.get('https://link.springer.com' + issue, timeout=60)
-                            rtime = int(time.time()) - t
-                            keeper.times.append(rtime)
-                            soup = BeautifulSoup(response.content, 'html.parser')
-                            for article_item in soup.find('div', class_='toc').find_all('li'):
-                                article_link = article_item.find('h3', class_='title').find('a')['href']
-                                #self.log(str(url) + ' ' + str(issue) + ' ' + str(article_link) + ' article_link parsed')
-                                with open('article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
-                                    outfile.write(codecs.encode(article_link,
-                                                                'translit/one') + '\n')  #self.log(str(article_link) + ' 
-                                    # article_link added to article_pool')
-                            # issue pages counter
-                            art_number = soup.find('div', class_='toc').find('h2').find('span').get_text().split(' ')[0][1:]
-                            pages = int(art_number) // 20
-                            for item in range(0, pages):
-                                issue_link = ''
-                                for i in range(1, (len(issue.split('/')) - 1)):
-                                    issue_link += ('/' + str(issue.split('/')[i]))
-                                issue_link += ('/' + str(int(issue.split('/')[(len(issue.split('/')) - 1)]) + item))
-                                t = int(time.time())
-                                response = requests.get('https://link.springer.com' + issue_link, timeout=60)
-                                rtime = int(time.time()) - t
-                                keeper.times.append(rtime)
-                                #self.log(str(rtime) + ' ' + str(url) + ' ' + issue_link + ' issue requested')
-                                results = BeautifulSoup(response.content, 'html.parser').find('div', class_='toc')
-                                for article_item in results.find_all('li'):
-                                    article_link = article_item.find('h3', class_='title').find('a')['href']
-                                    #self.log(str(url) + ' ' + issue + ' ' + str(article_link) + ' article_link parsed')
-                                    journal_title = str(journal_title).replace(' ', '_')
-                                    with open('article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
-                                        outfile.write(codecs.encode(article_link,
-                                                                    'translit/long') + '\n')  
-                
+                        self.log(str(url) + ' ' + str(
+                                issue_item.find('a', class_='title')['href']) + ' issue_link added to issue_pool')
+            for issue in issue_block:
+                t = int(time.time())
+                response = requests.get('https://link.springer.com' + issue, timeout=60)
+                rtime = int(time.time()) - t
+                keeper.update('times', rtime)
+                soup = BeautifulSoup(response.content, 'html.parser')
+                for article_item in soup.find('div', class_='toc').find_all('li'):
+                    article_link = article_item.find('h3', class_='title').find('a')['href']
+                    self.log(str(url) + ' ' + str(issue) + ' ' + str(article_link) + ' article_link parsed')
+                    with open('article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
+                        outfile.write(codecs.encode(article_link, 'translit/one') + '\n')
+                    self.log(str(article_link) + ' article_link added to article_pool')
+                # issue pages counter
+                art_number = soup.find('div', class_='toc').find('h2').find('span').get_text().split(' ')[0][1:]
+                pages = int(art_number) // 20
+                for item in range(0, pages):
+                    issue_link = ''
+                    for i in range(1, (len(issue.split('/')) - 1)):
+                        issue_link += ('/' + str(issue.split('/')[i]))
+                    issue_link += ('/' + str(int(issue.split('/')[(len(issue.split('/')) - 1)]) + item))
+                    t = int(time.time())
+                    response = requests.get('https://link.springer.com' + issue_link, timeout=60)
+                    rtime = int(time.time()) - t
+                    keeper.update('times', rtime)
+                    self.log(str(rtime) + ' ' + str(url) + ' ' + issue_link + ' issue requested')
+                    results = BeautifulSoup(response.content, 'html.parser').find('div', class_='toc')
+                    for article_item in results.find_all('li'):
+                        article_link = article_item.find('h3', class_='title').find('a')['href']
+                        self.log(str(url) + ' ' + issue + ' ' + str(article_link) + ' article_link parsed')
+                        journal_title = str(journal_title).replace(' ', '_')
+                        with open('article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
+                            outfile.write(codecs.encode(article_link, 'translit/long') + '\n')
+                        self.log(str(article_link) + ' article_link added to article_pool')
+        
         except Exception as e:
-            #self.log('ERROR: ' + str(url) + ' ' + str(e))
-            keeper.errors += 1
+            self.log('ERROR: ' + str(url) + ' ' + str(e))
+            keeper.update('errors', 1)
             with open('except_issues', 'a') as outfile:
-                outfile.write(codecs.encode(str(url), 'translit/one') + ' ' + str(e) + '\n')
+                outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
     
     def run(self):
         while True:
@@ -149,7 +154,7 @@ class Miner(BaseClass):
                 self.lock.acquire()
                 url = keeper.pool.pop()
                 self.lock.release()
-                #self.log(' in ' + str(url))
+                self.log(' in ' + str(url))
                 self.get_article_links(url=url)
             time.sleep(0.3)
 
@@ -166,19 +171,20 @@ class Worker(BaseClass):
             t = int(time.time())
             response = requests.get('https://link.springer.com' + url, timeout=60)
             rtime = int(time.time()) - t
-            keeper.times.append(rtime)
-            #self.log(str(rtime) + ' ' + str(url) + ' article requested')
+            keeper.update(attr='times', value=rtime)
+            self.log(str(rtime) + ' ' + str(url) + ' article requested')
             soup = BeautifulSoup(response.content, 'html.parser')
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
-            #self.log(str(url) + ' article_title parsed')
+            self.log(str(url) + ' article_title parsed')
             doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[
                   16:]
-            #self.log(str(url) + ' doi parsed')
+            self.log(str(url) + ' doi parsed')
             abstract = ''
             abstract_section = soup.find('section', class_='Abstract')
             if abstract_section is not None:
                 for abstract_par in abstract_section.find_all('p'):
-                    abstract = abstract + abstract_par.get_text() + '\n'  #self.log(str(url) + ' abstract parsed')
+                    abstract = abstract + abstract_par.get_text() + '\n'
+                self.log(str(url) + ' abstract parsed')
             cited = []
             ref_section = soup.find('section', class_='Section1 RenderAsSection1', id='Bib1')
             if ref_section is not None:
@@ -193,7 +199,8 @@ class Worker(BaseClass):
                         ref_doi = ref_item.find('span', class_='Occurrence OccurrenceDOI')
                         if ref_doi is not None:
                             cited.append(codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:],
-                                                       'translit/one'))  #self.log(str(url) + ' references_doi parsed')
+                                                       'translit/one'))
+                self.log(str(url) + ' references_doi parsed')
             date_inf = soup.find('span', class_='article-dates__first-online')
             year = int
             month = int
@@ -203,7 +210,7 @@ class Worker(BaseClass):
                 year = int(date_time.pop(0))
                 month = int(date_time.pop(0))
                 day = int(date_time.pop(0))
-            #self.log(str(url) + ' date parsed')
+            self.log(str(url) + ' date parsed')
             volume = ''
             issue = ''
             pp = ''
@@ -218,12 +225,12 @@ class Worker(BaseClass):
                 if issue[0] == '0':
                     issue = issue[1:]
                 number = soup.find('span', class_='ArticleCitation_Volume').get_text().split(':').pop(1)
-            #self.log(str(url) + ' technical info parsed')
+            self.log(str(url) + ' technical info parsed')
             if soup.find('span', class_='bibliographic-information__value', id='electronic-issn') is not None:
                 issn = soup.find('span', class_='bibliographic-information__value', id='electronic-issn').get_text()
             else:
                 issn = soup.find('span', class_='bibliographic-information__value', id='print-issn').get_text()
-            #self.log(str(url) + ' ISSN parsed')
+            self.log(str(url) + ' ISSN parsed')
             journal = soup.find('div', class_='enumeration')
             journal_url = str(journal.find_all('a')[0]['href'])
             journal_title = str(journal.find_all('a')[0]['title'])
@@ -231,19 +238,19 @@ class Worker(BaseClass):
                 'title': codecs.encode(journal_title, 'translit/one'),
                 'url': codecs.encode(journal_url, 'translit/one')
                 }
-            #self.log(str(url) + ' journal_inf parsed')
+            self.log(str(url) + ' journal_inf parsed')
             key_section = soup.find('div', class_='KeywordGroup', lang="en")
             keywords = []
             if key_section is not None:
                 for key_item in key_section.find_all('span', class_='Keyword'):
                     keywords.append(codecs.encode(key_item.get_text(), 'translit/one'))
-            #self.log(str(url) + ' keywords parsed')
+            self.log(str(url) + ' keywords parsed')
             key_section = soup.find('div', class_='KeywordGroup', lang="en")
             keywords = []
             if key_section is not None:
                 for key_item in key_section.find_all('span', class_='Keyword'):
                     keywords.append(codecs.encode(key_item.get_text(), 'translit/one'))
-            #self.log(str(url) + ' keywords parsed')
+            self.log(str(url) + ' keywords parsed')
             authors = []
             aff = []
             af_name = []
@@ -287,44 +294,44 @@ class Worker(BaseClass):
                         'name': codecs.encode(author_name, 'translit/one'),
                         'aff': aff
                         })
-            #self.log(str(url) + ' authors and affiliations parsed')
+            self.log(str(url) + ' authors and affiliations parsed')
             
             with open('Springer/' + journal_title, 'r') as outfile:
                 data = json.load(outfile)
-            
+                
             data.append(dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
-                             title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
-                             abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
+                        title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
+                        abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
                     'day': day,
                     'month': month,
                     'year': year
                     }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
-                             pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
-                             ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
+                        pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
+                        ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
             with open('Springer/' + journal_title, 'w') as outfile:
                 outfile.write(json.dumps(data))
-            keeper.ready_articles += 1
+            keeper.update('ready_articles', 1)
         
         except Exception as e:
-            #self.log('ERROR: ' + str(url) + ' ' + str(e))
-            keeper.errors += 1
+            self.log('ERROR: ' + str(url) + ' ' + str(e))
+            keeper.update('errors', 1)
             with open('except_articles', 'a') as outfile:
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
     
     def run(self):
         while True:
+            self.lock.acquire()
             if keeper.file_list:
-                self.lock.acquire()
                 self.journal = keeper.file_list.pop()
-                self.lock.release()
-        while os.stat('article_links/' + self.journal).st_size != 0:
-            with open('article_links/' + self.journal, 'r') as file:
-                links = file.readlines()
-            url = links.pop()
-            text = ''
-            for link in links:
-                text += str(link)
-            with open('article_links/' + self.journal, 'w') as file:
-                file.write(text)
-            self.get_article(url)
-            time.sleep(0.3)
+            self.lock.release()
+            while os.stat('article_links/' + self.journal).st_size != 0:
+                with open('article_links/' + self.journal, 'r') as file:
+                    links = file.readlines()
+                url = links.pop()
+                text = ''
+                for link in links:
+                    text += str(link)
+                with open('article_links/' + self.journal, 'w') as file:
+                    file.write(text)
+                self.get_article(url)
+                time.sleep(0.3)
