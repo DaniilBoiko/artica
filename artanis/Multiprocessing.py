@@ -9,30 +9,27 @@ from stem.control import Controller
 import time
 import codecs
 import os
-import threading
+import multiprocessing
 
 
-class TorInterface(threading.Thread):
-    
+class TorInterface(multiprocessing.Process):
+
     def __init__(self, controller, password):
-        threading.Thread.__init__(self)
+        multiprocessing.Process.__init__(self)
         self.controller = controller
         self.password = password
-        self.lock = threading.Lock()
         self.start()
-    
+
     def connect(self):
         self.controller = Controller.from_port(port=9051)
         socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "localhost", 9050, True)
         socket.socket = socks.socksocket
         print('Connection established')
-    
+
     def renew_tor(self):
-        self.lock.acquire()
         self.controller.authenticate(self.password)
         self.controller.signal(Signal.NEWNYM)
-        self.lock.release()
-    
+
     def show_ip(self):
         return BeautifulSoup(requests.get('http://www.showmyip.gr/').content, 'html.parser').find('span', {
             'class': 'ip_address'
@@ -43,30 +40,6 @@ class TorInterface(threading.Thread):
         while True:
             time.sleep(60)
             self.renew_tor()
-
-
-class Overwatch(threading.Thread):
-
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.start()
-
-    def run(self):
-        print('activated')
-        while True:
-            articles = 0
-            for file in os.listdir('/home/ubuntu/artanis/Springer'):
-                try:
-                    with open('/home/ubuntu/artanis/Springer/' + file, 'r') as infile:
-                        articles += len(json.load(infile))
-                except:
-                    ''
-            links = 0
-            for file in os.listdir('/home/ubuntu/artanis/article_links/'):
-                with open('/home/ubuntu/artanis/article_links/' + file, 'r') as infile:
-                    links += len(infile.readlines())
-            print(time.strftime('%X') + ' | articles ' + str(articles) + ' | links ' + str(links))
-            time.sleep(5)
 
 
 def get_articles(file):

@@ -1,3 +1,0 @@
-#!/bin/bash
-
-tar -cvzf ~/articles.tar.gz *
