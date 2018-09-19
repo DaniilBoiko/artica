@@ -1,0 +1,12 @@
+#!/bin/bash
+
+sudo apt update
+sudo apt install python-pip --assume-yes
+pip install translitcodec
+pip install requests
+pip install stem
+pip install PySocks
+pip install bs4
+sudo apt install tor --assume-yes
+sudo cp /home/ubuntu/artanis/torrc /etc/tor/
+sudo service tor restart

@@ -36,6 +36,8 @@ class SpringerParser(ArgumentParser):
         overwarch = Overwatch()
 
     def create_sources(self):
+        if self.startt == 171:
+            self.end = 175
         for i in range(int(self.startt), int(self.end + 1)):
             sourse = Source(name='Source-' + str(i), number=i)
             time.sleep(0.3)
@@ -62,7 +64,7 @@ class SpringerParser(ArgumentParser):
                 time.sleep(1)
         elif self.mode == 'articles':
             self.create_overwatch()
-            keeper.file_list = [file for file in os.walk('article_links')][0][2]
+            keeper.file_list = os.listdir('/home/ubuntu/artanis/article_links/')
             keeper.dev = len(keeper.file_list) // self.worker_count
             self.create_workers()
             while True:

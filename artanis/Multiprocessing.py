@@ -1,25 +1,25 @@
-import translitcodec
-import codecs
-import json
 import requests
-import socket
-import socks
-import threading
-import time
-from Base import BaseClass
-from artanis import keeper
+import json
 from bs4 import BeautifulSoup
+import translitcodec
+import socks
+import socket
 from stem import Signal
 from stem.control import Controller
+import time
+import codecs
 import os
+import threading
 
 
-class TorInterface(BaseClass):
+class TorInterface(threading.Thread):
     
     def __init__(self, controller, password):
+        threading.Thread.__init__(self)
         self.controller = controller
         self.password = password
-        BaseClass.__init__(self, name='TorInterface')
+        self.lock = threading.Lock()
+        self.start()
     
     def connect(self):
         self.controller = Controller.from_port(port=9051)
@@ -37,7 +37,7 @@ class TorInterface(BaseClass):
         return BeautifulSoup(requests.get('http://www.showmyip.gr/').content, 'html.parser').find('span', {
             'class': 'ip_address'
             }).text.strip()
-    
+
     def run(self):
         self.connect()
         while True:
@@ -45,111 +45,45 @@ class TorInterface(BaseClass):
             self.renew_tor()
 
 
-class Overwatch(BaseClass):
-    
+class Overwatch(threading.Thread):
+
     def __init__(self):
-        BaseClass.__init__(self, name='Overwatch')
-    
+        threading.Thread.__init__(self)
+        self.start()
+
     def run(self):
+        print('activated')
         while True:
-            print(time.strftime('%X') + ' | threads ' + str(
-                    threading.active_count()) + " | journals " + str(keeper.ready_journals) + ' | articles ' + str(
-                    keeper.ready_articles) + ' | errors ' + str(keeper.errors))
+            n = 0
+            for file in os.listdir('/home/ubuntu/artanis/Springer'):
+                try:
+                    with open('/home/ubuntu/artanis/Springer/' + file, 'r') as infile:
+                        n += len(json.load(infile))
+                except:
+                    ''
+            print(time.strftime('%X') + ' | articles ' + str(n))
             time.sleep(5)
 
 
-class Source(BaseClass):
-    
-    def __init__(self, name, number):
-        self.number = number
-        BaseClass.__init__(self, name=name)
-    
-    def run(self):
-        page_link = str('https://link.springer.com/search/page/' + str(self.number) + '?facet-content-type="Journal')
-        response = requests.get(page_link)
-        results = BeautifulSoup(response.content, 'html.parser').find('ol', class_='content-item-list')
-        self.lock.acquire()
-        keeper.pool += [result.find('a')['href'][9:] for result in results.find_all('li')]
-        self.lock.release()
+def get_articles(file):
+
+    with open('/home/ubuntu/artanis/article_links/' + file, 'r') as datafile:
+        links = datafile.readlines()
         
-
-class Miner(BaseClass):
+    while links:
+        
+        url = links.pop()
+        text = ''
+        for link in links:
+            text += str(link)
+        with open('/home/ubuntu/artanis/article_links/' + file, 'w') as datafile:
+            datafile.write(text)
     
-    def __init__(self, name, years):
-        self.urls = []
-        self.url = ''
-        self.years = years
-        BaseClass.__init__(self, name=name)
-
-    def get_article_links(self, url):
-        try:
-            response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url), timeout=60)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            journal_title = soup.find('div', id='publication-title').find('h1').get_text()
-            issue_block = []
-            volume_tab = soup.find('div', class_='volumes tab-content')
-            for volume_item in volume_tab.find_all('div', class_='volume-item'):
-                for issue_item in volume_item.find('ul', class_='issues-list').find_all('li', class_='issue-item'):
-                    issue_year = int(issue_item.find('a', class_='title').get_text().split(',')[0].split(' ')[-1])
-                    if issue_year in self.years:
-                        issue_block.append(issue_item.find('a', class_='title')['href'])
-            for issue in issue_block:
-                response = requests.get('https://link.springer.com' + issue, timeout=60)
-                soup = BeautifulSoup(response.content, 'html.parser')
-                for article_item in soup.find('div', class_='toc').find_all('li'):
-                    article_link = article_item.find('h3', class_='title').find('a')['href']
-                    with open('/home/ubuntu/artanis/article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
-                        outfile.write(codecs.encode(article_link, 'translit/one') + '\n')
-                # issue pages counter
-                art_number = soup.find('div', class_='toc').find('h2').find('span').get_text().split(' ')[0][1:]
-                pages = int(art_number) // 20
-                for item in range(0, pages):
-                    issue_link = ''
-                    for i in range(1, (len(issue.split('/')) - 1)):
-                        issue_link += ('/' + str(issue.split('/')[i]))
-                    issue_link += ('/' + str(int(issue.split('/')[(len(issue.split('/')) - 1)]) + item))
-                    response = requests.get('https://link.springer.com' + issue_link, timeout=60)
-                    results = BeautifulSoup(response.content, 'html.parser').find('div', class_='toc')
-                    for article_item in results.find_all('li'):
-                        article_link = article_item.find('h3', class_='title').find('a')['href']
-                        journal_title = str(journal_title).replace(' ', '_')
-                        with open('/home/ubuntu/artanis/article_links/' + str(journal_title).replace(' ', '_'), 
-                                  'a') as outfile:
-                            outfile.write(codecs.encode(article_link, 'translit/long') + '\n')
-            keeper.ready_journals += 1
-
-        except Exception as e:
-            keeper.errors += 1
-            with open('except_issues', 'a') as outfile:
-                outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
-
-    def run(self):
-        self.lock.acquire()
-        for i in range(10):
-            if keeper.pool:
-                self.urls.append(keeper.pool.pop())
-        self.lock.release()
-        while True:
-            if self.urls:
-                self.url = self.urls.pop()
-                self.get_article_links(url=self.url)
-            time.sleep(0.3)
-
-
-class Worker(BaseClass):
-    
-    def __init__(self, name):
-        self.files = []
-        self.file = ''
-        BaseClass.__init__(self, name=name)
-    
-    def get_article(self, url):
         try:
             response = requests.get('https://link.springer.com' + url, timeout=60)
             soup = BeautifulSoup(response.content, 'html.parser')
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
-            doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[
-                  16:]
+            doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
             abstract = ''
             abstract_section = soup.find('section', class_='Abstract')
             if abstract_section is not None:
@@ -168,8 +102,8 @@ class Worker(BaseClass):
                     else:
                         ref_doi = ref_item.find('span', class_='Occurrence OccurrenceDOI')
                         if ref_doi is not None:
-                            cited.append(codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:],
-                                                       'translit/one'))
+                            cited.append(
+                                    codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:], 'translit/one'))
             date_inf = soup.find('span', class_='article-dates__first-online')
             year = int
             month = int
@@ -257,7 +191,7 @@ class Worker(BaseClass):
                         'name': codecs.encode(author_name, 'translit/one'),
                         'aff': aff
                         })
-    
+            
             try:
                 with open('/home/ubuntu/artanis/Springer/' + journal_title, 'r') as outfile:
                     data = json.load(outfile)
@@ -266,42 +200,19 @@ class Worker(BaseClass):
                     outfile.write(json.dumps([]))
                 with open('/home/ubuntu/artanis/Springer/' + journal_title, 'r') as outfile:
                     data = json.load(outfile)
-    
+            
             data.append(dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
-                        title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
-                        abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
+                             title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
+                             abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
                     'day': day,
                     'month': month,
                     'year': year
                     }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
-                        pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
-                        ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
+                             pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
+                             ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
             with open('/home/ubuntu/artanis/Springer/' + journal_title, 'w') as outfile:
                 outfile.write(json.dumps(data))
-            keeper.ready_articles += 1
         
         except Exception as e:
-            keeper.errors += 1
             with open('except_articles', 'a') as outfile:
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
-    
-    def run(self):
-        self.lock.acquire()
-        for i in range(keeper.dev):
-            if keeper.file_list:
-                self.files.append(keeper.file_list.pop())
-        self.lock.release()
-        while True:
-            if self.files:
-                self.file = self.files.pop()
-                while os.stat('/home/ubuntu/artanis/article_links/' + self.file).st_size != 0:
-                    with open('/home/ubuntu/artanis/article_links/' + self.file, 'r') as file:
-                        links = file.readlines()
-                    url = links.pop()
-                    text = ''
-                    for link in links:
-                        text += str(link)
-                    with open('/home/ubuntu/artanis/article_links/' + self.file, 'w') as file:
-                        file.write(text)
-                    self.get_article(url=url)
-            time.sleep(0.3)
