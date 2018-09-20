@@ -98,7 +98,7 @@ class Miner(BaseClass):
                 soup = BeautifulSoup(response.content, 'html.parser')
                 for article_item in soup.find('div', class_='toc').find_all('li'):
                     article_link = article_item.find('h3', class_='title').find('a')['href']
-                    with open('/home/ubuntu/artanis/article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
+                    with open('article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
                         outfile.write(codecs.encode(article_link, 'translit/one') + '\n')
                 # issue pages counter
                 art_number = soup.find('div', class_='toc').find('h2').find('span').get_text().split(' ')[0][1:]
@@ -113,7 +113,7 @@ class Miner(BaseClass):
                     for article_item in results.find_all('li'):
                         article_link = article_item.find('h3', class_='title').find('a')['href']
                         journal_title = str(journal_title).replace(' ', '_')
-                        with open('/home/ubuntu/artanis/article_links/' + str(journal_title).replace(' ', '_'), 
+                        with open('article_links/' + str(journal_title).replace(' ', '_'), 
                                   'a') as outfile:
                             outfile.write(codecs.encode(article_link, 'translit/long') + '\n')
             keeper.ready_journals += 1

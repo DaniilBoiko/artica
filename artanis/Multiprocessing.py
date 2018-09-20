@@ -44,18 +44,18 @@ class TorInterface(multiprocessing.Process):
 
 def get_articles(file):
 
-    with open('/home/ubuntu/artanis/article_links/' + file, 'r') as datafile:
+    with open('article_links/' + file, 'r') as datafile:
         links = datafile.readlines()
-        
+
     while links:
-        
+
         url = links.pop()
         text = ''
         for link in links:
             text += str(link)
-        with open('/home/ubuntu/artanis/article_links/' + file, 'w') as datafile:
+        with open('article_links/' + file, 'w') as datafile:
             datafile.write(text)
-    
+
         try:
             response = requests.get('https://link.springer.com' + url, timeout=60)
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -168,16 +168,16 @@ def get_articles(file):
                         'name': codecs.encode(author_name, 'translit/one'),
                         'aff': aff
                         })
-            
+
             try:
-                with open('/home/ubuntu/artanis/Springer/' + journal_title, 'r') as outfile:
+                with open('Springer/' + journal_title, 'r') as outfile:
                     data = json.load(outfile)
             except:
-                with open('/home/ubuntu/artanis/Springer/' + journal_title, 'a') as outfile:
+                with open('Springer/' + journal_title, 'a') as outfile:
                     outfile.write(json.dumps([]))
-                with open('/home/ubuntu/artanis/Springer/' + journal_title, 'r') as outfile:
+                with open('Springer/' + journal_title, 'r') as outfile:
                     data = json.load(outfile)
-            
+
             data.append(dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
                              title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
                              abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
@@ -187,9 +187,9 @@ def get_articles(file):
                     }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
                              pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
                              ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
-            with open('/home/ubuntu/artanis/Springer/' + journal_title, 'w') as outfile:
+            with open('Springer/' + journal_title, 'w') as outfile:
                 outfile.write(json.dumps(data))
-        
+
         except Exception as e:
             with open('except_articles', 'a') as outfile:
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
