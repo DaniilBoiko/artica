@@ -17,4 +17,6 @@ while True:
         with open('article_links/' + file, 'r') as infile:
             links += len(infile.readlines())    
     print(time.strftime('%X') + ' | links ' + str(links))
+    with open('times', 'a') as file:
+        file.write(str(links) + '\n')
     time.sleep(60)

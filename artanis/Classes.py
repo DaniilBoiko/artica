@@ -46,16 +46,26 @@ class TorInterface(BaseClass):
 
 
 class Overwatch(BaseClass):
-    
-    def __init__(self):
+
+    def __init__(self, mode):
+        self.mode = mode
         BaseClass.__init__(self, name='Overwatch')
-    
+
     def run(self):
-        while True:
-            print(time.strftime('%X') + ' | threads ' + str(
-                    threading.active_count()) + " | journals " + str(keeper.ready_journals) + ' | articles ' + str(
-                    keeper.ready_articles) + ' | errors ' + str(keeper.errors))
-            time.sleep(5)
+        if self.mode == 'articles':
+            while True:
+                links = 0
+                for file in os.listdir('article_links'):
+                    with open('article_links/' + file, 'r') as infile:
+                        links += len(infile.readlines())
+                print(time.strftime('%X') + ' | links ' + str(links))
+                with open('times', 'a') as file:
+                    file.write(str(links) + '\n')
+                time.sleep(60)
+        if self.mode == 'links':
+            while True:
+                print(time.strftime('%X') + ' | journals ' + str(keeper.ready_journals))
+                time.sleep(10)
 
 
 class Source(BaseClass):
@@ -71,7 +81,7 @@ class Source(BaseClass):
         self.lock.acquire()
         keeper.pool += [result.find('a')['href'][9:] for result in results.find_all('li')]
         self.lock.release()
-        
+
 
 class Miner(BaseClass):
     
@@ -80,7 +90,7 @@ class Miner(BaseClass):
         self.url = ''
         self.years = years
         BaseClass.__init__(self, name=name)
-
+    
     def get_article_links(self, url):
         try:
             response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url), timeout=60)
@@ -113,19 +123,18 @@ class Miner(BaseClass):
                     for article_item in results.find_all('li'):
                         article_link = article_item.find('h3', class_='title').find('a')['href']
                         journal_title = str(journal_title).replace(' ', '_')
-                        with open('article_links/' + str(journal_title).replace(' ', '_'), 
-                                  'a') as outfile:
+                        with open('article_links/' + str(journal_title).replace(' ', '_'), 'a') as outfile:
                             outfile.write(codecs.encode(article_link, 'translit/long') + '\n')
             keeper.ready_journals += 1
-
+        
         except Exception as e:
             keeper.errors += 1
             with open('except_issues', 'a') as outfile:
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
-
+    
     def run(self):
         self.lock.acquire()
-        for i in range(10):
+        for i in range(35):
             if keeper.pool:
                 self.urls.append(keeper.pool.pop())
         self.lock.release()
@@ -168,8 +177,8 @@ class Worker(BaseClass):
                     else:
                         ref_doi = ref_item.find('span', class_='Occurrence OccurrenceDOI')
                         if ref_doi is not None:
-                            cited.append(codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:],
-                                                       'translit/one'))
+                            cited.append(
+                                codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:], 'translit/one'))
             date_inf = soup.find('span', class_='article-dates__first-online')
             year = int
             month = int
@@ -257,17 +266,8 @@ class Worker(BaseClass):
                         'name': codecs.encode(author_name, 'translit/one'),
                         'aff': aff
                         })
-    
-            try:
-                with open('/home/ubuntu/artanis/Springer/' + journal_title, 'r') as outfile:
-                    data = json.load(outfile)
-            except:
-                with open('/home/ubuntu/artanis/Springer/' + journal_title, 'a') as outfile:
-                    outfile.write(json.dumps([]))
-                with open('/home/ubuntu/artanis/Springer/' + journal_title, 'r') as outfile:
-                    data = json.load(outfile)
-    
-            data.append(dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
+            
+            data = dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
                         title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
                         abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
                     'day': day,
@@ -275,13 +275,11 @@ class Worker(BaseClass):
                     'year': year
                     }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
                         pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
-                        ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
-            with open('/home/ubuntu/artanis/Springer/' + journal_title, 'w') as outfile:
-                outfile.write(json.dumps(data))
-            keeper.ready_articles += 1
+                        ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors)
+            with open('Springer/' + journal_title, 'a') as outfile:
+                outfile.write(str(data) + '\n')
         
         except Exception as e:
-            keeper.errors += 1
             with open('except_articles', 'a') as outfile:
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
     

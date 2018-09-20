@@ -1,15 +1,14 @@
 import requests
-import json
 from bs4 import BeautifulSoup
 import translitcodec
 import socks
 import socket
+import multiprocessing
 from stem import Signal
 from stem.control import Controller
 import time
 import codecs
-import os
-import multiprocessing
+import json
 
 
 class TorInterface(multiprocessing.Process):
@@ -169,16 +168,7 @@ def get_articles(file):
                         'aff': aff
                         })
 
-            try:
-                with open('Springer/' + journal_title, 'r') as outfile:
-                    data = json.load(outfile)
-            except:
-                with open('Springer/' + journal_title, 'a') as outfile:
-                    outfile.write(json.dumps([]))
-                with open('Springer/' + journal_title, 'r') as outfile:
-                    data = json.load(outfile)
-
-            data.append(dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
+            data = dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
                              title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
                              abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
                     'day': day,
@@ -186,9 +176,9 @@ def get_articles(file):
                     'year': year
                     }, volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
                              pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
-                             ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors))
-            with open('Springer/' + journal_title, 'w') as outfile:
-                outfile.write(json.dumps(data))
+                             ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors)
+            with open('Springer/' + journal_title, 'a') as outfile:
+                outfile.write(json.dumps(data) + '\n')
 
         except Exception as e:
             with open('except_articles', 'a') as outfile:

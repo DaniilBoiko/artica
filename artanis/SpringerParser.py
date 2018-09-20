@@ -14,7 +14,7 @@ class SpringerParser(ArgumentParser):
 
     def __init__(self):
         ArgumentParser.__init__(self)
-        self.miner_count = 20
+        self.miner_count = 100
         self.worker_count = 30
         self.name = 'SpringerParser'
         self.add_argument('-s', type=int)
@@ -33,7 +33,7 @@ class SpringerParser(ArgumentParser):
         tor_interface = TorInterface(controller='Not launched', password='1234')
 
     def create_overwatch(self):
-        overwarch = Overwatch()
+        overwarch = Overwatch(mode=self.mode)
 
     def create_sources(self):
         if self.startt == 171:
