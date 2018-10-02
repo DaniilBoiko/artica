@@ -1,6 +1,6 @@
 import time
 from argparse import ArgumentParser
-from Classes import keeper, TorInterface, Overwatch, Source, Miner, Worker
+from Classes import keeper, TorInterface, Overwatch, Source, Miner
 import os
 
 
@@ -30,7 +30,7 @@ class SpringerParser(ArgumentParser):
         self.create()
 
     def create_tor_interface(self):
-        tor_interface = TorInterface(controller='Not launched', password='1234')
+        tor_interface = TorInterface()
 
     def create_overwatch(self):
         overwarch = Overwatch(mode=self.mode)
@@ -47,10 +47,10 @@ class SpringerParser(ArgumentParser):
             miner = Miner(name='Miner-' + str(i + 1), years=self.years)
             time.sleep(0.3)
 
-    def create_workers(self):
+    '''def create_workers(self):
         for i in range(self.worker_count):
             worker = Worker(name='Worker-' + str(i + 1))
-            time.sleep(0.3)
+            time.sleep(0.3)'''
 
     def create(self):
         self.create_tor_interface()
@@ -62,12 +62,14 @@ class SpringerParser(ArgumentParser):
             self.create_miners()
             while True:
                 time.sleep(1)
-        elif self.mode == 'articles':
+        
+            '''elif self.mode == 'articles':
             self.create_overwatch()
             keeper.file_list = os.listdir('/home/ubuntu/artanis/article_links/')
             keeper.dev = len(keeper.file_list) // self.worker_count
             self.create_workers()
             while True:
-                time.sleep(1)
+                time.sleep(1)'''
+        
         else:
             raise ValueError('Unacceptable mode')

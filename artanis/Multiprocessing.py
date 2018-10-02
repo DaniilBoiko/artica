@@ -58,6 +58,11 @@ def get_articles(file):
         try:
             response = requests.get('https://link.springer.com' + url, timeout=60)
             soup = BeautifulSoup(response.content, 'html.parser')
+            language = soup.find('meta', attrs={'name': 'citation_language'})
+            if language is not None:
+                language = language['content']
+            else:
+                language = ''
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
             doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[16:]
             abstract = ''
@@ -81,14 +86,14 @@ def get_articles(file):
                             cited.append(
                                     codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:], 'translit/one'))
             date_inf = soup.find('span', class_='article-dates__first-online')
-            year = int
-            month = int
-            day = int
+            year = ''
+            month = ''
+            day = ''
             if date_inf is not None:
                 date_time = date_inf.find('time')['datetime'].split('-')
-                year = int(date_time.pop(0))
-                month = int(date_time.pop(0))
-                day = int(date_time.pop(0))
+                year = str(date_time.pop(0))
+                month = str(date_time.pop(0))
+                day = str(date_time.pop(0))
             volume = ''
             issue = ''
             pp = ''
@@ -170,7 +175,8 @@ def get_articles(file):
 
             data = dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
                              title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
-                             abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
+                             abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, language=language, 
+                        date={
                     'day': day,
                     'month': month,
                     'year': year

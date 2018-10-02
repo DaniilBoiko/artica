@@ -12,13 +12,15 @@ from bs4 import BeautifulSoup
 from stem import Signal
 from stem.control import Controller
 import os
+from multiprocessing import Process, Pool
+from argparse import ArgumentParser
 
 
 class TorInterface(BaseClass):
     
-    def __init__(self, controller, password):
-        self.controller = controller
-        self.password = password
+    def __init__(self):
+        self.controller = 'Not launched'
+        self.password = '1234'
         BaseClass.__init__(self, name='TorInterface')
     
     def connect(self):
@@ -45,12 +47,42 @@ class TorInterface(BaseClass):
             self.renew_tor()
 
 
-class Overwatch(BaseClass):
+class TorInterface(Process):
 
+    def __init__(self):
+        Process.__init__(self)
+        self.controller = "Not launched"
+        self.password = "1234"
+        self.start()
+
+    def connect(self):
+        self.controller = Controller.from_port(port=9051)
+        socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "localhost", 9050, True)
+        socket.socket = socks.socksocket
+        print('Connection established')
+
+    def renew_tor(self):
+        self.controller.authenticate(self.password)
+        self.controller.signal(Signal.NEWNYM)
+
+    def show_ip(self):
+        return BeautifulSoup(requests.get('http://www.showmyip.gr/').content, 'html.parser').find('span', {
+            'class': 'ip_address'
+            }).text.strip()
+
+    def run(self):
+        self.connect()
+        while True:
+            time.sleep(60)
+            self.renew_tor()
+
+
+class Overwatch(BaseClass):
+    
     def __init__(self, mode):
         self.mode = mode
         BaseClass.__init__(self, name='Overwatch')
-
+    
     def run(self):
         if self.mode == 'articles':
             while True:
@@ -69,11 +101,11 @@ class Overwatch(BaseClass):
 
 
 class Source(BaseClass):
-    
+
     def __init__(self, name, number):
         self.number = number
         BaseClass.__init__(self, name=name)
-    
+
     def run(self):
         page_link = str('https://link.springer.com/search/page/' + str(self.number) + '?facet-content-type="Journal')
         response = requests.get(page_link)
@@ -84,13 +116,13 @@ class Source(BaseClass):
 
 
 class Miner(BaseClass):
-    
+
     def __init__(self, name, years):
         self.urls = []
         self.url = ''
         self.years = years
         BaseClass.__init__(self, name=name)
-    
+
     def get_article_links(self, url):
         try:
             response = requests.get('https://link.springer.com/journal/volumesAndIssues/' + str(url), timeout=60)
@@ -145,17 +177,29 @@ class Miner(BaseClass):
             time.sleep(0.3)
 
 
-class Worker(BaseClass):
+def get_articles(file):
+    with open('article_links/' + file, 'r') as datafile:
+        links = datafile.readlines()
     
-    def __init__(self, name):
-        self.files = []
-        self.file = ''
-        BaseClass.__init__(self, name=name)
-    
-    def get_article(self, url):
+    while links:
+        
+        url = links.pop()
+        text = ''
+        for link in links:
+            text += str(link)
+        with open('article_links/' + file, 'w') as datafile:
+            datafile.write(text)
+        
         try:
             response = requests.get('https://link.springer.com' + url, timeout=60)
             soup = BeautifulSoup(response.content, 'html.parser')
+            language = soup.find('meta', attrs={
+                'name': 'citation_language'
+                })
+            if language is not None:
+                language = language['content']
+            else:
+                language = ''
             article_title = soup.find('h1', class_='ArticleTitle').get_text()
             doi = soup.find('span', class_='bibliographic-information__value u-overflow-wrap', id='doi-url').get_text()[
                   16:]
@@ -180,14 +224,14 @@ class Worker(BaseClass):
                             cited.append(
                                 codecs.encode(ref_doi.find('a', class_='gtm-reference')['href'][16:], 'translit/one'))
             date_inf = soup.find('span', class_='article-dates__first-online')
-            year = int
-            month = int
-            day = int
+            year = ''
+            month = ''
+            day = ''
             if date_inf is not None:
                 date_time = date_inf.find('time')['datetime'].split('-')
-                year = int(date_time.pop(0))
-                month = int(date_time.pop(0))
-                day = int(date_time.pop(0))
+                year = str(date_time.pop(0))
+                month = str(date_time.pop(0))
+                day = str(date_time.pop(0))
             volume = ''
             issue = ''
             pp = ''
@@ -269,7 +313,7 @@ class Worker(BaseClass):
             
             data = dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
                         title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
-                        abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, date={
+                        abstract=codecs.encode(abstract, 'translit/one'), referenses=cited, language=language, date={
                     'day': day,
                     'month': month,
                     'year': year
@@ -277,29 +321,178 @@ class Worker(BaseClass):
                         pp=codecs.encode(pp, 'translit/one'), number=codecs.encode(number, 'translit/one'),
                         ISSN=codecs.encode(issn, 'translit/one'), keywords=keywords, authors=authors)
             with open('Springer/' + journal_title, 'a') as outfile:
-                outfile.write(str(data) + '\n')
+                outfile.write(json.dumps(data) + '\n')
         
         except Exception as e:
             with open('except_articles', 'a') as outfile:
                 outfile.write(codecs.encode(str(url), 'translit/one') + '\n')
+
+'''
+class ACSParser(ArgumentParser):
+  
+    def __init__(self):
+        
+
     
-    def run(self):
-        self.lock.acquire()
-        for i in range(keeper.dev):
-            if keeper.file_list:
-                self.files.append(keeper.file_list.pop())
-        self.lock.release()
-        while True:
-            if self.files:
-                self.file = self.files.pop()
-                while os.stat('/home/ubuntu/artanis/article_links/' + self.file).st_size != 0:
-                    with open('/home/ubuntu/artanis/article_links/' + self.file, 'r') as file:
-                        links = file.readlines()
-                    url = links.pop()
-                    text = ''
-                    for link in links:
-                        text += str(link)
-                    with open('/home/ubuntu/artanis/article_links/' + self.file, 'w') as file:
-                        file.write(text)
-                    self.get_article(url=url)
-            time.sleep(0.3)
+    
+    
+
+    def get_article_links(self, file):
+        with open('ACS_issues/' + file, 'r') as datafile:
+            links = datafile.readlines()
+        while links:
+            url = links.pop()
+            text = ''
+            for link in links:
+                text += str(link)
+            with open('ACS_issues/' + file, 'w') as datafile:
+                datafile.write(text)
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            journal_title = soup.find('head').find('title').get_text()
+            links = ''
+            for link in soup.find_all('div', class_='DOI'):
+                links += (link.get_text() + '\n')
+            with open('ACS_article_links/' + journal_title, 'a') as outfile:
+                outfile.write(links)
+
+    def get_article(self, file):
+        with open('ACS_article_links/' + file, 'r') as datafile:
+            links = datafile.readlines()
+            journal_url = file
+        while links:
+            url = links.pop().replace('\n', '')
+            text = ''
+            for link in links:
+                text += str(link)
+            with open('ACS_article_links/' + file, 'w') as datafile:
+                datafile.write(text)
+            response = requests.get('https://pubs.acs.org/doi/' + url, timeout=60)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            language = soup.find('meta', attrs={
+                'name': 'dc.Language'
+                })
+            if language is not None:
+                language = language['content']
+            else:
+                language = ''
+            article_title = soup.find('meta', attrs={
+                'name': 'dc.Title'
+                })
+            if article_title is not None:
+                article_title = article_title['content']
+            else:
+                article_title = ''
+            doi = url
+            abstract = ''
+            blocks = soup.find_all('p', class_='articleBody_abstractText')
+            if blocks:
+                for block in blocks:
+                    abstract += block.get_text()
+            months_dict = {
+                'January': 1,
+                'February': 2,
+                'March': 3,
+                'April': 4,
+                'May': 5,
+                'June': 6,
+                'July': 7,
+                'August': 8,
+                'September': 9,
+                'October': 10,
+                'November': 11,
+                'December': 12
+                }
+            date = soup.find('meta', attrs={
+                'name': 'dc.Date'
+                })
+            if date is not None:
+                date = date['content'].split(' ')
+                date = {
+                    'day': date[1].replace(',', ''),
+                    'month': months_dict[date[0]],
+                    'year': date[2]
+                    }
+            else:
+                date = ''
+            volume = soup.find('span', class_='citation_volume')
+            if volume is not None:
+                volume = volume.get_test()
+            else:
+                volume = ''
+            issue = soup.find('div', id='citation')
+            if issue is not None:
+                issue = issue.get_text().split('(')[1].split(')')[0]
+            else:
+                issue = ''
+            pp = soup.find('div', id='citation')
+            if pp is not None:
+                pp = pp.get_text().split('pp ')[1]
+            else:
+                pp = ''
+            authors = []
+            author_block = soup.find('div', id='authors')
+            if author_block is not None:
+                for author in author_block.find_All('span', class_='hlFld-ContribAuthor'):
+                    authors.append({
+                        'name': author.find_all('a')[0].get_text(),
+                        'aff': [aff.get_text() for aff in author.find_all('a')[1:-1]]
+                        })
+            affiliations = soup.find('div', class_='assiliations')
+            if affiliations is not None:
+                for aff_item in affiliations.find_all('div'):
+                    aff = aff_item.find('sup')
+                    if aff is not None:
+                        aff = aff.get_text() + ', '
+                    else:
+                        aff = ''
+                    institution = aff_item.find('span', class_='institution')
+                    if institution is not None:
+                        institution = institution.get_text() + ', '
+                    else:
+                        institution = ''
+                    addr_line = aff_item.find('span', class_='addr-line')
+                    if addr_line is not None:
+                        addr_line = addr_line.get_text() + ', '
+                    else:
+                        addr_line = ''
+                    region = aff_item.get_text()
+                    if region is not None:
+                        region = region.replace(',', '').replace(' ', '') + ', '
+                    else:
+                        region = ''
+                    code = aff_item.find('postal_code')
+                    if code is not None:
+                        code = code.get_text() + ', '
+                    else:
+                        code = ''
+                    city = aff_item.find('city')
+                    if city is not None:
+                        city = city.get_text() + ', '
+                    else:
+                        city = ''
+                    country = aff_item.find('span', class_='country')
+                    if country is not None:
+                        country = country.get_text()
+                    else:
+                        country = ''
+                    affiliation = {
+                        'aff': aff,
+                        'address': codecs.encode(institution + addr_line + region + code + city + country,
+                                                 'tranclit/one')
+                        }
+            journal_title = soup.find('meta', attrs={
+                'name': 'citation_journal_title'
+                }).get_text()
+            journal_inf = {
+                'title': codecs.encode(journal_title, 'translit/one'),
+                'url': codecs.encode(journal_url, 'translit/one')
+                }
+            with open('ACS/' + journal_title, 'a') as outfile:
+                outfile.write(json.dumps(
+                        dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
+                             title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
+                             abstract=codecs.encode(abstract, 'translit/one'),
+                             language=codecs.encode(language, 'translit/one'), date=date,
+                             volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
+                             pp=codecs.encode(pp, 'translit/one'), authors=authors)))'''

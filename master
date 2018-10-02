@@ -1,8 +1,0 @@
-#!/bin/bash
-
-for i in $(cat instances)
-do
-scp -vi ~/key artanis.tar.gz 'ubuntu@'$i':/home/ubuntu/'
-ssh -vi ~/key 'ubuntu@'$i tar -xvzf artanis.tar.gz
-ssh -vi ~/key 'ubuntu@'$i /home/ubuntu/artanis/server
-done
