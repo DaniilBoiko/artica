@@ -5,20 +5,13 @@ import requests
 import socket
 import socks
 import time
-from Base import BaseClass
-from artanis import keeper
 from bs4 import BeautifulSoup
 from stem import Signal
 from stem.control import Controller
 import os
 from multiprocessing import Process, Pool
 from argparse import ArgumentParser
-from Classes import TorInterface
-
-
-headers = {
-    'User-Agent': 'Googlebot'
-    }
+from Base import TorInterface, headers
 
 
 def get_journals():
@@ -29,7 +22,8 @@ def get_journals():
     journals = ''
     for journal_list in journal_lists:
         for journal in journal_list.find_all('li'):
-            journals += (str(journal.find('a')['href']) + '\n')
+            if journal.find('a')['href'][:2] == '/j':
+                journals += (str(journal.find('a')['href']) + '\n')
     with open('ACS_journals', 'a') as outfile:
         outfile.write(journals)
 
@@ -48,22 +42,23 @@ def get_issues(url):
 
 def get_article_links(file):
     with open('ACS_issues/' + file, 'r') as datafile:
-        links = datafile.readlines()
-    while links:
-        url = links.pop()
+        urls = datafile.readlines()
+    while urls:
+        url = urls.pop()
         text = ''
-        for link in links:
-            text += str(link)
+        for item in urls:
+            text += str(item)
         with open('ACS_issues/' + file, 'w') as datafile:
             datafile.write(text)
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        journal_title = soup.find('head').find('title').get_text()
-        links = ''
-        for link in soup.find_all('div', class_='DOI'):
-            links += (link.get_text() + '\n')
-        with open('ACS_article_links/' + journal_title, 'a') as outfile:
-            outfile.write(links)
+        if url[:2] == 'ht':
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            journal_title = soup.find('head').find('title').get_text()
+            links = ''
+            for link in soup.find_all('div', class_='DOI'):
+                links += (link.get_text() + '\n')
+            with open('ACS_article_links/' + journal_title, 'a') as outfile:
+                outfile.write(links)
 
 
 def get_article(file):
@@ -148,7 +143,7 @@ def get_article(file):
                     'name': author.find_all('a')[0].get_text(),
                     'aff': [aff.get_text() for aff in author.find_all('a')[1:-1]]
                     })
-        affiliations = soup.find('div', class_='assiliations')
+        affiliations = soup.find('div', class_='affiliations')
         if affiliations is not None:
             for aff_item in affiliations.find_all('div'):
                 aff = aff_item.find('sup')
