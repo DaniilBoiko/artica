@@ -26,6 +26,7 @@ def get_journals():
                 journals += (str(journal.find('a')['href']) + '\n')
     with open('ACS_journals', 'a') as outfile:
         outfile.write(journals)
+    print(journals)
 
 
 def get_issues(url):
@@ -35,7 +36,10 @@ def get_issues(url):
     links = ''
     for volume in volume_list.find_all('div', class_='slider'):
         for issue in volume.find_all('div', class_='row'):
-            links += (issue.find('a')['href'] + '\n')
+            link = issue.find('a')['href']
+            if link[:2] == 'ht':
+                links += (link + '\n')
+                print(link)
     with open('ACS_issues/' + url, 'a') as outfile:
         outfile.write(links)
 
@@ -57,6 +61,7 @@ def get_article_links(file):
             links = ''
             for link in soup.find_all('div', class_='DOI'):
                 links += (link.get_text() + '\n')
+                print(links.get_test())
             with open('ACS_article_links/' + journal_title, 'a') as outfile:
                 outfile.write(links)
 
@@ -195,12 +200,13 @@ def get_article(file):
             }
         with open('ACS/' + journal_title, 'a') as outfile:
             outfile.write(json.dumps(
-                    dict(journal=journal_inf, link=codecs.encode('https://link.springer.com' + url, 'translit/one'),
+                    dict(journal=journal_inf, link=codecs.encode('https://pubs.acs.org/doi/' + url, 'translit/one'),
                          title=codecs.encode(article_title, 'translit/one'), doi=codecs.encode(doi, 'translit/one'),
                          abstract=codecs.encode(abstract, 'translit/one'),
                          language=codecs.encode(language, 'translit/one'), date=date,
                          volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
                          pp=codecs.encode(pp, 'translit/one'), authors=authors)))
+        print('https://pubs.acs.org/doi/' + url)
 
 
 if __name__ == '__main__':
