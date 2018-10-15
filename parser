@@ -1,0 +1,62 @@
+#!/bin/bash
+
+
+while [ 1 -gt 0 ]
+do
+
+
+  read -p 'ip: ' ip
+
+  read -p 'Parser@' c
+
+  if [[ $c = 'Springer' ]]
+  then
+
+    read -p 'SpringerParser@mode: ' m
+    if [[ $m = 'links' ]]
+    then
+      read -p 'SpringerParser@start: ' s
+      read -p 'SpringerParser@end: ' e
+    else
+      s=1
+      e=2
+    fi
+    ssh -vi ~/key 'ubuntu@'$ip 'screen -X stuff "python /home/ubuntu/artanis/SpringerParser.py -m "'$m'" -s "'$s'" -e "'$e'"\n"'
+    echo 'ip: '$ip
+    sleep 0.1
+    echo 'Parser: SpringerParser'
+    sleep 0.1
+    echo 'SpringerParser.mode: '$m
+    sleep 0.1
+    echo 'SpringerParser.start: '$s
+    sleep 0.1
+    echo 'SpringerParser.end: '$e
+    sleep 0.1
+    echo 'SpringerParser activated'
+
+  fi
+
+  if [[ $c = 'ACS' ]]
+  then
+  
+    read -p 'ACSParser@mode: ' m
+    ssh -vi ~/key 'ubuntu@'$ip 'screen -X stuff "python /home/ubuntu/artanis/ACSParser.py -m "'$m'"/n"'
+    echo 'ip: '$ip
+    sleep 0.1
+    echo 'Parser: ACSParser'
+    sleep 0.1
+    echo 'ACSParser.mode: '$m
+    sleep 0.1
+    echo 'ACSParser activated'
+    
+  fi
+    
+  if [[ $c = 'Overwatch' ]]
+  then
+  
+    ssh -vi ~/key 'ubuntu@'$ip 'python /home/ubuntu/artanis/Overwatch.py'
+    
+  fi
+
+
+done

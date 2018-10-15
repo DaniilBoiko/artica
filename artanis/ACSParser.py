@@ -23,14 +23,14 @@ def get_journals():
     for journal_list in journal_lists:
         for journal in journal_list.find_all('li'):
             if journal.find('a')['href'][:2] == '/j':
-                journals += (str(journal.find('a')['href']) + '\n')
+                journals += ('https://pubs.acs.org/loi' + str(journal.find('a')['href']) + '\n')
+                print('https://pubs.acs.org/loi/' + journal.find('a')['href'])
     with open('ACS_journals', 'a') as outfile:
         outfile.write(journals)
-    print(journals)
 
 
 def get_issues(url):
-    response = requests.get('https://pubs.acs.org/loi/' + url, headers=headers, timeout=60)
+    response = requests.get(url, headers=headers, timeout=60)
     soup = BeautifulSoup(response.content, 'html.parser')
     volume_list = soup.find('article', class_='volume-list')
     links = ''
@@ -60,8 +60,8 @@ def get_article_links(file):
             journal_title = soup.find('head').find('title').get_text()
             links = ''
             for link in soup.find_all('div', class_='DOI'):
-                links += (link.get_text() + '\n')
-                print(links.get_test())
+                links += ('https://pubs.acs.org/doi/' + link.get_text()[5:] + '\n')
+                print('https://pubs.acs.org/doi/' + link.get_text()[5:])
             with open('ACS_article_links/' + journal_title, 'a') as outfile:
                 outfile.write(links)
 
@@ -77,7 +77,7 @@ def get_article(file):
             text += str(link)
         with open('ACS_article_links/' + file, 'w') as datafile:
             datafile.write(text)
-        response = requests.get('https://pubs.acs.org/doi/' + url, timeout=60)
+        response = requests.get(url, timeout=60)
         soup = BeautifulSoup(response.content, 'html.parser')
         language = soup.find('meta', attrs={
             'name': 'dc.Language'
@@ -206,7 +206,7 @@ def get_article(file):
                          language=codecs.encode(language, 'translit/one'), date=date,
                          volume=codecs.encode(volume, 'translit/one'), issue=codecs.encode(issue, 'translit/one'),
                          pp=codecs.encode(pp, 'translit/one'), authors=authors)))
-        print('https://pubs.acs.org/doi/' + url)
+        print(url)
 
 
 if __name__ == '__main__':
