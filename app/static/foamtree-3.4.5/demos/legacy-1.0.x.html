@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FoamTree legacy emulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+    <style>
+      /** Emulation of FoamTree 2.0.x line demo layout */
+      #container {
+        background: url(assets/img/checker.png) #252423;
+      }
+      #visualization {
+        background-color: rgba(0, 0, 0, 0.3);
+        top: 15px;
+        bottom: 15px;
+        left: 15px;
+        right: 15px;
+      }
+      #inner {
+        position: absolute;
+        top: 5px;
+        bottom: 5px;
+        left: 5px;
+        right: 5px;
+      }
+    </style>
+  </head>
+
+  <body class="dark">
+    <div id="container">
+      <div id="visualization"><div id="inner"></div></div>
+    </div>
+
+    <div id="side">
+      <h2>FoamTree 1.0.x emulation</h2>
+
+      <p>
+        This example configures FoamTree 3.x to emulate the look and feel of the
+        Flash-based 1.0.x line as closely as possible. Please note that FoamTree
+        1.0.x uses a different polygon layout paradigm, so it's not possible to
+        for FoamTree 3.x to produce the shapes, such as non-convex polygons,
+        known from the 1.0.x line.
+      </p>
+
+      <h4>What's in the code?</h4>
+
+      <ul>
+        <li>
+          Using the <code>ordered</code> <code><a href="../api/index.html#relaxationInitializer">relaxationInitializer</a></code>
+          to get polygon layouts known from FoamTree 1.0.x defaults.
+        </li>
+
+        <li>
+          Using a custom <code><a href="../api/index.html#groupColorDecorator">groupColorDecorator</a></code>
+          to revert to the default color scheme known from FoamTree 1.0.x.
+        </li>
+
+        <li>
+          Restoring FoamTree 1.0.x defaults for group polygon and label rendering.
+        </li>
+
+        <li>
+          Restoring the default interactions known from FoamTree 1.0.x: double click or
+          <span class="key">Shift</span>+click to open group, <span class="key">Ctrl</span>+<span class="key">Shift</span>+click
+          to close the group.
+        </li>
+      </ul>
+    </div>
+
+    <!-- Include FoamTree visualization code -->
+    <script src="../carrotsearch.foamtree.js"></script>
+
+    <!-- Include Hammer.js for mobile interactions -->
+    <script src="assets/js/hammer.min.js"></script>
+
+    <!-- A simple static JSON-P loader, optional -->
+    <script src="assets/js/carrotsearch.jsonp.js"></script>
+
+    <script>
+      window.addEventListener("load", function () {
+        // Initialize FoamTree 3.0.x with settings that emulate FoamTree 2.0.x
+        // as closely as possible. Feel free to tweak or disable the customizations
+        // to use some of the new features introduced in version 3.0.x.
+        var foamtree = new CarrotSearchFoamTree({
+          id: "inner",
+          pixelRatio: window.devicePixelRatio || 1,
+
+          // The "ordered" initializer produces layouts known from FoamTree 2.0.x defaults.
+          relaxationInitializer: "ordered",
+
+          // Decrease the amount of relaxation to better preserve the left-to-right order
+          // of rainbow colors. For the default relaxationQualityThreshold, the colors may mix up.
+          relaxationQualityThreshold: 3,
+
+          // The following decorator assigns rainbow colors in the order of group's weights
+          groupColorDecorator: function (opts, params, vars) {
+            if (params.level === 0) {
+              vars.groupColor.h = params.indexByWeight / params.siblingCount * 300;
+              vars.groupColor.a = 0.95;
+            }
+          },
+
+          // An alternative to the the above decorator may be linear color distribution
+          // enabled by the following options. To use this alternative, comment out
+          // the groupColorDecorator above.
+          // rainbowColorDistribution: "linear",
+          // rainbowColorDistributionAngle: 10,
+          // rainbowEndColor: "hsla(300, 100%, 55%, 1)",
+
+          // Disable saturation and lightness corrections introduced in FoamTree 3.0.x.
+          rainbowSaturationCorrection: 1,
+          rainbowLightnessCorrection: 0,
+
+          // Make the subgroup color variations more subtle, like in FoamTree 1.0.x.
+          rainbowLightnessShift: 40,
+
+          // FoamTree 1.0.x uses DejaVu Sans to display labels. Verdana is a close match.
+          groupLabelFontFamily: "Verdana, sans-serif",
+          groupLabelLightColor: "rgba(255, 255, 255, 0.8)",
+          groupLabelDarkColor: "rgba(0, 0, 0, 0.8)",
+
+          // FoamTree 1.0.x did not support group polygon strokes so we disable them.
+          groupStrokeType: "none",
+          groupFillType: "plain",
+
+          // Use FoamTree 1.0.x defaults for polygon border sizes.
+          groupBorderWidth: 1,
+          groupInsetWidth: 3,
+          groupBorderRadius: 0,
+
+          // Use FoamTree 1.0.x defaults for the parent group opacity.
+          parentFillOpacity: 0.9,
+
+          // Draw group selection outlines in white.
+          groupSelectionOutlineColor: "rgba(255, 255, 255, 0.9)",
+
+          // Draw selection outline in white, disable selection outline shadow
+          groupSelectionOutlineWidth: 6,
+          groupSelectionOutlineShadowSize: 0,
+          groupSelectionOutlineShadowColor: "#000",
+
+          // Make relaxation visible, just like in FoamTree 1.0.x.
+          relaxationVisible: true,
+
+          // FoamTree 1.0.x did not offer rollout and pullback effects, so we disable them here.
+          rolloutDuration: 0,
+          pullbackDuration: 0,
+
+          // Always draw labels during animation
+          wireframeLabelDrawing: "always",
+
+          // On double click, open the group for browsing instead of exposing it.
+          onGroupDoubleClick: function (event) {
+            // Prevent the default behavior (expose)
+            event.preventDefault();
+
+            // Open the group instead
+            this.open(event.group);
+          },
+
+          // FoamTree 1.0.x opens the group on Shift+click and closes on Ctrl+Shift+click.
+          onGroupClick: function(event) {
+            if (event.shiftKey) {
+              // Don't select group in this case
+              event.preventDefault();
+
+              // Open or close depending on the Ctrl key
+              this.open({
+                groups: event.ctrlKey ? event.bottommostOpenGroup : event.group,
+                open: !event.ctrlKey
+              });
+            }
+          },
+
+          attributionTheme: "dark"
+        });
+
+        // Initiate loading of the data
+        JSONP.load("assets/data/data-mining-100-topic-hierarchical.js", "modelDataAvailable", function (dataObject) {
+          foamtree.set("dataObject", dataObject);
+        });
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function () {
+          var timeout;
+          return function () {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(foamtree.resize, 300);
+          }
+        })());
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FoamTree: deferred group layout</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div id="container"><div id="visualization"></div></div>
+    <div id="side">
+      <h2>Deferred layout of child groups</h2>
+
+      <p>
+        With FoamTree 3.4.5 and later you can control the moment when FoamTree computes the layout of child groups. You
+        can use this mechanism to improve performance when visualizing deeply nested hierarchies with hundreds of groups
+        on the top level.
+      </p>
+
+      <p>
+        The following demo generates a deeply-nested hierarchy with hundreds of groups on the top level. Upon
+        initialization, only the the top level groups (without child groups) are shown. Once the layout stabilizes,
+        the <code>attach(group)</code> method is called to compute the layout for individual top-level groups.
+        To keep the browser's user interface responsive, the code initialized a limited number of top-level groups
+        in one <code>requestAnimationFrame()</code> callback.
+      </p>
+
+      <p>
+        To further speed things up, the third level of the hierarchy is initialized only when the user chooses
+        to inspect the parent group, for example by double clicking it.
+      </p>
+
+      <h4>What's in the code?</h4>
+
+      <ul>
+        <li>
+          <p>
+            Setting FoamTree to initially lay out only the top-level groups of our large and deeply nested hierarchy.
+          </p>
+        </li>
+
+        <li>
+          <p>
+            The <code>GroupAttacher</code> utility for laying out individual top level groups per one animation
+            frame to ensure responsiveness while the complete diagram is being computed.
+          </p>
+        </li>
+
+        <li>
+          <p>
+            Tuning of visual properties to better match deeply-nested hierarchies.
+          </p>
+        </li>
+      </ul>
+    </div>
+
+    <script src="../carrotsearch.foamtree.js"></script>
+
+    <!-- Include Hammer.js for mobile interactions. Not required for desktop-only apps. -->
+    <script src="assets/js/hammer.min.js"></script>
+
+    <script>
+        // Generates some random groups
+        var generate = (function () {
+          var number = 0;
+
+          return function (levels, currentLevel, parentIndex) {
+            var level = currentLevel || 0;
+            var index = parentIndex || 0;
+            if (levels.length <= level) {
+              return undefined;
+            }
+
+            var result = [];
+            var f = 1 / (index + 1);
+            var count = Math.ceil((levels[level] - 4) * f + 4);
+            for (var i = 0; i < count; i++) {
+              result.push({
+                label: "Group\u00a0" + (++number),
+                weight: 10 / (i + 1),
+                groups: generate(levels, level + 1, i)
+              });
+            }
+            return result;
+          }
+        })();
+
+      // Initialize FoamTree after the whole page loads to make sure
+      // the element has been laid out and has non-zero dimensions.
+      window.addEventListener("load", function() {
+        // A utility for attaching individual groups one by one in separate animation frames.
+        var GroupAttacher = function () {
+          var toAttach = [];
+          var foamtree;
+
+          this.init = function (_foamtree) {
+            foamtree = _foamtree;
+          };
+
+          this.onModelChanged = function (dataObject) {
+            if (!dataObject || !dataObject.groups) {
+              return;
+            }
+
+            // Enqueue top level groups for attachment.
+            toAttach.push.apply(toAttach, dataObject.groups.filter(function (g) {
+              return g.groups && g.groups.length > 0
+            }));
+          };
+
+          this.startAttaching = function (onComplete) {
+            // Keep label visible while revealing child groups.
+            foamtree.set("wireframeLabelDrawing", "always");
+            attachNext();
+          };
+
+          function attachNext() {
+            // On animation frame, if there are groups to attach left, attach as many as possible without
+            // exceeding the animation frame budget.
+            if (toAttach.length > 0) {
+              window.requestAnimationFrame(function () {
+                var start = Date.now();
+
+                // Initialize subgroups in batches. Stop batch when reaching the animation frame time budget.
+//                while (toAttach.length > 0 && (Date.now() - start < 16)) {
+                  var group = toAttach.shift();
+
+                  // Attach only two extra levels for better performance. Further levels will be revealed
+                  // when the user opens the top-level group. You can increase the number to attach more
+                  // levels initially if needed.
+                  foamtree.attach(group, 2);
+//                }
+                attachNext();
+              });
+            }
+          }
+        };
+        var attacher = new GroupAttacher();
+
+        var foamtree = new CarrotSearchFoamTree({
+          // Identifier of the HTML element defined above
+          id: "visualization",
+          pixelRatio: window.devicePixelRatio || 1,
+
+          // Use a simple fading animation. Animated rollouts are very expensive for large hierarchies.
+          rolloutDuration: 0,
+          pullbackDuration: 0,
+
+          // Make relaxation visible, so that the user sees the progress of computation of the top-level diagram.
+          relaxationVisible: true,
+
+          // Remove restriction on the minimum group diameter, so that
+          // we can render as many diagram levels as possible.
+          groupMinDiameter: 0,
+
+          // Lower the minimum label font size a bit to show more labels.
+          groupLabelMinFontSize: 3,
+
+          // Lower the border radius a bit to fit more groups.
+          groupBorderWidth: 2.5,
+          groupInsetWidth: 5,
+          groupSelectionOutlineWidth: 1.5,
+
+          // Don't use gradients and rounded cornrs for faster rendering.
+          groupFillType: "plain",
+          groupBorderRadius: 0,
+
+          // Generate some initial data
+          dataObject: {
+            groups: generate([200, 10, 5])
+          },
+
+          // When new data is loaded, initialize only the top-level groups.
+          onModelChanging: function () {
+            this.set("maxGroupLevelsAttached", 1);
+          },
+
+          // Let the attacher utility know the data we got.
+          onModelChanged: function (dataObject) {
+            attacher.onModelChanged(dataObject);
+          },
+
+          // Once the top-level layout is computed, start attaching child groups.
+          onRolloutComplete: function (event) {
+            foamtree.set("maxGroupLevelsAttached", 4);
+            attacher.startAttaching();
+          },
+
+          // Expose is expensive for large hierarchies.
+          // Therefore, when the user double-clicks a group, zoom in to the group.
+          onGroupDoubleClick: function (e) {
+            e.preventDefault();
+            var group = e.secondary ? e.bottommostOpenGroup : e.topmostClosedGroup;
+            var toZoom;
+            if (group) {
+              this.open({ groups: group, open: !e.secondary });
+              toZoom = e.secondary ? group.parent : group;
+            } else {
+              toZoom = this.get("dataObject");
+            }
+            this.zoom(toZoom);
+          },
+
+          // Show not yet attached groups in pale colors.
+          groupColorDecorator: function (opts, params, vars) {
+            if (!params.hasChildren) {
+              vars.groupColor.s = 35;
+              vars.groupColor.l = 80;
+            }
+          }
+        });
+
+        attacher.init(foamtree);
+
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function () {
+          var timeout;
+          return function () {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(foamtree.resize, 300);
+          }
+        })());
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FoamTree with custom tooltips</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+    <link href="assets/css/tooltip.css" rel="stylesheet" />
+    <style>
+      small { color: #888; }
+      .tooltip { pointer-events: auto; padding: 3px; }
+      .tooltip > div { padding: 5px 8px; border-radius: 2px; }
+      .tooltip > .heading { color: #ccc; }
+      .tooltip > .option:hover { background-color: #888; cursor: pointer; }
+    </style>
+  </head>
+
+  <body>
+    <div id="container"><div id="visualization"></div></div>
+    <div id="side">
+      <h2>FoamTree context menu</h2>
+
+      <p>
+        Using the <code><a href="../api/index.html#onGroupClick">onGroupClick</a></code> and
+        <code><a href="../api/index.html#onGroupHover">onGroupHover</a></code> event listeners
+        you can integrate FoamTree with your favourite context menu library and create custom per-group menus.
+      </p>
+
+      <p>
+        This demo uses the <a href="http://darsa.in/tooltip/">tooltip library</a> to build a simple context menu.
+        Right-click on some group to see the menu.
+      </p>
+
+      <h4>What's in the code?</h4>
+
+      <ul>
+        <li>
+          A simple utility for tracking mouse position and showing or hiding the context menu.
+        </li>
+
+        <li>
+          Using <code><a href="../api/index.html#onGroupClick">onGroupClick</a></code> to get notification of
+          clicks happening over the groups. The listener inspects the <code>secondary</code> property of
+          the event to react only on right-button clicks.
+        </li>
+
+        <li>
+          Using <code><a href="../api/index.html#onGroupHover">onGroupHover</a></code> to get information
+          about the group being hovered over.
+        </li>
+      </ul>
+
+      <p>
+        See also the <a href="tooltips.html">per-group tooltips example</a>.
+      </p>
+    </div>
+
+    <script src="../carrotsearch.foamtree.js"></script>
+    <script src="assets/js/hammer.min.js"></script>
+    <script src="assets/js/tooltip.min.js"></script>
+
+    <script>
+      window.addEventListener("load", function() {
+        // A simple utility for tracking mouse position and showing/hiding the context menu.
+        var contextmenu = (function() {
+          var tip = new Tooltip("contextmenu", { auto: true });
+          var shown = false;
+          var pageX, pageY;
+          var currentGroup;
+
+          function hide() {
+            tip.hide();
+            shown = false;
+          }
+
+          function show() {
+            if (currentGroup && currentGroup.label) {
+              // Set some example content on the context menu.
+              tip.content(
+                  "<div class='heading'>Options for <strong>" + currentGroup.label + "</strong></div>" +
+                  "<div class='option'>Option 1</div>" +
+                  "<div class='option'>Option 2</div>");
+              tip.position(pageX, pageY);
+              tip.show();
+              shown = true;
+            }
+          }
+
+          function group(g) {
+            currentGroup = g;
+          }
+
+          // Register a mouse move listener that will remember the coordinates of the mouse pointer
+          document.body.addEventListener("mousemove", function(e) {
+            pageX = e.pageX;
+            pageY = e.pageY;
+          });
+
+          // Hide the context menu when it's clicked
+          tip.element.addEventListener("click", function (e) {
+            tip.hide();
+            e.preventDefault();
+          });
+
+          return {
+            group: group,
+            show: show,
+            hide: hide
+          };
+        })();
+
+        // Initialize FoamTree
+        var foamtree = new CarrotSearchFoamTree({
+          id: "visualization",
+          pixelRatio: window.devicePixelRatio || 1,
+
+          onGroupClick: function (event) {
+            // Hide the context menu on any click
+            contextmenu.hide();
+            if (event.secondary) {
+              // Show the menu only on right-click
+              contextmenu.show();
+            }
+          },
+
+          onGroupHover: function (event) {
+            // Tell the tooltip which group is currently hovered on
+            contextmenu.group(event.group);
+          },
+
+          // Hide the context menu on zoom, open/close and expose
+          onGroupMouseWheel: contextmenu.hide,
+          onGroupExposureChanging: contextmenu.hide,
+          onGroupOpenOrCloseChanging: contextmenu.hide,
+
+          // Generate some example data
+          dataObject: {
+            groups: (function() {
+              var groups = [];
+
+              for (var i = 1; i <= 100; i++) {
+                groups.push({
+                  label: "Group\u00a0" + i,
+                  weight: 5 + Math.round(Math.random() * 25),
+                  value: Math.round(Math.random() * 50)
+                })
+              }
+
+              return groups;
+            })()
+          }
+        });
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function() {
+          var timeout;
+          return function() {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(foamtree.resize, 300);
+          }
+        })());
+      });
+    </script>
+  </body>
+</html>

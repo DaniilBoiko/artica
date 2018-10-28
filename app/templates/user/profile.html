@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card card-profile">
+            <div class="card-header"
+                 style="background-image: url({{url_for('static',filename='backgrounds/abstraction1.jpg')}});"></div>
+            <div class="card-body text-center">
+                <img class="card-profile-img" src="{{url_for('static',filename='images/man.svg')}}">
+                <h3 class="mb-3">{{ current_user.name }}</h3>
+                <p class="mb-0">
+                    <b>{% if current_user.position %}
+                        {{ current_user.position }}{% if current_user.organization %} at {{ current_user.organization }}
+                        {% endif %}
+                        {% endif %}</b>
+                </p>
+                {% if current_user.description %}
+                <p class="mb-1">
+                    {{ current_user.description }}
+                </p>
+                <p class="mb-4">
+                    {% if current_user.country %}
+                    <i class="flag flag-{{ current_user.country.lower() }} mb-1"></i>
+                    {% endif%}
+                    {% endif %}
+                </p>
+                <a class="btn btn-outline-primary btn-sm" href="{{ url_for('user', id = current_user.id) }}">
+                    Share profile
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <form class="card" action="" method="post">
+            <div class="card-body">
+                <h3 class="card-title">Tell people more about you</h3>
+                <div class="row">
+                    {{ form.hidden_tag() }}
+
+                    <div class="col-sm-6 col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Your name</label>
+                            {{ form.name(value=current_user.name) }}
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Email address</label>
+                            {{ form.email(value=current_user.email) }}
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            {{ form.password() }}
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Profile image</label>
+                            {{ form.profile_image() }}
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Position</label>
+                            {{ form.position(value=current_user.position) }}
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Organization</label>
+                            {{ form.organization(value=current_user.organization) }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">City</label>
+                            {{ form.city(value=current_user.city) }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Country</label>
+                            {{ form.country(value=current_user.country) }}
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-group mb-0">
+                            <label class="form-label">About Me</label>
+                            <textarea class="form-control" id="description" name="description"
+                                      placeholder="Here can be your description" rows="5"
+                            >{{ current_user.description }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-right">
+                <button type="submit" class="btn btn-primary">Update Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    var els = document.getElementById("country-issue");
+    els.value = "{{current_user.country}}";
+</script>
+{% endblock %}

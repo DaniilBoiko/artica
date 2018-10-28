@@ -1,36 +1,43 @@
-{% extends "base_other.html" %}
+{% extends "base.html" %}
 
 {% block app_content %}
-    <div class="mt-4">
-        <h2>{{ article.title }}</h2>
-        <p class="text-muted">
-            {% for author in article.authors %}
-                {{ author }}{{ "," if not loop.last }}
-            {% endfor %}
-        </p>
-        <p class="text-secondary mb-0">
-            {% if article.doctype %}
-                <span class="badge badge-secondary mr-2">{{ article.doctype }}</span>
-            {% endif %}
-            <small>{{ pub_date }} in <b><a
-                    href="{{ url_for('journal',id=journal.id,query=query) }}">{{ journal.name }}</a></b>
-            </small>
-        </p>
-        <div class="row">
-            <div class="col-md-7">
+<div class="mt-4">
+    <div class="row">
+        <div class="col-md-8">
 
-                {% if article.abstract == '' %}
-                {% else %}
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mt-2 mb-2">{{ article.title }}</h2>
+                </div>
+                <div class="card-body pt-2">
+                    <p class="text-muted">
+                        {% for author in article.authors %}
+                        {{ author.name }}{{ "," if not loop.last }}
+                        {% endfor %}
+                    </p>
+                    <p class="text-secondary mb-0">
+                        {% if article.doctype %}
+                        <span class="badge badge-secondary mr-2">{{ article.doctype }}</span>
+                        {% endif %}
+                        <small>{{ pub_date }} in <b><a
+                                href="{{ url_for('journal',id=article.journal.title,query=query) }}">{{
+                            article.journal.title
+                            }}</a></b>
+                        </small>
+                    </p>
+
+                    {% if article.abstract == '' %}
+                    {% else %}
 
                     <div id="summary{{ article.id }}">
                         <p class="text-justify">
                             {{ article.abstract }}
                         </p>
                     </div>
-                {% endif %}
-                {% if article.doi %}
+                    {% endif %}
+                    {% if article.doi %}
                     <a href="http://dx.doi.org/{{ article.doi }}">{{ article.doi }}</a>
-                {% else %}
+                    {% else %}
                     <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
                     <script>
                         (function () {
@@ -68,13 +75,25 @@
                                                     url: '/add_data',
                                                     method: "GET",
                                                     params: {
-                                                        'id': {{ article.id }},
-                                                        'title': results['message']['items'][0]['title'][0],
-                                                        'doi': results['message']['items'][0]['DOI'],
-                                                        'doctype': results['message']['items'][0]['type'],
-                                                        'crossref': results['message']['items'][0]
-                                                    }
-                                                })
+                                                        'id': {
+                                                {
+                                                    article.id
+                                                }
+                                            },
+                                                'title'
+                                            :
+                                                results['message']['items'][0]['title'][0],
+                                                    'doi'
+                                            :
+                                                results['message']['items'][0]['DOI'],
+                                                    'doctype'
+                                            :
+                                                results['message']['items'][0]['type'],
+                                                    'crossref'
+                                            :
+                                                results['message']['items'][0]
+                                            }
+                                            })
                                             }).error(function (error) {
                                                 $log.log(error);
                                             });
@@ -98,42 +117,69 @@
                             </button>
                             {% endraw %}
                             {% raw %}
-                            <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a> <a class="btn btn-link pl-0" href="{{ url_for('add_user_doc', id = article.id) }}">Add to Mendeley</a>
+                            <a href="http://dx.doi.org/{{ doi }}" target="_blank">{{ doi }}</a> <a
+                                class="btn btn-link pl-0" href="{{ url_for('add_user_doc', id = article.id) }}">Add to
+                            Mendeley</a>
                             {% endraw %}
 
                         </div>
                     </div>
-                {% endif %}
-            </div>
-
-            <div class="col-md-5">
-                {% if article.src %}
+                    {% endif %}
+                    {% if article.src %}
                     <img src='{{ article.src }}' class="mb-3 img-fluid">
-                {% endif %}
-                <h2 class="mb-0">4.2</h2>
-                <p class="lead">User rating</p>
-                <a href="{{ url_for('vote',type=1,article_id = article.id) }}" class="mr-2 btn btn-sm btn-success">Upvote</a><a
-                    href="{{ url_for('vote',type=-1,article_id = article.id) }}" class=" btn btn-sm
-                    btn-danger">Downvote</a>
-            </div>
-        </div>
-        <div class="row">
-            {% for comment in comments %}
-                <div class="col-md-7">
-                    <p>{{ comment.content }}</p>
+                    {% endif %}
+                    <br>
                 </div>
-            {% endfor %}
-        </div>
-        <div class="row">
-            <div class="col-md-7">
-                <br>
-                <form action="{{ url_for('comment') }}" method="post">
-                    <div class="form-group">
-                        <input type="hidden" value="{{ article.id }}" name="article_id">
-                        <textarea class="form-control" name="content" rows="3"></textarea>
-                        <button type='submit' class="btn btn-sm mt-2 btn-primary">Comment</button>
-                    </div>
-                </form>
             </div>
         </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="mb-0">4.2</h2>
+                    <p class="lead">User rating</p>
+                    <a href="{{ url_for('vote',type=1,article_id = article.id) }}" class="mr-2 btn btn-sm btn-success">Upvote</a><a
+                        href="{{ url_for('vote',type=-1,article_id = article.id) }}" class=" btn btn-sm
+                    btn-danger">Downvote</a>
+
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <form action="{{ url_for('comment') }}" method="post" class="w-100">
+
+                        <div class="input-group">
+                            <input type="hidden" value="{{ article.doi }}" name="article_id">
+                            <input type="text" class="form-control" name="content" placeholder="Message">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fe fe-message-square"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <ul class="list-group card-list-group">
+                    {% for comment in comments %}
+                    <li class="list-group-item py-5">
+                        <div class="media">
+                            <div class="media-object avatar avatar-md mr-4"
+                                 style="background-image: url(demo/faces/male/16.jpg)"></div>
+                            <div class="media-body">
+                                <div class="media-heading">
+                                    <!--<small class="float-right text-muted">12 min</small>-->
+                                    <h5>{{ comment.author.name }}</h5>
+                                </div>
+                                <div>
+                                    {{ comment.content }}
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

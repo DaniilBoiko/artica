@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FoamTree with custom tooltips</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+    <link href="assets/css/tooltip.css" rel="stylesheet" />
+    <style>
+      small { color: #888; }
+    </style>
+  </head>
+
+  <body>
+    <div id="container"><div id="visualization"></div></div>
+    <div id="side">
+      <h2>Sticky tooltips</h2>
+      
+      <p>
+        You can use the <code><a href="../api/index.html#containerCoordinates">containerCoordinates</a></code> property
+        to reposition HTML overlays so that they are over some specific point inside the visualization.
+      </p>
+      <p>
+        In this example, we will draw an extra circle in one of the groups using
+        <code><a href="../api/index.html#groupColorDecorator">groupColorDecorator</a></code> and show a HTML tooltip
+        pointing at the circle. Additionally, on every FoamTree redraw, we will reposition the tooltip so that it
+        always points at the circle, regardless of zoom, pan and expose transformations.
+      </p>
+
+      <p>
+        See also the <a href="contextmenu.html">context menu example</a>.
+      </p>
+    </div>
+
+    <script src="../carrotsearch.foamtree.js"></script>
+    <script src="assets/js/hammer.min.js"></script>
+    <script src="assets/js/tooltip.min.js"></script>
+
+    <script>
+      window.addEventListener("load", function() {
+        // A simple utility for showing and hiding HTML tooltips
+        var tooltip = (function() {
+          var tip = new Tooltip("Test", { auto: true });
+          tip.content("<h2 style='margin: 0'>Sticky tooltip</h2>");
+
+          var containerWidth, containerHeight;
+          var offsetX, offsetY;
+
+          function hide() {
+            tip.hide();
+          }
+
+          function position(x, y) {
+            if (x < 0 || y < 0 || x > containerWidth || y > containerHeight) {
+              // Hide if outside of the container
+              tip.hide();
+            } else {
+              tip.show();
+              tip.position(x + offsetX, y + offsetY);
+            }
+          }
+
+          function show() {
+            tip.show();
+          }
+
+          function relativeTo(element) {
+            var rect = element.getBoundingClientRect();
+            offsetX = rect.left;
+            offsetY = rect.top;
+            containerWidth = rect.width;
+            containerHeight = rect.height;
+          }
+
+          return {
+            hide: hide,
+            show: show,
+            position: position,
+            relativeTo: relativeTo
+          };
+        })();
+
+        // Position tooltips relative to visualization area
+        tooltip.relativeTo(document.getElementById("visualization"));
+
+        // Initialize FoamTree
+        var foamtree = new CarrotSearchFoamTree({
+          id: "visualization",
+          pixelRatio: window.devicePixelRatio || 1,
+          rolloutDuration: 0,
+
+          // Never display the title bar
+          maxLabelSizeForTitleBar: 0,
+
+          // Generate some example data
+          dataObject: {
+            groups: (function() {
+              var groups = [];
+
+              for (var i = 1; i <= 100; i++) {
+                groups.push({
+                  label: "Group\u00a0" + i,
+                  weight: 100 / (i + 1),
+                  hasTooltip: i == 1
+                })
+              }
+
+              return groups;
+            })()
+          },
+
+          wireframeContentDecorationDrawing: "always",
+          wireframeLabelDrawing: "always",
+
+          // Draws a dot to visually show where the tooltip is attached
+          groupContentDecorator: function (opts, props, vars) {
+            var ctx = props.context;
+            var group = props.group;
+
+            if (group.hasTooltip) {
+              // Draw tooltip anchor
+              if (props.shapeDirty) {
+                group.tooltipAnchorX = props.labelBoxLeft + props.labelBoxWidth / 2;
+                group.tooltipAnchorY = props.labelBoxTop - 20;
+                ctx.beginPath();
+                ctx.arc(group.tooltipAnchorX, group.tooltipAnchorY + 10, 10, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+          },
+
+          // Update tooltip position on zoom, pan or expose change
+          onRedraw: function () {
+            var group = this.get("dataObject").groups[0];
+
+            // Get container-relative coordinates
+            var containerCoordinates = this.get("containerCoordinates", group, { x: group.tooltipAnchorX, y: group.tooltipAnchorY });
+            if (group.containerX != containerCoordinates.x || group.containerY != containerCoordinates.y) {
+              // Update position if coordinates changed
+              tooltip.position(containerCoordinates.x, containerCoordinates.y);
+              if (group.containerX == undefined) {
+                tooltip.show();
+              }
+              group.containerX = containerCoordinates.x;
+              group.containerY = containerCoordinates.y;
+            }
+          },
+
+          groupColorDecorator: function (opts, props, vars) {
+            if (!props.group.hasTooltip) {
+              vars.groupColor.s = 0;
+              vars.groupColor.l = 90;
+            }
+          }
+        });
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function() {
+          var timeout;
+          return function() {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(foamtree.resize, 300);
+          }
+        })());
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FoamTree: Photo explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+    <link href="assets/css/semantic.min.css" rel="stylesheet"/>
+
+    <!-- Demo-specific styles -->
+    <style>
+      .ui.divider { margin-top: 24px !important; margin-bottom: 24px !important; }
+      ul.code li { margin-bottom: 0.5em; }
+
+      #side { padding-right: 10px }
+      #details {
+        background-color: rgba(29, 28, 27, 0.99);
+        transition: right 0.5s ease, left 0.5s ease, opacity 0.5s;
+        opacity: 0;
+      }
+      #details a {
+        color: #bbb;
+      }
+      #details .close.icon {
+        color: #666;
+        position: absolute;
+        top: 0; right: 0;
+      }
+      #details .profile {
+        overflow: hidden;
+        margin-bottom: 2em;
+      }
+      #details .profile img {
+        box-sizing: content-box;
+        float: left;
+        margin-right: 0.5em;
+        border-radius: 4px;
+        padding: 5px;
+        background-color: black;
+      }
+      #details .description {
+        margin: 2em 0;
+      }
+      #details .exif {
+        margin-top: 2em;
+      }
+      #details dl dt {
+        position: absolute;
+        width: 11em;
+        color: #888;
+      }
+      #details dl dd { margin-left: 11em; }
+
+      @media (min-width: 1024px) {
+        #details {
+          position: absolute;
+          top: 10px;
+          bottom: 10px;
+          width: 440px;
+          right: -440px;
+          padding-top: 25px;
+          padding-left: 10px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+        #details.showing { right: 10px; opacity: 1; }
+      }
+
+      @media (max-width: 1023px) {
+        #side { position: relative; }
+
+        #details {
+          position: absolute;
+          top: 70%;
+          min-height: 100%;
+          left: 100%; right: -100%;
+          opacity: 0;
+          padding: 10px;
+        }
+        #details.showing { right: 0; left: 0; opacity: 1; }
+      }
+    </style>
+  </head>
+
+  <body class="dark">
+    <div id="container"><div id="visualization"></div></div>
+    <div id="side">
+      <h1 style="margin-top: 1em">Photo explorer</h1>
+
+      <p>
+        This demo arranges collections of photos into Voronoi treemaps. Polygon size
+        represents view count. All photos come from <a href="https://flickr.com">Flickr</a>,
+        hover over a photo for more details and copyright information.
+      </p>
+
+      <!-- A simple image search form -->
+      <form class="ui inverted form" style="margin: 40px 0">
+        <div class="inline fields">
+          <label style="color: white">Show</label>
+          <div class="field">
+            <div class="ui radio checkbox">
+              <input id="interesting" value="interesting" type="radio" name="criteria" checked="" tabindex="0" class="hidden" />
+              <label for="interesting">photos of the day</label>
+            </div>
+          </div>
+          <div class="field">
+            <div class="ui radio checkbox">
+              <input id="by-user" value="by-user" type="radio" name="criteria" tabindex="0" class="hidden" />
+              <label for="by-user">photos by user</label>
+            </div>
+          </div>
+        </div>
+        <div class="inline fields">
+          <div id="date-field" class="ten wide field">
+            <input id="date" type="text" placeholder="YYYY-MM-DD, blank for latest" />
+          </div>
+          <div id="user-field" class="ten wide hidden field" style="display: none">
+            <input id="user" type="text" placeholder="Flickr user name" />
+          </div>
+          <div class="four wide field">
+            <select id="count" class="ui compact dropdown">
+              <option>25</option>
+              <option selected="">50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+          </div>
+          <div class="three wide field">
+            <button type="submit" class="ui primary button">Show</button>
+          </div>
+        </div>
+        <div class="error message">Failed to load photos</div>
+      </form>
+
+      <p>
+        <strong>Click on photo</strong> for full view. Click again to get back to all photos.<br />
+        <strong>Click and hold</strong> for more from the author. Click and hold to return.
+      </p>
+
+      <div class="ui divider"></div>
+
+      <h3>What's in the code?</h3>
+
+      <ul class="code">
+        <li>
+          Getting photo lists from Flickr API and converting them into <a href="../api/index.html#dataObject">FoamTree JSON</a>.
+        </li>
+
+        <li>
+          Using the <code><a href="../api/index.html#groupContentDecorator">groupContentDecorator</a></code> callback
+          along with <a href="../api/index.html#options-geometry-utils">geometry utilities</a> to lay out and
+          render photos inside polygons.
+        </li>
+
+        <li>
+          Loading low- and high-resolution photos and using the <code>viewportScale</code> property in
+          <code><a href="../api/index.html#groupContentDecorator">groupContentDecorator</a></code>
+          implementation to determine when the high-resolution photo needs to be used for drawing.
+        </li>
+
+        <li>
+          Implementing a <code><a href="../api/index.html#onGroupClick">onGroupClick</a></code> event listener
+          to prevent group selection on single click and expose the group instead.
+        </li>
+
+        <li>
+          Using a <a href="http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html" target="_blank">fast JavaScript image blur</a>
+          to produce an appealing background for the full view of the image. Blur is applied unless we hit the
+          <a href="https://www.flickr.com/groups/51035612836@N01/discuss/72157629144244216/72157643738447673" target="_blank">Flickr
+            image request with CORS headers bug</a>.
+        </li>
+      </ul>
+
+      <div class="ui divider"></div>
+
+      <a href="http://codepen.io/carrotsearch/pen/pJMxVK" target="_blank">Experiment</a> with this code on CodePen.
+    </div>
+
+    <div id="details"></div>
+
+    <script src="../carrotsearch.foamtree.js"></script>
+
+    <!-- Include Hammer.js for mobile interactions. Not required for desktop-only apps. -->
+    <script src="assets/js/hammer.min.js"></script>
+
+    <!-- Additional libraries -->
+    <script src="assets/js/jquery-2.0.3.min.js"></script>
+    <script src="assets/js/semantic.min.js"></script>
+    <script src="assets/js/lodash.min.js"></script>
+    <script src="assets/js/blur.js"></script>
+
+    <script>
+      // We'll first define a number of classes and then write code that
+      // wires everything up together to form our photo exploration app.
+
+      /**
+       * A very simple utility class for fetching various pieces of data from Flickr JSON API.
+       */
+      var Flickr = function(apiKey) {
+        this.photoInfoCache = {};
+        this.exifCache = {};
+        this.url = "https://api.flickr.com/services/rest/?format=json&api_key=" + apiKey;
+        $.ajaxSetup({
+          dataType: "jsonp",
+          jsonp: "jsoncallback",
+          cache: true
+        });
+      };
+      Flickr.prototype.getInterestingPhotos = function (date, count) {
+        return this.getPhotos({
+          method: "flickr.interestingness.getList",
+          per_page: count,
+          date: date,
+          extras: "views,owner_name"
+        });
+      };
+      Flickr.prototype.getUserPhotos = function (userName, count) {
+        var self = this;
+        var deferred = $.Deferred();
+        $.ajax(this.url, {
+          data: {
+            method: "flickr.people.findByUsername",
+            username: userName
+          }
+        }).success(function (response) {
+          switch (response.stat) {
+            case "ok":
+              self.getPhotos({
+                method: "flickr.people.getPublicPhotos",
+                per_page: count,
+                user_id: response.user.nsid,
+                extras: "views,owner_name"
+              }).done(function (photos) {
+                deferred.resolveWith(this, [ photos ])
+              }).fail(function (message) {
+                deferred.rejectWith(this, [ message ]);
+              });
+              break;
+
+            case "fail":
+              deferred.rejectWith(this, [response.message]);
+              break;
+          }
+        });
+        return deferred;
+      };
+      Flickr.prototype.getPhotos = function (data) {
+        return this.load(data, "photos");
+      };
+      Flickr.prototype.getPhotoInfo = function (photoId) {
+        return this.fromCacheOrLoad({
+          photo_id: photoId,
+          method: "flickr.photos.getInfo"
+        }, "photo", this.photoInfoCache, "photo_id");
+      };
+      Flickr.prototype.getPhotoExif = function (photoId) {
+        return this.fromCacheOrLoad({
+          photo_id: photoId,
+          method: "flickr.photos.getExif"
+        }, "photo", this.exifCache, "photo_id");
+      };
+      Flickr.prototype.fromCacheOrLoad = function (data, dataProperty, cache, keyProperty) {
+        var value = cache[data[keyProperty]];
+        if (value) {
+          return $.when(value);
+        } else {
+          return this.load(data, dataProperty).done(function (result) {
+            cache[data[keyProperty]] = result;
+          });
+        }
+      };
+      Flickr.prototype.load = function (data, dataProperty) {
+        var deferred = $.Deferred();
+        $.ajax(this.url, { data: data }).success(function(response) {
+          switch (response.stat) {
+            case "ok": deferred.resolveWith(this, [ response[dataProperty] ]); break;
+            case "fail": deferred.rejectWith(this, [ response.message ]); break;
+          }
+        }
+        );
+        return deferred.promise();
+      };
+
+      /**
+       * Handles our simple photo search form.
+       */
+      var ConfigForm = function($container, onSearch) {
+        var $message = $container.find(".error.message");
+        var $date = $container.find("#date");
+        var $button = $container.find(":submit");
+        var $user = $container.find("#user");
+        $container.find(".ui.dropdown").dropdown();
+
+        this.$container = $container;
+        this.$user = $user;
+
+        $container.find('.ui.radio.checkbox').checkbox();
+        $container.find(":radio[name=criteria]").change(function () {
+          switch (this.value) {
+            case "interesting":
+              $date.closest(".field").show();
+              $user.closest(".field").hide();
+              break;
+
+            case "by-user":
+              $user.closest(".field").show();
+              $date.closest(".field").hide();
+              break;
+          }
+        });
+
+        $container.submit(function (e) {
+          e.preventDefault();
+
+          $button.addClass("loading");
+          $message.hide();
+
+          var type = $container.find(":radio[name=criteria]:checked").val();
+          var query;
+          switch (type) {
+            case "interesting":
+              query = $date.val();
+              break;
+
+            case "by-user":
+              query = $user.val();
+              break;
+          }
+
+          onSearch({
+            type: type,
+            query: query,
+            count: $container.find("#count").val()
+          }).always(function () {
+            $button.removeClass("loading");
+          }).fail(function (message) {
+            $message.text(message).show();
+          });
+        });
+      };
+      ConfigForm.prototype.switchView = function (username) {
+        var current = this.$container.find(":radio[name=criteria]:checked").val();
+        switch (current) {
+          case "interesting":
+            this.$user.val(username);
+            this.$container.find(":radio[name=criteria][value=by-user]").closest(".ui.checkbox").checkbox("set checked");
+            break;
+
+          case "by-user":
+            this.$container.find(":radio[name=criteria][value=interesting]").closest(".ui.checkbox").checkbox("set checked");
+            break;
+        }
+
+        this.$container.submit();
+      };
+      ConfigForm.prototype.triggerSearch = function () {
+        this.$container.submit();
+      };
+
+      /**
+       * Loads photo details and shows them in the sliding side panel.
+       */
+      var DetailsPanel = function ($container, flick) {
+        this.flickr = flickr;
+        this.licenses = _.indexBy([
+          { "id": 0, "name": "All Rights Reserved", "url": "" },
+          { "id": 4, "name": "Attribution License", "url": "https:\/\/creativecommons.org\/licenses\/by\/2.0\/" },
+          { "id": 6, "name": "Attribution-NoDerivs License", "url": "https:\/\/creativecommons.org\/licenses\/by-nd\/2.0\/" },
+          { "id": 3, "name": "Attribution-NonCommercial-NoDerivs License", "url": "https:\/\/creativecommons.org\/licenses\/by-nc-nd\/2.0\/" },
+          { "id": 2, "name": "Attribution-NonCommercial License", "url": "https:\/\/creativecommons.org\/licenses\/by-nc\/2.0\/" },
+          { "id": 1, "name": "Attribution-NonCommercial-ShareAlike License", "url": "https:\/\/creativecommons.org\/licenses\/by-nc-sa\/2.0\/" },
+          { "id": 5, "name": "Attribution-ShareAlike License", "url": "https:\/\/creativecommons.org\/licenses\/by-sa\/2.0\/" },
+          { "id": 7, "name": "No known copyright restrictions", "url": "https:\/\/www.flickr.com\/commons\/usage\/" },
+          { "id": 8, "name": "United States Government Work", "url": "http:\/\/www.usa.gov\/copyright.shtml" },
+          { "id": 9, "name": "Public Domain Dedication (CC0)", "url": "https:\/\/creativecommons.org\/publicdomain\/zero\/1.0\/" },
+          { "id": 10, "name": "Public Domain Mark", "url": "https:\/\/creativecommons.org\/publicdomain\/mark\/1.0\/" }
+        ], "id");
+        this.exif = [
+          "Lens",
+          "Exposure Program",
+          "Exposure", "Aperture", "ISO Speed", "Focal Length", "Exposure Bias",
+          "Flash", "White Balance", "Scene Capture Type",
+          "Software"
+        ];
+
+        this.$container = $container;
+        this.$photo = $("<div class='photo' />").appendTo($container);
+        this.$exif = $("<div class='exif' />").appendTo($container);
+
+        var self = this;
+        $('<i class="big close link icon"></i>').appendTo($container).click(function (e) {
+          self.$container.removeClass("showing");
+        });
+
+        this.template = _.template('\
+            <div class="profile">\
+              <img width="48" height="48" src="<%- owner.icon %>" />\
+              <%- owner.realname || owner.username %><br />\
+              <% if (owner.location) { %><%- owner.location %><br /><% } %>\
+              <% if (owner.path_alias) { %><a target="_blank" href="https://www.flickr.com/photos/<%- owner.path_alias %>">https://www.flickr.com/photos/<%- owner.path_alias %></a><% } %>\
+            </div>\
+            <h2 class="ui inverted header">\
+              <%- title._content || "Untitled" %>\
+              <div class="sub header">\
+                by <%- owner.realname || owner.username %>&nbsp;&nbsp;&nbsp;<%- views %> views&nbsp;&nbsp;&nbsp;<%- comments._content %> comments\
+              </div>\
+            </h2>\
+            <p class="description"><%= descriptionHtml %></p>\
+            <p style="white-space: nowrap; text-overflow: ellipsis">\
+              <%= locationHtml %>\
+              <%= dateTakenHtml %>\
+              <%= licenseHtml %>\
+              <%= linkHtml %>\
+            </p>\
+          ');
+      };
+      DetailsPanel.prototype.show = function (photo) {
+        var self = this;
+        this.$container.addClass("showing");
+
+        var deferred = $.Deferred();
+
+        (function() {
+          var info, exif, toGo = 2;
+
+          self.flickr.getPhotoInfo(photo.id).done(function (i) {
+            info = i;
+            resolve();
+          }).fail(resolve);
+
+          self.flickr.getPhotoExif(photo.id).done(function (e) {
+            exif = e;
+            resolve();
+          }).fail(resolve);
+
+          function resolve() {
+            if (--toGo == 0) {
+              deferred.resolveWith(this, [ info, exif ]);
+            }
+          }
+        })();
+
+        deferred.done(function (info, exif) {
+          if (info) {
+            var description = info.description._content || "";
+
+            // We're assuming here that Flickr properly sanitizes the HTML...
+            info.descriptionHtml = description
+                .replace(/\n/g, "<br />")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">");
+
+            // Build license link
+            var licenseHtml = "";
+            if (_.has(info, "license") && _.has(self.licenses, info.license)) {
+              var license = self.licenses[info.license];
+              licenseHtml += "<i class='copyright icon' />";
+
+              if (license.url.length > 0) {
+                licenseHtml += "<a href='" + license.url + "'>" + _.escape(license.name) + "</a>";
+              } else {
+                licenseHtml += _.escape(license.name);
+              }
+              licenseHtml += "<br />";
+            }
+            info.licenseHtml = licenseHtml;
+
+            var dateTakenHtml = "";
+            if (_.has(info, "dates.taken")) {
+              dateTakenHtml += "<i class='clock icon' />" + _.escape(info.dates.taken) + "<br />";
+            }
+            info.dateTakenHtml = dateTakenHtml;
+
+            var locationHtml = "";
+            if (_.has(info, "location.country")) {
+              locationHtml += "<i class='map icon' />" + _.escape([
+                    _.get(info, "location.country._content"),
+                    _.get(info, "location.region._content"),
+                    _.get(info, "location.county._content")
+                  ].filter(function (v) { return !_.isUndefined(v); }).join(", ")) + "<br />";
+            }
+            info.locationHtml = locationHtml;
+
+            info.linkHtml = "<i class='linkify icon' /><a target='_blank' href='" + info.urls.url[0]._content + "'>" +
+                _.escape(info.urls.url[0]._content) + "</a>";
+
+            var owner = info.owner;
+            owner.icon = owner.iconserver != "0" ?
+            "//farm" + owner.iconfarm + ".staticflickr.com/" + owner.iconserver + "/buddyicons/" + owner.nsid + ".jpg" :
+                "https://www.flickr.com/images/buddyicon.gif";
+
+            self.$photo.html(self.template(info));
+          } else {
+            self.$photo.html("");
+          }
+
+          if (exif && exif.camera) {
+            var exifHtml = "<dl>";
+            exifHtml += "<dt>Camera</dt><dd>" + _.escape(exif.camera) + "</dd>";
+
+            // Not very efficient, but should do here
+            self.exif.forEach(function (label) {
+              exif.exif.forEach(function (e) {
+                if (e.label == label) {
+                  exifHtml += "<dt>" + e.label + "</dt>" +
+                      "<dd>" + (e.clean ? e.clean._content : e.raw._content) + "</dd>";
+                }
+              });
+            });
+            exifHtml += "</dl>";
+            self.$exif.html(exifHtml);
+          } else {
+            self.$exif.html("");
+          }
+        });
+      };
+
+      // Now we'll arrange the above components into our photo exploration app.
+
+      // Please use your own API key when reusing this code.
+      var flickr = new Flickr("709836c776c9f247fd4289e5d6f49d5c");
+
+      // Initialize details panel
+      var detailsPanel = new DetailsPanel($("#details"));
+
+      // A place holder for FoamTree, we'll initialize it later
+      var foamtree;
+
+      // Initialize config form
+      var configForm = new ConfigForm($(".ui.form"), function onSearch(criteria) {
+        // Search triggered
+        if (!foamtree) {
+          return $.when({});
+        }
+
+        var deferred;
+        switch (criteria.type) {
+          case "interesting":
+            deferred = flickr.getInterestingPhotos(criteria.query, criteria.count);
+            break;
+
+          case "by-user":
+            deferred = flickr.getUserPhotos(criteria.query, criteria.count);
+            break;
+        }
+
+        // Convert the photos to FoamTree JSON, initiate image loading.
+        deferred.done(function (photos) {
+          var groups = photos.photo.map(function (photo) {
+            var group = {
+              // Make polygon size reflect the number of views
+              weight: parseInt(photo.views),
+
+              // We'll need a per-group random number
+              random: 0.8 + 0.2 * Math.random(),
+
+              // A reference to the source photo object, we'll need it to draw labels
+              photo: photo,
+
+              // Low-resolution image
+              image: undefined,
+              imageLoaded: false,         // true when image has just been loaded
+              imageLoadedTime: undefined, // time the image completed loading, used for fading-in animation
+
+              // High-resolution image
+              hiresImage: undefined,
+
+              // True when some image-specific data is loading. We'll set this flag to true
+              // when the list of author's images is loading to show a spinner in that group.
+              loading: false,
+
+              // Low-resolution image loaded with CORS headers
+              crossOriginImage: undefined
+            };
+
+            // Initiate loading of the low-resolution image
+            var img = new Image();
+            img.onload = function () {
+              // Once the image has been loaded,
+              // put it in the group's data object
+              group.image = img;
+              group.imageLoaded = true;
+              group.imageLoadedTime = Date.now();
+
+              // Schedule FoamTree redraw to show the newly loaded image
+              foamtree.redraw(false, group);
+            };
+            img.src = imageUrl(photo, "n");
+
+            // Initiate loading of the high-resolution image
+            var hiresImg = new Image();
+            hiresImg.onload = function () {
+              group.hiresImage = hiresImg;
+              group.imageLoaded = true;
+
+              // Redraw FoamTree to show the newly loaded image
+              foamtree.redraw(false, group);
+            };
+            hiresImg.src = imageUrl(photo, "b");
+
+            // Initiate loading of the low-resolution image with CORS headers. We'll need a separate
+            // image to be able to read its image data and apply blur.
+            // There is a long standing bug in Flickr that sometimes breaks CORS handling in browsers:
+            // https://www.flickr.com/groups/51035612836@N01/discuss/72157629144244216/72157643738447673
+            // If the bug wasn't there, we wouldn't have to load the same image twice.
+            // If the image fails to load, we'll fall back to non-blurred backdrop image.
+            var crossOriginImg = new Image();
+            crossOriginImg.setAttribute('crossorigin', 'anonymous');
+            crossOriginImg.onload = function () {
+              group.crossOriginImage = crossOriginImg;
+            };
+            crossOriginImg.src = imageUrl(photo, "n");
+
+            return group;
+
+            function imageUrl(photo, size) {
+              return "https://farm" + photo.farm + ".staticflickr.com/" + photo.server + "/" +
+                  photo.id + "_" + photo.secret + "_" + size + ".jpg";
+            }
+          });
+          foamtree.set("dataObject", {groups: groups});
+        });
+
+        // Return the deferred to the form, if it fails, the form will take the error message from it.
+        return deferred;
+      });
+
+      // Initialize FoamTree after the whole page loads to make sure
+      // the element has been laid out and has non-zero dimensions.
+      window.addEventListener("load", function() {
+        // Set up FoamTree.
+        foamtree = new CarrotSearchFoamTree({
+          id: "visualization",
+          pixelRatio: window.devicePixelRatio || 1,
+
+          // Use a simple fading animation
+          rolloutDuration: 0,
+          pullbackDuration: 0,
+          fadeDuration: 300,
+
+          // Make the polygon fill entire viewport when exposed
+          groupExposureZoomMargin: 0.02,
+
+          // Draw the attribution in dark colors to match the theme of this demo
+          attributionTheme: "dark",
+
+          // Draw custom content during animations
+          wireframeContentDecorationDrawing: "always",
+
+          // The decorator that draws our images and loading spinner animation.
+          groupContentDecorator: function (opts, props, vars) {
+            // The canvas 2d context on which we'll be drawing
+            var ctx = props.context;
+
+            // The group we're requested to draw. Note that due to the incremental
+            // drawing optimizations, the list and order of specific groups FoamTree will
+            // request us is user-interaction dependent and arbitrary in general.
+            var group = props.group;
+
+            // Current time, we'll need it to draw animations
+            var now = Date.now();
+
+            // Don't draw default labels and polygons, we'll draw everything on our own.
+            vars.groupLabelDrawn = false;
+            vars.groupPolygonDrawn = false;
+
+            // Here we handle the fading-in of the image that was just loaded and
+            // fading-out of the loading spinner animation.
+            var imageAlpha = 0;
+            if (group.image) {
+              // Image is available, fade it in
+              imageAlpha = Math.min(1, (now - group.imageLoadedTime) / 300);
+              ctx.globalAlpha = imageAlpha;
+              drawImage();
+            }
+            if (imageAlpha < 1 || group.loading) {
+              // Image still loading of fading-in, draw spinner animation.
+              // We'll also draw the spinner when we're loading more of
+              // authors photos.
+              ctx.globalAlpha = group.loading ? 1.0 : 1 - imageAlpha;
+              drawSpinner();
+
+              // Schedule a redraw of this group.
+              foamtree.redraw(false, group);
+            }
+
+            // Draws the loading spinner animation
+            function drawSpinner() {
+              var cx = props.polygonCenterX;
+              var cy = props.polygonCenterY;
+
+              if (props.shapeDirty) {
+                // If group's polygon changed, recompute the radius of the inscribed polygon.
+                group.spinnerRadius = CarrotSearchFoamTree.geometry.circleInPolygon(props.polygon, cx, cy) * 0.1;
+              }
+
+              // Draw the spinner. Advance the animation based on the current time.
+              var angle = 2 * Math.PI * (now % 1000) / 1000;
+              ctx.beginPath();
+              ctx.arc(cx, cy, group.spinnerRadius, angle, angle + Math.PI / 5, true);
+              ctx.strokeStyle = "white";
+              ctx.lineWidth = group.spinnerRadius * 0.3;
+              ctx.stroke();
+            }
+
+            //
+            // Draws the image in the group's polygon.
+            //
+            // If the group is not exposed, we'll crop the image in such a way that it covers the whole polygon.
+            // If the group is exposed, we'll show the whole image. To fill the remaining space in the polygon,
+            // we'll draw the blurred version of the same image as the backdrop.
+            //
+            function drawImage() {
+              // If the group's polygon changed or image has just loaded, recompute the geometry-dependent elements.
+              if (props.shapeDirty || group.imageLoaded) {
+                group.imageLoaded = false;
+
+                // Bounding box of the polygon
+                group.boundingBox = CarrotSearchFoamTree.geometry.boundingBox(props.polygon);
+
+                // Rectangle inscribed in the polygon. We'll set the aspect ratio of the rectangle to be the
+                // same as the aspect ratio of the image. When the group is exposed, we'll draw the full
+                // image in the inscribed rectangle.
+                group.inscribedBox = CarrotSearchFoamTree.geometry.rectangleInPolygon(
+                    props.polygon, props.polygonCenterX, props.polygonCenterY, group.image.width / group.image.height, 0.95);
+
+                // Check if there's enough space for the label. If not, shift the inscribed box upwards a bit.
+                var descriptionHeight = group.boundingBox.y + group.boundingBox.h - group.inscribedBox.y - group.inscribedBox.h;
+                var minDescriptionHeight = 0.125 * group.boundingBox.h;
+                if (descriptionHeight < minDescriptionHeight) {
+                  group.inscribedBox = CarrotSearchFoamTree.geometry.rectangleInPolygon(
+                      props.polygon, props.polygonCenterX, props.polygonCenterY - (minDescriptionHeight - descriptionHeight), group.image.width / group.image.height, 0.95);
+                }
+
+                // Clear the label buffer. We'll lay out the label when needed.
+                group.labelBuffer = null;
+              }
+
+              // Choose the right resolution image. We randomize the point at which we switch to the
+              // high-res image for each group, so that not all groups switch at once. This
+              // makes zooming much smoother.
+              var image;
+              if (group.hiresImage &&
+                  (group.boundingBox.w * props.viewportScale * group.random > group.image.width ||
+                   group.boundingBox.h * props.viewportScale * group.random > group.image.height)) {
+                image = group.hiresImage;
+              } else {
+                image = group.image;
+              }
+
+              // To ensure a smooth transition between the cropped and full image view, we'll animate the
+              // image rectangle during the expose animation.
+              var mainImageBox;
+              var exposure = props.exposure;
+              if (exposure <= 0) {
+                // Not exposed, render cropped image
+                mainImageBox = group.boundingBox;
+              } else if (exposure == 1) {
+                // Exposed, render full image
+                mainImageBox = group.inscribedBox;
+              } else {
+                // Expose animation in progress, transition the image rectangle geometry.
+                mainImageBox = {
+                  x: group.boundingBox.x * (1 - exposure) + group.inscribedBox.x * exposure,
+                  y: group.boundingBox.y * (1 - exposure) + group.inscribedBox.y * exposure,
+                  w: group.boundingBox.w * (1 - exposure) + group.inscribedBox.w * exposure,
+                  h: group.boundingBox.h * (1 - exposure) + group.inscribedBox.h * exposure
+                };
+              }
+
+              // Set the group polygon path on the drawing context.
+              ctx.beginPath();
+              props.polygonContext.replay(ctx);
+              ctx.closePath();
+
+              // Since the image is larger than the polygon, we'll need to apply
+              // clipping so that we don't draw beyond the polygon's area.
+              ctx.save();
+              ctx.clip();
+
+              // If the group is exposed, draw full image and the blurred backdrop.
+              if (exposure > 0) {
+                // Make the backdrop a bit darker.
+                ctx.fillStyle = "#000000";
+                ctx.fill();
+
+                // Due to a bug in Flick API, we may not be able to blur the image.
+                // If blurred image is not available, draw a heavily cropped original image
+                // as the background and make it even darker.
+                ctx.save();
+                ctx.globalAlpha *= group.blurredImage ? 0.6 : 0.3;
+                drawImageInBox(group.blurredImage || group.image, group.boundingBox, group.blurredImage ? undefined : 2);
+                ctx.restore();
+
+                // When the expose animation is almost complete, draw some basic info about the photo.
+                if (exposure > 0.9) {
+                  // We'll record the label information into a separate drawing buffer, so that
+                  // we need to re-layout text (which is costly) only when the geometry of the polygon changes.
+                  if (!group.labelBuffer) {
+                    // Texts to draw. We use unbreakable spaces (\u00a0) to make sure they fit in one line each.
+                    var title = group.photo.title ? group.photo.title.replace(/\s+/g, "\u00a0") : "Untitled";
+                    var author = "by\u00a0" + group.photo.ownername.replace(/\s+/g, "\u00a0") + "\u00a0\u00a0\u00a0" +
+                        group.photo.views + "\u00a0views";
+
+                    // Create the label buffer
+                    group.labelBuffer = ctx.scratch();
+
+                    // Put the title line directly below the image rectangle.
+                    var info = group.labelBuffer.fillPolygonWithText(props.polygon,
+                        props.polygonCenterX, group.inscribedBox.y + group.inscribedBox.h,
+                        title, { verticalAlign: "top", maxFontSize: group.boundingBox.h / 30, fontFamily: "Lato" });
+                    if (info.fit) {
+                      // If there was enough space for the title, lay out author and views information.
+                      // Put those directly below the title.
+                      group.labelBuffer.save();
+                      group.labelBuffer.globalAlpha = 0.6;
+                      group.labelBuffer.fillPolygonWithText(props.polygon,
+                          props.polygonCenterX, info.box.y + info.box.h,
+                          author, { verticalAlign: "top", maxFontSize: info.fontSize, fontFamily: "Lato", verticalPadding: 0 });
+                      group.labelBuffer.restore();
+                    }
+                  }
+
+                  // Fade-in the label
+                  ctx.fillStyle = "rgba(255, 255, 255, " + (8.5 * (exposure - 0.9)).toFixed(2) + ")";
+                  group.labelBuffer.replay(ctx);
+                }
+              }
+
+              // Draw the main image
+              if (exposure > 0 || props.hovered) {
+                drawImageInBox(image, mainImageBox);
+              } else {
+                ctx.save();
+                ctx.globalAlpha *= 0.9;
+                drawImageInBox(image, mainImageBox);
+                ctx.restore();
+              }
+
+              ctx.restore();
+
+              // Draw a subtle polygon outline
+              ctx.strokeStyle = props.exposure > 0 || props.hovered ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.4)";
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              // Draws the image positioned in the provided rectangle.
+              function drawImageInBox(image, box, multiplier) {
+                var groupWidthToHeight = box.w / box.h;
+                var imageWidthToHeight = image.width / image.height;
+
+                var scale = groupWidthToHeight < imageWidthToHeight ?
+                box.h / image.height : box.w / image.width;
+
+                var xOffset = box.x / scale, yOffset = box.y / scale;
+                if (groupWidthToHeight < imageWidthToHeight) {
+                  scale = box.h / image.height;
+                  xOffset -= (image.width - box.w / scale) / 2;
+                } else {
+                  scale = box.w / image.width;
+                  yOffset -= (image.height - box.h / scale) / 2;
+                }
+
+                group.scale = scale;
+
+                ctx.save();
+                ctx.scale(scale, scale);
+                ctx.translate(xOffset, yOffset);
+                if (multiplier) {
+                  ctx.translate(image.width / 2, image.height / 2);
+                  ctx.scale(multiplier, multiplier);
+                  ctx.translate(-image.width / 2, -image.height / 2);
+                }
+                ctx.drawImage(image, 0, 0);
+                ctx.restore();
+              }
+            }
+          },
+
+          // Call group content decorator on every polygon draw.
+          groupContentDecoratorTriggering: "onSurfaceDirty",
+
+          // Expose group on single click
+          onGroupClick: function (e) {
+            e.preventDefault();
+
+            // Unexpose if clicked outside of any polygon
+            if (!e.group) {
+              this.set("exposure", null);
+              return;
+            }
+
+            switch (this.get("state", e.group).exposure) {
+              case -1:
+              case 0:
+                // Clicked group is not exposed: compute blurred image and expose.
+                if (e.group.crossOriginImage && !e.group.blurredImage) {
+                  e.group.blurredImage = Blur.stackBlur(e.group.crossOriginImage, 16);
+                }
+
+                this.set("exposure", e.group);
+                break;
+
+              case 1:
+                // Clicked group is exposed, unexpose.
+                this.set("exposure", null);
+                break;
+            }
+          },
+
+          // Prevent default action (expose) on double click
+          onGroupDoubleClick: function (e) {
+            e.preventDefault();
+          },
+
+          // Load the more of author's photos on click-and-hold.
+          onGroupHold: function (e) {
+            e.preventDefault();
+            var group = e.group;
+            if (!group || !group.photo) {
+              return;
+            }
+
+            // Draw the loading indicator on the group
+            group.loading = true;
+            foamtree.redraw(false, group);
+
+            // Load more photos
+            configForm.switchView(group.photo.ownername);
+          },
+
+          // Load and show photo details on hover after a while
+          onGroupHover: _.debounce(function (e) {
+            if (e.group && e.group.photo) {
+              detailsPanel.show(e.group.photo);
+            }
+          }, 350)
+        });
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function () {
+          var timeout;
+          return function () {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(foamtree.resize, 300);
+          }
+        })());
+
+        // Load initial data
+        configForm.triggerSearch();
+      });
+    </script>
+  </body>
+</html>

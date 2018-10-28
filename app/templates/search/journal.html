@@ -1,44 +1,50 @@
-{% extends "base_other.html" %}
+{% extends "base.html" %}
 
 {% block app_content %}
-        <div class="row">
-            <div class="col-md-12 mt-4">
-                <h1 class="display-4">{{ journal.name }}</h1>
-                {% if summary %}
+<div class="mt-4">
+    <div class="row">
+        <div class="col-md-12 mt-4">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="display-4">{{ title }}</h1>
+                    {% if summary %}
                     <p class="mb-0 lead">{{ summary }}</p>
                     <p class="text-secondary mb-5">
                         <small>This data was gathered automatically from <a
                                 href="https://en.wikipedia.org">Wikipedia</a></small>
                     </p>
-                {% endif %}
-            </div>
-            <br>
-        </div>
-        <div class="row">
-            <div class="col-md-9">
-                <h2 class="mb-4">Last published</h2>
-                <div class="card-columns">
-
-                    {% for article in last_published %}
-                        <div class="card">
-                            {% if article.src %}
-                                <img class="card-img-top" src="{{ article.src }}" alt="Card image cap">
-                            {% endif %}
-                            <div class="card-body">
-                                <a href="{{ url_for('article',id=article.id, query=query) }}"><h6
-                                        class="card-title">{{ article.title }}</h6></a>
-                                <small><p class="text-mited">
-                                    {% for author in article.authors %}
-                                        {{ author }}{{ ", " if not loop.last }}
-                                    {% endfor %}
-                                </p></small>
-                            </div>
-                        </div>
-                    {% endfor %}
+                    {% endif %}
                 </div>
             </div>
-            <div class="col-md-3">
-                <h2 class="mb-4">Tools</h2>
+        </div>
+        <br>
+    </div>
+    <div class="row">
+        <div class="col-md-9">
+            <h2 class="mb-4">Last published</h2>
+            <div class="card-columns">
+
+                {% for article in last_published %}
+                <div class="card">
+                    {% if article.src %}
+                    <img class="card-img-top" src="{{ article.src }}" alt="Card image cap">
+                    {% endif %}
+                    <div class="card-body">
+                        <a href="{{ url_for('article',id=article.doi, query=query) }}"><h6
+                                class="card-title">{{ article.title }}</h6></a>
+                        <small><p class="text-mited">
+                            {% for author in article.authors %}
+                            {{ author['name'] }}{{ ", " if not loop.last }}
+                            {% endfor %}
+                        </p></small>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
+        <div class="col-md-3">
+            <h2 class="mb-4">Tools</h2>
+        </div>
+    </div>
+</div>
 {% endblock %}

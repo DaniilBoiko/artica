@@ -1,0 +1,310 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fancy background generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+    <link href='https://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css' />
+    <style>
+      body {
+        font-size: 14px;
+      }
+      body, h1, h2, h3, h4 {
+        font-family: Lato, sans-serif;
+      }
+      #overlay {
+        text-align: center;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-align-items: center;
+        align-items: center;
+        color: white;
+        text-shadow: 0 0 20px rgba(0, 0, 0, 0.35);
+        z-index: 1;
+      }
+      #overlay > div {
+        width: 100%;
+      }
+      #overlay h1, #overlay h2 {
+        margin: 0;
+        font-weight: normal;
+        line-height: 1.0;
+      }
+      #overlay h1 {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+      }
+      #overlay h2 {
+        font-size: 2rem;
+      }
+
+      ul.code li { margin-bottom: 0.5em; }
+
+      @media (min-width: 1024px) {
+        #backdrop, #overlay {
+          position: absolute;
+          height: 100%;
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 1023px) {
+        #overlay h1 { font-size: 3rem; }
+        #overlay h2 { font-size: 1.5rem; }
+
+        #backdrop, #overlay {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="dark">
+    <div id="container">
+      <canvas id="backdrop"></canvas>
+
+      <!-- An overlay over the visualization that will display our message. -->
+      <div id="overlay">
+        <div>
+          <h1>Your message here</h1>
+          <h2>(on a fancy FoamTree-powered background)</h2>
+        </div>
+      </div>
+
+      <div id="visualization"></div>
+    </div>
+
+    <div id="side">
+      <h1 style="margin-top: 1em">Fancy background generator</h1>
+
+      <p>
+        This is one of those mostly useless pieces of code you're sorely tempted to write. It is a simple
+        procedural animated background generator. You can use it to add an interesting backdrop below the main
+        message on your website.
+      </p>
+
+      <p>
+        Reload the page for a new randomized background and color palette.
+      </p>
+
+      <h3>What's in the code?</h3>
+
+      <ul class="code">
+        <li>
+          Using a <a href="http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html" target="_blank">fast JavaScript image blur</a>
+          to generate a blurry backdrop for the visualization.
+        </li>
+
+        <li>
+          Using the <code><a href="../api/index.html#groupContentDecorator">groupContentDecorator</a></code> callback
+          to disable drawing of the default polygons and draw custom-colored polygons and connections to the neighboring
+          groups.
+        </li>
+
+        <li>
+          Disabling the default FoamTree interactions, including hover, selection and expose.
+        </li>
+      </ul>
+    </div>
+
+    <script src="assets/js/blur.js"></script>
+    <script>
+      // We'll start with generating a blurry background.
+      // The general idea is to splash some color circles on our canvas
+      // and then wash away everything using a large-radius blur.
+      var backdrop = (function () {
+        var blurCanvas = document.getElementById("backdrop");
+        var width = blurCanvas.clientWidth, height = blurCanvas.clientHeight;
+        blurCanvas.width = width;
+        blurCanvas.height = height;
+        blurCanvas.style.opacity = 0.0;
+
+        // We'll use ColorBrewer palettes
+        var palettes = [
+          ['rgb(255,255,204)','rgb(255,237,160)','rgb(254,217,118)','rgb(254,178,76)','rgb(253,141,60)','rgb(252,78,42)','rgb(227,26,28)','rgb(189,0,38)','rgb(128,0,38)'],
+          ['rgb(255,255,229)','rgb(247,252,185)','rgb(217,240,163)','rgb(173,221,142)','rgb(120,198,121)','rgb(65,171,93)','rgb(35,132,67)','rgb(0,104,55)','rgb(0,69,41)'],
+          ['rgb(255,255,217)','rgb(237,248,177)','rgb(199,233,180)','rgb(127,205,187)','rgb(65,182,196)','rgb(29,145,192)','rgb(34,94,168)','rgb(37,52,148)','rgb(8,29,88)'],
+          ['rgb(255,247,243)','rgb(253,224,221)','rgb(252,197,192)','rgb(250,159,181)','rgb(247,104,161)','rgb(221,52,151)','rgb(174,1,126)','rgb(122,1,119)','rgb(73,0,106)']
+        ];
+        var colors = palettes[Math.floor(Math.random() * palettes.length) % palettes.length] ;
+
+        // Throw some random colored circles
+        var containerRadius = Math.sqrt(width * width + height * height);
+        var sources = colors.reverse().map(function (color, index) {
+          var ratio = 1 - index / colors.length;
+          return {
+            x: width / 2 + (0.5 - Math.random()) * width * 0.7,
+            y: 0.75 * height + 0.4 * ratio * height * (0.5 - Math.random()),
+            r: 0.3 * containerRadius * ratio + 0.2 * containerRadius * ratio * (0.5 - Math.random()),
+            color: { hex: color, a: 0.7 + 0.2 * (0.5 - Math.random() )}
+          }
+        });
+
+        // Use the darkest color as the background
+        var blurCtx = blurCanvas.getContext("2d");
+        blurCtx.fillStyle = colors[0];
+        blurCtx.fillRect(0, 0, width, height);
+
+        // Draw the circles
+        sources.forEach(function (source) {
+          blurCtx.save();
+          blurCtx.fillStyle = source.color.hex;
+          blurCtx.globalAlpha = source.color.a;
+          blurCtx.beginPath();
+          blurCtx.arc(source.x, height * 1.2 - source.y, source.r, 0, Math.PI * 2);
+          blurCtx.closePath();
+          blurCtx.fill();
+          blurCtx.restore();
+        });
+
+        // Blur everything
+        Blur.stackBlurInPlace(blurCanvas, 180);
+
+        // Fade in the background
+        blurCanvas.style.transition = "opacity 1s linear";
+        window.setTimeout(function () {
+          blurCanvas.style.opacity = 0.8;
+        }, 1);
+
+        // FoamTree will need the pixel data, so we expose it
+        return {
+          pixels: blurCtx.getImageData(0, 0, width, height).data,
+          width: width,
+          height: height
+        }
+      })();
+    </script>
+
+    <!-- Include FoamTree implementation. -->
+    <script src="../carrotsearch.foamtree.js"></script>
+    <script>
+      // Now we can add some texture to the background using FoamTree.
+      // Initialize FoamTree after the whole page loads to make sure
+      // the element has been laid out and has non-zero dimensions.
+      window.addEventListener("load", function() {
+        var pixels = backdrop.pixels, width = backdrop.width, height = backdrop.height;
+        var diameter = Math.sqrt(width * width + height * height);
+        var foamtree = new CarrotSearchFoamTree({
+          // Identifier of the HTML element defined above
+          id: "visualization",
+
+          // Enable relaxation
+          relaxationVisible: true,
+          relaxationMaxDuration: 30000,
+          relaxationQualityThreshold: 0.1,
+          groupGrowingDuration: 2000,
+
+          // Some gentle rollout animation
+          fadeDuration: 1000,
+          rolloutMethod: "individual",
+          rolloutDuration: 2000,
+          rolloutEasing: "squareInOut",
+          rolloutScalingStrength: -0.3,
+          rolloutRotationStrength: 0,
+          rolloutTranslationXStrength: 0,
+          rolloutTranslationYStrength: 0,
+          rolloutPolygonDrag: 0.01,
+          rolloutLabelDrag: 0.01,
+          rolloutTransformationCenter: 1,
+          rolloutChildGroupsDrag: 0.1,
+          pullbackDuration: 0,
+
+          // Tune border width and radius
+          groupBorderWidth: Math.min(4, Math.max(1.5, diameter / 300)),
+          groupBorderRadius: 0.25,
+
+          // Disable title bar
+          maxLabelSizeForTitleBar: 0,
+
+          // Disable default interaction
+          onGroupHover: function (e) { e.preventDefault(); },
+          onGroupClick: function (e) { e.preventDefault(); },
+          onGroupDoubleClick: function (e) { e.preventDefault(); },
+          onGroupHold: function (e) { e.preventDefault(); },
+
+          // Customize polygon drawing
+          groupContentDecorator: function (opts, props, vars) {
+            // Don't draw the default polygon
+            vars.groupPolygonDrawn = false;
+
+            var ctx = props.context;
+
+            // Take a pixel from the blurry background as our color
+            var x = Math.min(width - 1, Math.floor(props.polygonCenterX));
+            var y = Math.min(height - 1, Math.floor(props.polygonCenterY));
+            var p = 4 * (y * width + x);
+            var r = pixels[p];
+            var g = pixels[p + 1];
+            var b = pixels[p + 2];
+            ctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", 0.25)";
+
+            // Fill the polygon
+            ctx.beginPath();
+            props.polygonContext.replay(ctx);
+            ctx.closePath();
+            ctx.fill();
+
+            // Stroke the polygon in white, matching the brightness of the fill color
+            ctx.strokeStyle = "#ffffff";
+            ctx.globalAlpha = 0.3 * Math.sqrt(r * r * 0.241 + g * g * 0.691 + b * b * 0.068) / 255;
+            ctx.stroke();
+
+            // Draw lines connecting this polygon with its neighbors
+            ctx.globalAlpha *= 0.6;
+            props.neighbors.forEach(function (neighbor) {
+              // Make sure we draw each line only once. Additionally,
+              // polygons on the side of the visualization area will have
+              // some of their neighbors null (because the neighbor is the
+              // edge of the visualization area).
+              if (neighbor && neighbor.index > props.group.index) {
+                var geom = foamtree.get("geometry", neighbor);
+                // The geometry may be null if the polygon is not visible
+                if (geom) {
+                  ctx.beginPath();
+                  ctx.moveTo(props.polygonCenterX, props.polygonCenterY);
+                  ctx.lineTo(geom.polygonCenterX, geom.polygonCenterY);
+                  ctx.stroke();
+                }
+              }
+            });
+          },
+
+          // Some random data
+          dataObject: {
+            groups: (function () {
+              var groups = [];
+              var est = Math.round(width * height / 4000);
+              var count = Math.min(320, Math.max(64, est));
+              for (var i = 0; i < count; i++) {
+                // Use power-law distributed weights
+                groups.push({weight: 1 / (i + 5), index: i})
+              }
+              return groups;
+            })()
+          },
+
+          wireframeContentDecorationDrawing: "always",
+          attributionTheme: "dark"
+        });
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function () {
+          var timeout;
+          return function () {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(foamtree.resize, 300);
+          }
+        })());
+      });
+    </script>
+  </body>
+</html>

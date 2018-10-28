@@ -1,4 +1,5 @@
 import os
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 POSTGRES = {
@@ -9,10 +10,14 @@ POSTGRES = {
     'port': '5432',
 }
 
+
 class Config(object):
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess'
-    SQLALCHEMY_DATABASE_URI = 'postgresql://%(user)s:%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
+    # SQLALCHEMY_DATABASE_URI = 'postgresql://%(user)s:%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
+    SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/test4.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    UPLOADS_DEFAULT_DEST = 'uploads'
     ELASTICSEARCH_URL = 'https://search-artica-am3httq7pyuvo2fptmi77bwrj4.us-east-2.es.amazonaws.com'
     NIKITA_SERVER = 'http://ec2-18-222-191-117.us-east-2.compute.amazonaws.com:8080/get_vectors?articles_id='
     POSTS_PER_PAGE = 25
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024

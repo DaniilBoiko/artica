@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FT500 Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+
+    <meta charset="utf-8"/>
+    <link href="assets/css/common.css" rel="stylesheet"/>
+    <link href="assets/css/semantic.min.css" rel="stylesheet"/>
+    <link href="assets/css/carrotsearch.foamtree.util.loading.css" rel="stylesheet" />
+    <style>
+      .blue { color: #3b83c0 }
+      .green { color: #5BBD72 }
+      .red { color: #d95c5c }
+      .ui.icon.input.wide.field > i.icon { right: 1em; }
+
+      ul.code li { margin-bottom: 0.5em; }
+      .ui.divider { margin-top: 24px !important; margin-bottom: 24px !important; }
+      .ui.dropdown .text { white-space: nowrap }
+
+      #side { padding-right: 10px }
+      #details {
+        background-color: rgba(255, 255, 255, 0.95);
+        transition: right 0.5s ease, left 0.5s ease, opacity 0.5s;
+        opacity: 0;
+      }
+      #details .close.icon {
+        color: #aaa;
+        position: absolute;
+        top: 0; right: 0;
+      }
+      #details .hint { color: #aaa; }
+      #details .hover { transition: opacity 0.3s; }
+      #details .hover.duplicated { opacity: 0.4; }
+      #details .hover.irrelevant { opacity: 0.2; }
+      #details .company {
+        position: relative;
+        margin-bottom: 1em;
+      }
+      #details .company sup > .icon { margin-right: 0; }
+      #details .header { margin-bottom: 0; }
+      #details dl { width: 45%; display: inline-block; }
+
+      #details dl.right {
+        width: 45%;
+        margin-right: 5%;
+      }
+      #details dl.right dd { text-align: right; }
+      #details dl dt {
+        position: absolute;
+        width: 7em;
+        color: #aaa;
+      }
+      #details dl dd { margin-left: 7em; }
+
+      #controls { opacity: 0; transition: opacity 0.5s; }
+
+      #legend > ul {
+        list-style: none;
+        padding: 0.3em 0 0 0;
+        margin: 0;
+      }
+      #legend > ul > li {
+        line-height: 1.2;
+        padding-bottom: 0.1em;
+        position: relative;
+      }
+      #legend > ul > li > span {
+        display: inline-block;
+        position: absolute;
+        width: 0.5em;
+        height: 1em;
+      }
+      #legend > ul.left { text-align: left; }
+      #legend > ul.right { text-align: right }
+      #legend > ul.left > li { padding-left: 0.8em; }
+      #legend > ul.left > li > span { left: 0; }
+      #legend > ul.right > li { padding-right: 0.8em; }
+      #legend > ul.right > li > span { right: 0; }
+
+      @media (min-width: 1024px) {
+        #container { left: 160px; }
+
+        #legend {
+          position: absolute;
+          top: 10px;
+          bottom: 10px;
+          left: 10px;
+          width: 150px;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #details {
+          position: absolute;
+          top: 10px;
+          bottom: 10px;
+          width: 440px;
+          right: -440px;
+          padding-top: 25px;
+          padding-left: 10px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+        #details.showing { right: 10px; opacity: 1; }
+      }
+
+      @media (max-width: 1023px) {
+        #side { position: relative; }
+        #legend { display: none; }
+
+        #details {
+          position: absolute;
+          top: 70%;
+          min-height: 100%;
+          left: 100%; right: -100%;
+          opacity: 0;
+          padding: 10px;
+        }
+        #details.showing { right: 0; left: 0; opacity: 1; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="container">
+      <div id="visualization"></div>
+    </div>
+    <div id="side">
+      <img src="assets/img/ft500.png" style="float: right; margin: 10px 0 10px 10px;" />
+      <h1>FT500 explorer</h1>
+
+      <p>
+        This demo visualizes a <a target="_blank" href="http://www.ft.com/cms/s/2/a352a706-16a0-11e5-b07f-00144feabdc0.html">ranking
+        of world's largest companies according to Financial Times</a>.
+      </p>
+
+      <div id="controls">
+        <div class="ui clearing divider"></div>
+
+        <form class="ui datasets form"></form>
+
+        <div class="ui divider"></div>
+
+        <form class="ui display config form">
+          <i class='notched circle loading icon'></i> Loading...
+        </form>
+
+        <div class="ui divider"></div>
+
+        <h3>What's in the code?</h3>
+
+        <ul class="code">
+          <li>
+            Converting a custom FT500 JSON into <a href="../api/index.html#dataObject">FoamTree JSON</a>.
+          </li>
+
+          <li>
+            Using the <code><a href="../api/index.html#layout">layout</a></code> option to choose between rectangular and
+            polygonal treemap layouts.
+          </li>
+
+          <li>
+            Using the <code><a href="../api/index.html#stacking">stacking</a></code> option to enable "flattened" view
+            of the treemap. Using the <code>descriptionGroupSize</code> and <code>descriptionGroupMinHeight</code>
+            options to configure the size of the parent group description fragment depending on the layout.
+          </li>
+
+          <li>
+            Using <code>groupLabelLayoutDecorator</code> to
+            draw labels of description groups in bold font.
+          </li>
+
+          <li>
+            Using <code><a href="../api/index.html#groupColorDecorator">groupColorDecorator</a></code> to
+            draw groups in custom colors. The color palettes are generated using <a target="_blank"
+              href="https://github.com/google/palette.js/tree/master">palette.js</a>.
+          </li>
+
+          <li>
+            Using the <code><a href="../api/index.html#imageData">imageData</a></code> along with
+            <a target="_blank" href="https://github.com/eligrey/FileSaver.js/">FileSaver.js</a> and
+            <a target="_blank" href="https://github.com/beatgammit/base64-js">base64.js</a> to save the visualization
+            image as a JPEG image.
+          </li>
+
+          <li>
+            Using the <code><a href="../api/index.html#onGroupHover">onGroupHover</a></code> and
+            <code><a href="../api/index.html#onGroupSelectionChanging">onGroupSelectionChanging</a></code> events
+            to get information about companies being hovered on and selected, so that their details can be presented
+            in the right-hand side panel.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="legend"></div>
+    <div id="details"></div>
+
+    <script src="assets/js/jquery-2.0.3.min.js"></script>
+    <script src="assets/js/lodash.min.js"></script>
+    <script src="assets/js/semantic.min.js"></script>
+    <script src="assets/js/palette.js"></script>
+    <script src="assets/js/filesaver.min.js"></script>
+    <script src="assets/js/b64.js"></script>
+    <script src="../carrotsearch.foamtree.js"></script>
+    <script src="../carrotsearch.foamtree.util.loading.js"></script>
+
+    <!-- Include Hammer.js for mobile interactions. Not required for desktop-only apps. -->
+    <script src="assets/js/hammer.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+
+    <!-- A simple static JSON-P loader -->
+    <script src="assets/js/carrotsearch.jsonp.js"></script>
+
+    <script>
+      // We'll first define a number of smaller components and will
+      // link them together towards the bottom of the code.
+
+      /**
+       * Metadata that describes the data set and the available functions and coloring schemes.
+       */
+      var metadata = (function () {
+        var functions = {
+          "identity": _.identity,
+          "pow(.75)": _.partial(Math.pow, _, 0.7),
+          "sqrt": Math.sqrt,
+          "pow(.33)": _.partial(Math.pow, _, 0.33),
+          "pow(.25)": _.partial(Math.pow, _, 0.25)
+        };
+
+        var palettes = [
+          { label: "seq", name: "tol-sq" },
+          { label: "div", name: "tol-dv" },
+          { label: "rainbow", name: "tol-rainbow" }
+        ];
+
+        var metadata = {
+          fields: {
+            "Market value": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(0) },
+            "Turnover": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(0) },
+            "Net income": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(0) },
+            "Total assets": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(0) },
+            "Employees": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(0) },
+            "Price": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(2) },
+            "P/e ratio": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(2) },
+            "Dividend yield": { preprocessing: stringToNumber, type: "continuous", formatter: numberToStringWithUnit(2) },
+            "Rank 2015": { type: "continuous", formatter: _.identity },
+            "Rank change": { type: "continuous", formatter: _.identity },
+            "Sector": { type: "discrete", ordering: orderingFrom([
+              "Banks",
+              "Financial services",
+              "Equity investment instruments",
+              "Life insurance",
+              "Nonlife insurance",
+              "Real estate investment trusts",
+              "Real estate investment & services",
+              "Support services",
+
+              "General retailers",
+              "Food & drug retailers",
+              "Food producers",
+              "Beverages",
+              "Tobacco",
+
+              "Travel & leisure",
+              "Leisure goods",
+              "Personal goods",
+              "Household goods & home construction",
+
+              "Pharmaceuticals & biotechnology",
+              "Health care equipment & services",
+              "Chemicals",
+
+              "Gas, water & multiutilities",
+              "Oil & gas producers",
+              "Oil equipment & services",
+              "Mining",
+              "Electricity",
+              "Alternative energy",
+              "Forestry & paper",
+
+              "Construction & materials",
+              "Industrial engineering",
+              "Industrial metals & mining",
+              "Industrial transportation",
+              "Aerospace & defence",
+              "Automobiles & parts",
+              "General industrials",
+
+              "Electronic & electrical equipment",
+              "Technology hardware & equipment",
+              "Software & computer services",
+              "Fixed line telecommunications",
+              "Mobile telecommunications",
+              "Media"
+            ]), formatter: _.identity },
+            "Country": { type: "discrete", ordering: orderingFrom([
+              "US",
+              "US/UK",
+              "Canada",
+
+              "Argentina",
+              "Brazil",
+              "Chile",
+              "Colombia",
+              "Mexico",
+              "South Korea",
+
+              "Austria",
+              "Belgium",
+              "Czech Republic",
+              "Denmark",
+              "Finland",
+              "France",
+              "Germany",
+              "Hungary",
+              "Ireland",
+              "Italy",
+              "Netherlands",
+              "Netherlands/UK",
+              "Norway",
+              "Poland",
+              "Portugal",
+              "Romania",
+              "Spain",
+              "Sweden",
+              "Switzerland",
+              "UK",
+
+              "Russia",
+              "Turkey",
+              "Egypt",
+              "India",
+              "Israel",
+              "Kuwait",
+              "Morocco",
+              "Pakistan",
+              "Qatar",
+              "Saudi Arabia",
+              "South Africa",
+              "UAE",
+
+              "Australia",
+              "Australia/UK",
+              "Indonesia",
+              "Malaysia",
+              "Philippines",
+              "Singapore",
+              "Thailand",
+
+              "China",
+              "Hong Kong",
+              "Japan",
+              "Taiwan"
+            ]), formatter: _.identity}
+          },
+
+          levels: {
+            max: 2,
+            fields: [
+              { name: "Sector" },
+              { name: "Country" }
+            ]
+          },
+
+          sizing: {
+            fields: [
+              { name: "Market value", config: { fn: "" } },
+              { name: "Turnover", config: { fn: "" } },
+              { name: "Net income", config: { fn: "" } },
+              { name: "Total assets", config: { fn: "" } },
+              { name: "Employees", config: { fn: "" } },
+              { name: "P/e ratio", config: { fn: "" } },
+              { name: "Dividend yield", config: { fn: "" } }
+            ]
+          },
+
+          coloring: {
+            fields: [
+              { name: "Market value", config: { palette: "tol-dv", fn: "pow(.33)" } },
+              { name: "Turnover", config: { palette: "tol-dv", fn: "sqrt" } },
+              { name: "Net income", config: { palette: "tol-dv", fn: "sqrt" } },
+              { name: "Total assets", config: { palette: "tol-dv", fn: "pow(.33)" } },
+              { name: "Employees", config: { palette: "tol-dv", fn: "pow(.25)" } },
+              { name: "P/e ratio", config: { palette: "tol-dv", fn: "identity" } },
+              { name: "Dividend yield", config: { palette: "tol-dv", fn: "sqrt" } },
+              { name: "Sector", config: { palette: "tol-rainbow" } },
+              { name: "Country", config: { palette: "tol-rainbow" } },
+              { name: "Rank 2015", config: { palette: "tol-sq", fn: "identity" } },
+              { name: "Rank change", config: { palette: "tol-dv", fn: "identity" } }
+            ]
+          }
+        };
+
+        function stringToNumber(s) {
+          var clean = s.replace(/( )|(N\/R)/g, "").replace(",", ".");
+          return clean.length > 0 ? parseFloat(clean) : undefined;
+        }
+
+        function numberToStringWithUnit(decimals) {
+          return function (number) {
+            if (_.isUndefined(number) || _.isNull(number)) {
+              return "n/a";
+            }
+            var re = '\\d(?=(\\d{3})+' + (decimals > 0 ? '\\.' : '$') + ')';
+            return number.toFixed(Math.max(0, decimals)).replace(new RegExp(re, 'g'), '$& ').replace(".", ",") +
+                (this.unit ? " " + this.unit : "");
+          }
+        }
+
+        function orderingFrom(order) {
+          return (function () {
+            var indices = {};
+            order.forEach(function (item, index) {
+              indices[item] = index;
+            });
+            return function (a, b) {
+              return indices[a] - indices[b];
+            };
+          })();
+        }
+
+        return {
+          dataset: metadata,
+          functions: functions,
+          palettes: palettes
+        };
+      })();
+
+      /**
+       * Builds and handles the explorer configuration form.
+       */
+      var ExplorerConfig = function($container, metadata, config, onChange, onSearch, onImageExport) {
+        var inlineFieldsTemplate = _.template('\
+          <div class="inline fields">\
+            <div class="two wide field">\
+              <label style="white-space: nowrap"><%- label %></label>\
+            </div>\
+            <%= content %>\
+          </div>');
+
+        var selectDropdownTemplate = _.template('\
+          <div class="<%- width %> wide field">\
+            <select class="compact dropdown" name="<%- name %>">\
+              <%= options %>\
+            </select>\
+          </div>');
+
+        var radioTemplate = _.template('\
+          <div class="field">\
+            <div class="ui radio checkbox">\
+              <input type="radio" name="<%- name %>" value="<%- value %>" tabindex="0" class="hidden">\
+              <label><%- label %></label>\
+            </div>\
+          </div>');
+
+        var optionTemplate = _.template('<option value="<%- value %>"><%- label %></option>');
+
+        var html = "";
+        html += levelConfigHtml();
+        html += sizingConfigHtml();
+        html += coloringConfigHtml();
+        html += searchHtml();
+        html += '<div class="ui divider"></div>';
+        html += layoutHtml();
+        html += imageExportHtml();
+
+        $container.html(html);
+
+        // Initial selections
+        $container.find("select[name=level0]").val(config.levels[0]);
+        $container.find("select[name=level1]").val(config.levels[1]);
+        $container.find("select[name=coloring]").val(config.coloring.field);
+        $container.find("select[name=sizing]").val(config.sizing.field);
+        $container.find(":radio[name=layout][value=" + config.layout + "]").attr("checked", true);
+
+        $container.find('select.dropdown').dropdown();
+        $container.find('.ui.radio.checkbox').checkbox();
+        updateConfigs();
+
+        $container.on("change", ":radio", function (e) {
+          config.layout = this.value;
+          onChange({ layout: true });
+        });
+
+        $container.on("change", "select", function (e) {
+          var updated = {
+            grouping: false,
+            sizing: false,
+            coloring: false
+          };
+          var value = $(this).val();
+          if (value == "--") {
+            value = "";
+          }
+
+          switch (this.name) {
+            case "sizing":
+              config.sizing.field = value;
+              updated.sizing = true;
+              updateSizingConfig();
+              break;
+
+            case "sizing-fn":
+              config.sizing.config.fn = value;
+              updated.sizing = true;
+              break;
+
+            case "coloring":
+              config.coloring.field = value;
+              updated.coloring = true;
+              updateColoringConfig();
+              break;
+
+            case "coloring-fn":
+              config.coloring.config.fn = value;
+              updated.coloring = true;
+              break;
+
+            case "coloring-palette":
+              config.coloring.config.palette = value;
+              updated.coloring = true;
+              break;
+
+            case "level0":
+              config.levels[0] = value;
+              updated.grouping = true;
+              break;
+
+            case "level1":
+              config.levels[1] = value;
+              updated.grouping = true;
+              break;
+
+            default:
+              return;
+          }
+
+          onChange(updated);
+        });
+
+        $container.on("click", "a", function (e) {
+          e.preventDefault();
+          var hashIndex = this.href.indexOf("#");
+          if (hashIndex < 0) {
+            return;
+          }
+          var hash = this.href.substring(hashIndex + 1);
+          switch (hash) {
+            case "export-low":
+              onImageExport("low");
+              break;
+
+            case "export-high":
+              onImageExport("high");
+              break;
+
+            case "export-ultrahigh":
+              onImageExport("ultrahigh");
+              break;
+          }
+        });
+
+        $container.on("keyup", "input[name='search']", (function() {
+          var lastSearch = "";
+          return _.debounce(function () {
+            var search = _.trim(this.value);
+            if (lastSearch != search) {
+              lastSearch = search;
+              onSearch(search);
+            }
+          }, 300)
+        })());
+
+        $container.submit(function (e) {
+          e.preventDefault();
+        });
+
+        this.$search = $container.find("input[name=search]");
+
+
+        function updateSizingConfig() {
+          config.sizing.config = _.find(config.sizing.configs, function (s) {
+            return s.name == config.sizing.field;
+          }).config;
+          $container.find("select[name='sizing-fn']").dropdown("set selected", config.sizing.config.fn);
+        }
+
+        function updateColoringConfig() {
+          config.coloring.config = _.find(config.coloring.configs, function (s) {
+            return s.name == config.coloring.field;
+          }).config;
+          var continuous = metadata.dataset.fields[config.coloring.field].type == "continuous";
+          var $fnSelect = $container.find("select[name='coloring-fn']");
+          $fnSelect.closest(".field").toggle(continuous);
+          if (continuous) {
+            $fnSelect.dropdown("set selected", config.coloring.config.fn);
+          }
+          $container.find("select[name='coloring-palette']").dropdown("set selected", config.coloring.config.palette);
+        }
+
+        function updateConfigs() {
+          updateSizingConfig();
+          updateColoringConfig();
+        }
+
+        function searchHtml() {
+          return inlineFieldsTemplate({
+            label: "Search",
+            content: '<div class="ui icon input ten wide field">\
+              <input type="text" name="search" placeholder="company name, sector, country">\
+              <i class="search icon"></i>\
+            </div>'
+          });
+        }
+
+        function layoutHtml() {
+          return inlineFieldsTemplate({
+            label: "Layout",
+            content:
+                radioTemplate({ name: "layout", value: "rectangular", label: "rectangular" }) +
+                radioTemplate({ name: "layout", value: "polygonal", label: "polygonal" }) +
+                radioTemplate({ name: "layout", value: "circular", label: "circular" })
+          });
+        }
+
+        function imageExportHtml() {
+          return inlineFieldsTemplate({
+            label: "Export",
+            content: '<div class="field"><a href="#export-low">Lo-res JPEG</a></div>' +
+            '<div class="field"><a href="#export-high">High-res JPEG</a></div>' +
+            '<div class="field"><a href="#export-ultrahigh">Ultra-high-res PNG</a></div>'
+          });
+        }
+
+        function sizingConfigHtml() {
+          return inlineFieldsTemplate({
+            label: "Size by",
+            content:
+              selectDropdownTemplate({
+                width: "six",
+                name: "sizing",
+                options: metadata.dataset.sizing.fields.reduce(function (html, cf) {
+                  return html + optionTemplate({ value: cf.name, label: cf.name });
+                }, "")
+              }) +
+              selectDropdownTemplate({
+                width: "four",
+                name: "sizing-fn",
+                options: Object.keys(metadata.functions).reduce(function (html, fn) {
+                  return html + optionTemplate({ value: fn, label: fn });
+                }, "")
+              }) +
+              '<div class="<%- width %> wide field"></div>'
+          });
+        }
+
+        function coloringConfigHtml() {
+          return inlineFieldsTemplate({
+            label: "Color by",
+            content:
+              selectDropdownTemplate({
+                width: "six",
+                name: "coloring",
+                options: metadata.dataset.coloring.fields.reduce(function (html, cf) {
+                  return html + optionTemplate({ value: cf.name, label: cf.name });
+                }, "")
+              }) +
+              selectDropdownTemplate({
+                width: "four",
+                name: "coloring-fn",
+                options: Object.keys(metadata.functions).reduce(function (html, fn) {
+                  return html + optionTemplate({ value: fn, label: fn });
+                }, "")
+              }) +
+              selectDropdownTemplate({
+                width: "three",
+                name: "coloring-palette",
+                options: metadata.palettes.reduce(function (html, p) {
+                  return html + optionTemplate({ value: p.name, label: p.label });
+                }, "")
+              })
+          });
+        }
+
+        function levelConfigHtml() {
+          var levels = Math.min(3, metadata.dataset.levels.max);
+
+          var html = "";
+          for (var i = 0; i < levels; i++) {
+            html += selectDropdownTemplate({
+              width: "four",
+              name: "level" + i,
+              options: []
+                .concat({name: "--", label: "none"})
+                .concat(metadata.dataset.levels.fields)
+                .reduce(function (html, lf) {
+                  return html + optionTemplate({ value: lf.name, label: lf.label || lf.name });
+                }, "")
+            });
+          }
+
+          return inlineFieldsTemplate({
+            label: "Group by",
+            content: html
+          });
+        }
+      };
+
+      ExplorerConfig.prototype.clearSearch = function () {
+        this.$search.val("");
+      };
+
+      /**
+       * Drives the display of data based on the configuration chosen by the user.
+       */
+      var Explorer = function(foamtree, legend, metadata, config) {
+        this.foamtree = foamtree;
+        this.legend = legend;
+        this.metadata = metadata;
+        this.config = config;
+        this.dataset = [];
+        this.model = null;
+
+        this.loader = CarrotSearchFoamTree.loader(foamtree,
+            "<div style='text-align: center; margin-top: 30%'><i class='notched circle loading icon'></i> Preparing treemap...</div>");
+      };
+
+      Explorer.prototype.setDataset = function(dataset) {
+        var metadata = this.metadata;
+
+        // Apply transformations
+        dataset.forEach(function (d) {
+          _.each(d, function (val, key) {
+            var field = metadata.dataset.fields[key];
+            if (field) {
+              var fn = field.preprocessing;
+              if (fn) {
+                d[key] = fn(val);
+              }
+            }
+          })
+        });
+
+        this.dataset = dataset;
+        this.updateHierarchy();
+      };
+
+      Explorer.prototype.loadModel = function () {
+        // Show loading indicator only for Voronoi layout, rectangular treemaps are very fast
+        var self = this;
+        if (this.config.layout == "rectangular") {
+          _.delay(function () {
+            self.foamtree.set("dataObject", self.model);
+          }, 20);
+        } else {
+          this.loader.started();
+          this.model.boundary = (function() {
+            if (self.config.layout != "circular") {
+              return undefined;
+            }
+
+            var polygon = [];
+            var numPoints = 72;
+            for (var i = 0; i < numPoints; i++) {
+              polygon.push({
+                x: 0.5 * Math.cos(2 * Math.PI * i / numPoints) + 0.5,
+                y: 0.5 * Math.sin(2 * Math.PI * i / numPoints) + 0.5
+              });
+            }
+
+            // Must be convex, points in anti-clockwise order
+            return polygon;
+          })();
+
+          _.delay(function () {
+            self.loader.complete(self.model);
+          }, 20);
+        }
+      };
+
+      Explorer.prototype.regenerateModel = function () {
+        this.model = {
+          groups: group(this.dataset, this.config.levels.filter(function (l) {
+            return l && l.length > 0;
+          }), 0)
+        };
+
+        function group(items, levelProps, level) {
+          if (levelProps.length == level) {
+            return items.map(function (item) {
+              var group = {
+                label: item["Company"],
+                company: item
+              };
+              // It's convenient to have a reference from company to group too
+              item.group = group;
+              return group;
+            });
+          }
+
+          return _(items).groupBy(levelProps[level]).map(function (value, key) {
+            return {
+              label: key,
+              groups: group(value, levelProps, level + 1)
+            };
+          }).value();
+        }
+      };
+
+      Explorer.prototype.updateHierarchy = function () {
+        this.regenerateModel();
+        this.updateModelWeights();
+        this.updateModelColors();
+        this.loadModel();
+      };
+
+      Explorer.prototype.updateLayout = function () {
+        switch (this.config.layout) {
+          case "rectangular":
+            this.foamtree.set({
+              descriptionGroupSize: 0.0,
+              descriptionGroupMinHeight: 18,
+              layout: "squarified"
+            });
+            break;
+
+          case "polygonal":
+          case "circular":
+            this.foamtree.set({
+              descriptionGroupSize: 0.10,
+              descriptionGroupMinHeight: 18,
+              layout: "relaxed"
+            });
+            break;
+        }
+        this.loadModel();
+      };
+
+      Explorer.prototype.updateWeights = function () {
+        this.updateModelWeights();
+
+        // Ideally, we'd use foamtree.update() here, but reloading the model
+        // completely gives more accurate representation of weights on Voronoi layouts.
+        this.loadModel();
+      };
+
+      Explorer.prototype.updateModelWeights = function () {
+        if (!this.model) {
+          return;
+        }
+
+        var sizingProp = this.config.sizing.field;
+        updateWeights(this.model);
+
+        var config = _.find(this.config.sizing.configs, function (f) {
+          return f.name == sizingProp;
+        }).config;
+        applyFn(this.model, this.metadata.functions[config.fn] || _.identity);
+
+        function updateWeights(parent) {
+          if (parent.groups) {
+            parent.groups.forEach(updateWeights);
+            parent.weight = parent.groups.reduce(function (sum, group) {
+              return sum + group.weight;
+            }, 0);
+          } else {
+            parent.weight = parent.company[sizingProp] || 0;
+          }
+        }
+
+        function applyFn(parent, fn) {
+          parent.weight = fn(parent.weight);
+          if (parent.groups) {
+            parent.groups.forEach(function (p) {
+              applyFn(p, fn);
+            });
+          }
+        }
+      };
+
+      Explorer.prototype.updateColors = function () {
+        this.updateModelColors();
+        this.foamtree.redraw();
+      };
+
+      Explorer.prototype.updateModelColors = function () {
+        if (!this.model) {
+          return;
+        }
+
+        // Store the color in the company data, iteration over and
+        // array is much simpler than walking the hierarchical model.
+        var coloringProp = this.config.coloring.field;
+        var coloringField = this.metadata.dataset.fields[coloringProp];
+        var config = _.find(this.config.coloring.configs, function (f) {
+          return f.name == coloringProp;
+        }).config;
+        var fn = this.metadata.functions[config.fn] || _.identity;
+
+        // Assign colors to each item. We'll need to handle the discrete
+        // and continuous cases separately.
+        var colors;
+        var legendEntries = [], legendAlignment;
+
+        switch (coloringField.type) {
+          case "continuous":
+            // We'll distribute the values between the min and max,
+            // applying the provided transformation function to make
+            // increase the "resolution" of the color scale where needed.
+            var min = _.min(this.dataset, function (company) {
+              return company[coloringProp];
+            })[coloringProp];
+            var max = _.max(this.dataset, function (company) {
+              return company[coloringProp];
+            })[coloringProp];
+            var range = fn(max - min) / 255;
+
+            // We'll always use 256 colors
+            colors = getColors(config.palette, 256);
+            var undefinedColor = "#cccccc";
+            var hasUndefined = false;
+            this.dataset.forEach(function (company) {
+              // Use grey for undefined values
+              var value = company[coloringProp];
+              hasUndefined |= _.isUndefined(value);
+              company.color = "#" + (_.isUndefined(value) ? undefinedColor : colors[Math.round(fn(value - min) / range)]);
+            });
+
+            // Prepare legend entries. We need to compute some reasonable steps in which to present
+            // the legend for our continuous scale.
+            var maxLegendEntries = 40, stepsPerMagnitude = 4;
+            var rawIncrement = (max - min) / maxLegendEntries;
+            var magnitude = Math.pow(10, Math.ceil(log10(rawIncrement)));
+            var increment = magnitude * Math.ceil(stepsPerMagnitude * rawIncrement / magnitude) / stepsPerMagnitude;
+
+            // Always put min and max on the scale, fill values in-between with the computed increment.
+            legendEntries.push({color: "#" + colors[255], value: coloringField.formatter(max)});
+            var value = increment * Math.ceil((max - increment) / increment);
+            while (value > min) {
+              legendEntries.push({
+                color: "#" + colors[Math.round(fn(value - min) / range)],
+                value: coloringField.formatter(value)
+              });
+              value -= increment;
+            }
+            legendEntries.push({color: "#" + colors[0], value: coloringField.formatter(min)});
+            if (hasUndefined) {
+              legendEntries.push({color: undefinedColor, value: "n/a" });
+            }
+            legendAlignment = "right";
+            break;
+
+          case "discrete":
+            var colorGroups = _.groupBy(this.dataset, function (company) {
+              return company[coloringProp];
+            });
+
+            var values = Object.keys(colorGroups);
+            if (coloringField.ordering) {
+              values.sort(coloringField.ordering);
+            }
+
+            colors = getColors(config.palette, _.size(colorGroups));
+            var index = 0;
+            values.forEach(function (value) {
+              var companies = colorGroups[value];
+              var color = "#" + colors[index];
+              companies.forEach(function (company) {
+                company.color = color;
+              });
+              legendEntries.push({color: color, value: value});
+              index++;
+            });
+            legendAlignment = "left";
+
+            break;
+        }
+        this.legend.display(legendEntries, legendAlignment);
+
+        function getColors(paletteName, size) {
+          if (paletteName == "tol-rainbow") {
+            return palette(paletteName, size).reverse();
+          } else {
+            return palette(paletteName, size);
+          }
+        }
+
+        function log10(n) {
+          return Math.log(n) / Math.log(10);
+        }
+
+        function format(number, decimals) {
+          var re = '\\d(?=(\\d{3})+' + (decimals > 0 ? '\\.' : '$') + ')';
+          return number.toFixed(Math.max(0, decimals)).replace(new RegExp(re, 'g'), '$& ').replace(".", ",");
+        }
+      };
+
+      Explorer.prototype.search = function (search) {
+        if (search == "") {
+          this.foamtree.expose(null);
+          return;
+        }
+
+        var searchFields = {
+          "Company": "start",
+          "Country": "start",
+          "Sector": "anywhere"
+        };
+        var searchFieldKeys = _.keys(searchFields);
+        var re = {
+          "start": new RegExp("^" + _.escapeRegExp(search), "i"),
+          "anywhere": new RegExp(_.escapeRegExp(search), "i")
+        };
+
+        var matches = this.dataset.filter(function (item) {
+          for (var i = 0; i < searchFieldKeys.length; i++) {
+            var key = searchFieldKeys[i];
+            if (re[searchFields[key]].test(item[key])) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (matches.length == 0) {
+          this.foamtree.expose(null);
+          return;
+        }
+
+        this.foamtree.set({
+          groupExposureScale: 1.015,
+          groupExposureShadowSize: 100,
+          groupExposureShadowColor: "rgba(0, 0, 0, 0.2)",
+          groupExposureZoomMargin: 0.01,
+          exposure: {
+            groups: matches.map(function (item) {
+              return item.group;
+            }),
+            exposed: true
+          }
+        });
+      };
+
+      /**
+       * Displays the treemap legend panel.
+       */
+      var TreemapLegend = function ($container) {
+        this.$container = $("<ul />").appendTo($container);
+        this.leftAlignedEntryTemplate = _.template('<li><span style="background-color: <%- color %>"></span><%- value %></li>');
+        this.rightAlignedEntryTemplate = _.template('<li></span><%- value %><span style="background-color: <%- color %>"></li>');
+      };
+
+      TreemapLegend.prototype.display = function (entries, alignment) {
+        var template = alignment == "left" ? this.leftAlignedEntryTemplate : this.rightAlignedEntryTemplate;
+        this.$container.html(entries.reduce(function (html, entry) {
+          return html + template(entry);
+        }, "")).attr("class", alignment);
+      };
+
+      /**
+       * Displays the company details panel.
+       */
+      var DetailsPanel = function ($container, clearSelection, metadata) {
+        this.metadata = metadata;
+        this.$container = $container;
+        this.$temporary = $("<div class='hover' />").appendTo($container);
+        this.$sticky = $("<div style='margin-top: 2em'>\
+            <div></div>\
+            <div class='hint'>Click to select company for comparison.<br />Ctrl+click to select multiple companies.</div>\
+          </div>").appendTo($container).find("div:eq(0)");
+
+        var self = this;
+        $('<i class="big close link icon"></i>').appendTo($container).click(function (e) {
+          self.$container.removeClass("showing");
+          self.$sticky.empty();
+          clearSelection();
+        });
+
+        this.template = _.template('<div class="company">\
+          <h2 class="ui header">\
+            <%- company.Company %>\
+            <div class="sub header">\
+              <strong><%- company["Rank 2015"] %></strong><%= company.rankChangeHtml %>&nbsp;&nbsp;\
+              <%- company.Sector %>, <%- company.Country %>\
+            </div>\
+          </h2>\
+          <dl class="right">\
+            <dt>Market value</dt>\
+            <dd><%= company["Market value"] %></dd>\
+            <dt>Turnover</dt>\
+            <dd><%= company["Turnover"] %></dd>\
+            <dt>Net income</dt>\
+            <dd><%= company["Net income"] %></dd>\
+            <dt>Total assets</dt>\
+            <dd><%= company["Total assets"] %></dd>\
+          </dl>\
+          <dl>\
+            <dt>Employees</dt>\
+            <dd><%= company["Employees"] %></dd>\
+            <dt>Price</dt>\
+            <dd><%= company["Price"] %></dd>\
+            <dt>P/e ratio</dt>\
+            <dd><%= company["P/e ratio"] %></dd>\
+            <dt>Dividend yield</dt>\
+            <dd><%= company["Dividend yield"] %></dd>\
+          </dl>\
+        </div>', { variable: "company" });
+      };
+
+      DetailsPanel.prototype.show = function (company) {
+        this.hovered = company;
+        window.clearTimeout(this.hideTimeout);
+        this.$container.addClass("showing");
+        this.$temporary.html(this.companyHtml(company)).removeClass("irrelevant");
+        this.checkDuplicated();
+      };
+
+      DetailsPanel.prototype.addSticky = function (company) {
+        $("<div />").data("company", company).html(this.companyHtml(company)).prependTo(this.$sticky)
+            .hide().transition("fade left");
+        this.checkDuplicated();
+        this.$container.addClass("showing");
+      };
+      DetailsPanel.prototype.removeSticky = function (company) {
+        var self = this;
+        this.$sticky.children().each(function () {
+          var $this = $(this);
+          if ($this.data("company") == company) {
+            self.checkDuplicated();
+            $this.transition({
+              animation: "fade left out",
+              onComplete: function () {
+                $this.remove();
+              }
+            });
+            return false;
+          }
+        });
+        if (this.$sticky.children().size() != 0) {
+          window.clearTimeout(this.hideTimeout)
+        }
+      };
+      DetailsPanel.prototype.checkDuplicated = function () {
+        var duplicated = false;
+        var hoveredCompany = this.hovered;
+        this.$sticky.children().each(function () {
+          if ($(this).data("company") == hoveredCompany) {
+            duplicated = true;
+            return false;
+          }
+        });
+        this.$temporary.toggleClass("duplicated", duplicated);
+      };
+
+      DetailsPanel.prototype.companyHtml = function(company) {
+        var metadata = this.metadata;
+        var rankChange = company["Rank change"];
+
+        var data = {};
+        [ "Market value", "Turnover", "Net income", "Total assets",
+          "Employees", "Price", "P/e ratio", "Dividend yield" ].forEach(function (name) {
+              var value = company[name];
+              data[name] = _.isUndefined(value) || _.isNull(value) ? "n/a" : metadata.dataset.fields[name].formatter(value);
+        });
+
+        return this.template(_.extend({
+          rankChangeHtml: '<sup class=" ' + (_.isUndefined(rankChange) ? 'blue"><i class="lightning icon"></i>NEW' :
+              rankChange == 0 ? 'grey"><i class="caret right icon"></i>0' :
+                  rankChange > 0 ? 'green"><i class="caret up icon"></i>' + rankChange : 'red"><i class="caret down icon"></i>' + (-rankChange))
+              + '</sup>'
+        }, company, data));
+      };
+
+      DetailsPanel.prototype.hide = function () {
+        var self = this;
+
+        this.$temporary.addClass("irrelevant").removeClass("duplicated");
+        if (this.$sticky.children().size() == 0) {
+          this.hideTimeout = window.setTimeout(function () {
+            self.$container.removeClass("showing");
+          }, 500);
+        }
+      };
+
+      /**
+       * Handles the data set choice form.
+       */
+      var DatasetChoice = function ($container, datasets, onChoice) {
+        var radioTemplate = _.template('<div class="field">\
+          <div class="ui radio checkbox">\
+            <input type="radio" name="dataset" value="<%- dataset %>" tabindex="0" class="hidden">\
+            <label><%- label %></label>\
+          </div>\
+        </div>');
+
+        var html = "";
+
+        html += '<div style="width: 40%; display: inline-block">';
+        html += datasets.slice(0, 3).reduce(reducer, "");
+        html += '</div>';
+        html += '<div style="width: 55%; display: inline-block">';
+        html += datasets.slice(3).reduce(reducer, "");
+        html += '</div>';
+
+        $container.html(html);
+        $container.find(".ui.radio.checkbox").checkbox();
+
+        $container.on("change", ":radio", function () {
+          onChoice(this.value)
+        });
+
+        $container.find(":radio:eq(0)").attr("checked", true).trigger("change");
+
+        function reducer(html, dataset) {
+          return html + radioTemplate(_.extend({ checked: true }, dataset));
+        }
+      };
+
+      // Once the content loads, initialize the demo
+      window.addEventListener("load", function () {
+        // Initialize our FoamTree instance
+        var foamtree = new CarrotSearchFoamTree({
+          id: "visualization",
+          pixelRatio: window.devicePixelRatio || 1,
+
+          // Use rectangular layout by default
+          layout: "squarified",
+          relaxationQualityThreshold: 2.5,
+
+          // Use flattened view by default
+          stacking: "flattened",
+          descriptionGroupSize: 0.00,
+          descriptionGroupMinHeight: 18,
+
+          // Disable animations
+          fadeDuration: 500,
+          rolloutDuration: 0,
+          pullbackDuration: 0,
+
+          // Use the custom web font for FoamTree texts.
+          groupLabelFontFamily: "Lato",
+
+          // Customize borders, fill and strokes
+          groupBorderWidth: 2,
+          groupInsetWidth: 4,
+          groupBorderRadius: 0.1,
+          groupBorderRadiusCorrection: 1,
+
+          groupSelectionOutlineWidth: 3.5,
+
+          groupFillType: "gradient",
+          groupFillGradientRadius: 3,
+          groupFillGradientCenterLightnessShift: 20,
+
+          groupStrokeWidth: 0.33,
+          groupStrokeType: "plain",
+          groupStrokePlainLightnessShift: 0,
+
+          groupUnexposureSaturationShift: -100,
+          groupUnexposureLightnessShift: 200,
+
+          // Allow some more time to draw
+          finalCompleteDrawMaxDuration: 1000,
+          finalIncrementalDrawMaxDuration: 1000,
+
+          // Make the line spacing and the total height of the
+          // label smaller than the default to make space for
+          // the coverage value display
+          groupLabelLineHeight: 1.0,
+
+          groupLabelDarkColor: "rgba(0, 0, 0, 0.8)",
+
+          // Use custom label padding for the description group
+          groupLabelLayoutDecorator: function (opts, params, vars) {
+            if (params.description) {
+              vars.verticalPadding = 0.1;
+              vars.maxTotalTextHeight = 1.0;
+              vars.fontFamily = "Lato";
+              vars.fontWeight = "700";
+            }
+          },
+
+          // Use custom group coloring
+          groupColorDecorator: function (opts, props, vars) {
+            var group = props.group;
+            if (group.company) {
+              vars.groupColor = group.company.color;
+            } else {
+              vars.groupColor = "#f0f0f0";
+              vars.labelColor = "#000";
+            }
+          },
+
+          onGroupDoubleClick: function (e) {
+            explorerConfig.clearSearch();
+            this.set({
+              groupExposureScale: CarrotSearchFoamTree.defaults.groupExposureScale,
+              groupExposureShadowSize: CarrotSearchFoamTree.defaults.groupExposureShadowSize,
+              groupExposureShadowColor: CarrotSearchFoamTree.defaults.groupExposureShadowColor,
+              groupExposureZoomMargin: CarrotSearchFoamTree.defaults.groupExposureZoomMargin
+            });
+          },
+
+          onGroupExposureChanged: function (info) {
+            if (info.groups.length == 0) {
+              explorerConfig.clearSearch();
+            }
+          },
+
+          wireframeLabelDrawing: "always",
+          titleBarDecorator: function (opts, props, vars) {
+            if (props.group.company) {
+              vars.titleBarShown = false;
+            }
+          }
+        });
+
+        // Resize FoamTree on orientation change
+        window.addEventListener("orientationchange", foamtree.resize);
+
+        // Resize on window size changes
+        window.addEventListener("resize", (function () {
+          var timeout;
+          return function () {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(function () {
+              foamtree.set("pixelRatio", window.devicePixelRatio || 1);
+              foamtree.resize();
+            }, 300);
+          }
+        })());
+
+        // Holder for the application's configuration
+        var config = {
+          levels: [
+            "Sector", ""
+          ],
+          sizing: { field: "Market value", configs: _.cloneDeep(metadata.dataset.sizing.fields) },
+          coloring: { field: "Turnover", configs: _.cloneDeep(metadata.dataset.coloring.fields) },
+          layout: "rectangular",
+          container: "rectangular"
+        };
+
+        // Instantiate and link the components together
+        var legend = new TreemapLegend($("#legend"));
+        var explorer = new Explorer(foamtree, legend, metadata, config);
+        var explorerConfig = new ExplorerConfig($(".display.config.form"), metadata, config,
+          function onChange(updated) {
+            if (updated.grouping) {
+              explorer.updateHierarchy();
+            } else if (updated.sizing) {
+              explorer.updateWeights();
+            } else if (updated.coloring) {
+              explorer.updateColors();
+            } else if (updated.layout) {
+              explorer.updateLayout();
+            } else if (updated.container) {
+              explorer.updateContainer();
+            }
+          },
+          function onSearch(search) {
+            explorer.search(search);
+          },
+          function onImageExport(resolution) {
+            var format = resolution != "ultrahigh" ? "image/jpeg" : "image/png";
+            var extension = format == "image/jpeg" ? "jpg" : "png";
+            var base64Image = foamtree.get("imageData", {
+              format: format,
+              quality: 0.9,
+              pixelRatio: resolution == "ultrahigh" ? 4.0 : resolution == "high" ? 2.0 : 1.0,
+              backgroundColor: "#fff"
+            });
+            var blob = new Blob(
+                [ base64js.toByteArray(base64Image.substring(base64Image.indexOf("base64,") + "base64,".length)) ],
+                { type: format  }
+            );
+            saveAs(blob, "ft500-treemap." + extension);
+          });
+
+        var detailsPanel = new DetailsPanel($("#details"), function () {
+          foamtree.set("selection", null);
+        }, metadata);
+        foamtree.on("groupHover", function (e) {
+          if (e.group) {
+            if (e.group.company) {
+              detailsPanel.show(e.group.company);
+            }
+          } else {
+            detailsPanel.hide();
+          }
+        });
+        foamtree.on("groupSelectionChanging", function (e) {
+          if (!e.group || !e.group.company) {
+            return;
+          }
+          if (e.selected) {
+            detailsPanel.addSticky(e.group.company);
+          } else {
+            detailsPanel.removeSticky(e.group.company);
+          }
+        });
+        foamtree.on("groupClick", function (e) {
+          if (!e.group || !e.group.company) {
+            e.preventDefault();
+          }
+        });
+
+        var datasetsChoice = new DatasetChoice($(".datasets.form"), [
+          { label: "FT500 Global ", dataset: "ft500-global.js"},
+          { label: "FT500 US", dataset: "ft500-us.js"},
+          { label: "FT500 Europe", dataset: "ft500-europe.js"},
+          { label: "FT500 UK", dataset: "ft500-uk.js"},
+          { label: "FT500 Japan", dataset: "ft500-japan.js"},
+          { label: "FT500 Emerging markets", dataset: "ft500-emerging.js"}
+        ], function (dataset) {
+          // Load, convert and visualize the data
+          JSONP.load("assets/data/" + dataset, "modelDataAvailable", function (ft500) {
+            // All datasets use values in USD, but FT-500 UK uses GBP...
+            // Normalize field names to strip the units, set the field units in metadata.dataset.
+            var usd = _.has(ft500[0], "Price $");
+            var currency = usd ? "$" : "£";
+            ft500.forEach(function (company) {
+              company["Market value"] = company["Market value " + currency + "m"];
+              company["Turnover"] = company["Turnover " + currency + "m"];
+              company["Net income"] = company["Net income " + currency + "m"];
+              company["Total assets"] = company["Total assets " + currency + "m"];
+              company["Price"] = company["Price " + currency];
+              company["Dividend yield"] = company["Dividend yield (%)"];
+
+              var rank2014 = company["Rank 2014"];
+
+              // Higher rank is "better", make positive difference "better"
+              company["Rank change"] = _.isNull(rank2014) ? undefined :  rank2014 - company["Rank 2015"];
+            });
+
+            metadata.dataset.fields["Market value"].unit = currency + "m";
+            metadata.dataset.fields["Turnover"].unit = currency + "m";
+            metadata.dataset.fields["Net income"].unit = currency + "m";
+            metadata.dataset.fields["Total assets"].unit = currency + "m";
+            metadata.dataset.fields["Price"].unit = currency;
+            metadata.dataset.fields["Dividend yield"].unit = "%";
+
+            explorer.setDataset(ft500);
+          });
+        });
+
+        // Show the UI
+        $("#controls").css("opacity", 1);
+      });
+    </script>
+  </body>
+</html>

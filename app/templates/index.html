@@ -1,144 +1,40 @@
 {% extends "base.html" %}
 
 {% block app_content %}
-    <style>
-        .twitter-typeahead .tt-query,
-        .twitter-typeahead .tt-hint {
-            margin-bottom: 0;
-        }
-
-        .tt-dropdown-menu {
-            min-width: 160px;
-            margin-top: 4px;
-            padding: 5px 0;
-            background-color: #fff;
-            border: 1px solid #ced4da;
-            text-align: left;
-            *border-right-width: 2px;
-            *border-bottom-width: 2px;
-            -webkit-border-radius: 6px;
-            -moz-border-radius: 6px;
-            border-radius: 6px;
-            -webkit-box-shadow: 0 5px 10px #ced4da;
-            -moz-box-shadow: 0 5px 10px #ced4da;
-            box-shadow: 0 5px 10px #ced4da;
-            -webkit-background-clip: padding-box;
-            -moz-background-clip: padding;
-            background-clip: padding-box;
-        }
-
-        .tt-suggestion {
-            display: block;
-            padding: 3px 20px;
-        }
-
-        .tt-suggestion.tt-is-under-cursor {
-            color: #111;
-            background-color: #fff;
-        }
-
-        .tt-suggestion.tt-is-under-cursor a {
-            color: #111;
-        }
-
-        .tt-suggestion p {
-            margin: 0;
-        }
-
-        .suggestion-header {
-            margin: 5px 5px;
-            border-bottom: 1px #CCCCCC solid;
-        }
-
-        .tt-query, .tt-hint {
-            width: 100% !important;
-        }
-
-        .twitter-typeahead {
-            width: calc(100% - 85px);
-            margin-right: 8px !important;
-            max-width: 400px
-        }
-    </style>
-    <section class="jumbotron text-center">
-        <div class="container">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" class="text-center mt-5 mb-4" height="30"
-                 alt="">
-
-            <h1 class="jumbotron-heading">Bringing AI and science together</h1>
-            <p class="lead text-muted">We have made a system that will completely change all scientific research. Just
-                try it.</p>
-
-            <form class="form-inline justify-content-center" action="/search" method="get">
-                <input name="query" id="search-input" name="query" data-provide="typeahead" type="text"
-                       class="form-control mb-2"
-                       placeholder="Palladium–complex"/>
-                <button type="submit" class="btn btn-primary mb-2">Search</button>
-            </form>
-
-            <a class="btn btn-lg btn-light mt-5" href="/login">Login via Mendeley</a>
-
+<style>
+    .text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        line-height: 16px; /* fallback */
+        max-height: 64px; /* fallback */
+        -webkit-line-clamp: 4; /* number of lines to show */
+        -webkit-box-orient: vertical;
+    }
+</style>
+<div class="page-header">
+    <h1 class="page-title">
+        That's what happened while you were away.
+    </h1>
+    <div class="row mt-4 row-cards row-deck">
+        {% for entry in entries %}
+        <div class="col-sm-6 col-xl-3">
+            <div class="card">
+                <a href="{{ entry.link }}"><img class="card-img-top" src="{{ entry.media_thumbnail[0]['url'] }}"></a>
+                <div class="card-body d-flex flex-column">
+                    <h4><a href="{{ entry.link }}">{{ entry.title }}</a></h4>
+                    <div class="text-muted text">{{entry.summary}}</div>
+                    <div class="d-flex align-items-center pt-5 mt-auto">
+                        <div>
+                            <a href="#" class="text-default">Science</a>
+                            <small class="d-block text-muted">{{ entry.published }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </section>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-    <script src="//cdn.jsdelivr.net/typeahead.js/0.9.3/typeahead.min.js"></script>
-    <script src="//cdn.jsdelivr.net/hogan.js/2.0.0/hogan.common.js"></script>
+        {% endfor %}
+    </div>
 
-
-
-    <script>
-        var geoNamesUsername = 'uberboomtest';
-
-        /**
-         * Initialize typeahead.js
-         */
-        $('#search-input').typeahead([{
-            name: 'posts',
-            remote: {
-                url: 'https://search-artica-am3httq7pyuvo2fptmi77bwrj4.us-east-2.es.amazonaws.com/articles/article/_search?from=0&size=3&q=%QUERY*',
-                filter: function (parsedResponse) {
-                    var result = [];
-                    $.each(parsedResponse.hits.hits, function () {
-                        var item = $(this)[0]._source;
-                        result.push({
-                            id: item.iD,
-                            article_title: item.title,
-                            article_journal_name: item.journal_name
-                        });
-                    });
-                    return result;
-                }
-            },
-            cache: false,
-            template: [
-                '<h5 class="mt-2 mb-0">Articles</h5>',
-                '<p class="">{{ '{{' }}article_title{{ '}}' }}</p>',
-                '<p class="text-secondary">{{ '{{' }}article_journal_name{{ '}}' }}</p>'
-            ].join(''),
-            engine: Hogan
-        }]);
-
-
-        /**
-         * Fix tt hint
-         */
-        $('#search-input').on('typeahead:initialized', function (e, data) {
-            // fix for using twitter bootstrap
-            var hint = $(e.target).prev('.tt-hint');
-            var hint_span = $(e.target).find('.twitter-typeahead');
-            var small = $(e.target).is('.input-sm');
-            var large = $(e.target).is('.input-lg');
-            if (small) {
-                hint.addClass('input-sm');
-            } else if (large) {
-                hint.addClass('input-lg');
-            } else {
-                hint.addClass('input');
-            }
-            hint_span.addClass('form-control');
-            hint_span.addClass('col-md-6');
-        });
-        //# sourceURL=pen.js
-    </script>
-
+</div>
 {% endblock %}

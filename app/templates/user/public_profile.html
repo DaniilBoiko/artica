@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="row">
+    <div class="col col-login mx-auto">
+        <div class="card card-profile">
+            <div class="card-header"
+                 style="background-image: url({{url_for('static',filename='backgrounds/abstraction1.jpg')}});"></div>
+            <div class="card-body text-center">
+                <img class="card-profile-img" src="{{url_for('static',filename='images/man.svg')}}">
+                <h3 class="mb-3">{{ user.name }}</h3>
+                <p class="mb-0">
+                    <b>{% if user.position %}
+                        {{ user.position }}{% if user.organization %} at {{ user.organization }}
+                        {% endif %}
+                        {% endif %}</b>
+                </p>
+                {% if user.description %}
+                <p class="mb-1">
+                    {{ user.description }}
+                </p>
+                <p class="mb-4">
+                    {% if user.country %}
+                    <i class="flag flag-{{ user.country.lower() }} mb-1"></i>
+                    {% endif%}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

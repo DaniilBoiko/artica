@@ -1,0 +1,484 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SCADA sensor dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta property="og:image" content="//get.carrotsearch.com/foamtree/latest/demos/assets/img/main-thumbnail.jpg"/>
+
+    <meta charset="utf-8" />
+    <link href="assets/css/common.css" rel="stylesheet" />
+
+    <!-- The CSS for the loading indicator container-->
+    <link href="assets/css/carrotsearch.foamtree.util.loading.css" rel="stylesheet" />
+    <style>
+      h1, h3, .visualization-loading {
+        font-family: Roboto Condensed, sans-serif;
+      }
+      h1 { font-size: 30px }
+      h3 { font-size: 18px }
+
+      hr {
+        height: 1px;
+        background-color: rgba(255, 255, 255, 0.25);
+        border-width: 0;
+        margin: 30px 0;
+      }
+
+      /**
+       * Custom styles for the contents of the loading indicator.
+       */
+      .visualization-loading > div {
+        font-size: 36px;
+        position: absolute;
+        width: 100%;
+        top: 50%;
+        margin-top: -40px;
+        text-align: center;
+        line-height: 1.05;
+      }
+    </style>
+  </head>
+
+  <body class="dark">
+    <div id="container"><div id="visualization"></div></div>
+    <div id="side">
+      <h1 style="margin-top: 1em">SCADA sensor dashboard</h1>
+
+      <p>
+        This demo uses FoamTree to implement a dashboard of readouts from a SCADA system.
+        While the names of sensors shown here come from a real system, readout values are random-generated.
+      </p>
+
+      <p>
+        Yellow border means the value exceeds alarm thresholds, red border means the value exceeds critical
+        alarm thresholds.
+      </p>
+
+      <p>
+        Use mouse wheel or double-click on a group to zoom-in. <span class="key">Esc</span> or Right-double-click on
+        a group to zoom out.
+      </p>
+
+      <p>
+        Thanks to Glenn Clark for the idea and feedback on this demo.
+      </p>
+
+      <hr />
+
+      Change rate:
+
+      <a href="#rate-off">off</a> |
+      <a href="#rate-low">low</a> |
+      <a href="#rate-medium">medium</a> |
+      <a href="#rate-high">high</a>
+
+      <br/>
+
+      Change probability:
+
+      <a href="#probability-low">low</a> |
+      <a href="#probability-medium">medium</a> |
+      <a href="#probability-high">high</a>
+
+      <br/>
+
+      Layout:
+
+      <a href="#layout-rectangular">rectangular</a> |
+      <a href="#layout-polygonal">polygonal</a>
+
+      <hr />
+
+      <h3>What's in the code?</h3>
+
+      <ul>
+        <li>
+          <p>
+            Using the <code><a href="../api/index.html#stacking">stacking</a></code> option to enable "flattened" view
+            of the treemap. Using the <code>descriptionGroupSize</code> option to configure the size of the parent group
+            description fragment depending on the layout. </p>
+        </li>
+
+        <li>
+          <p>
+            Using the <code><a href="../api/index.html#groupContentDecorator">groupContentDecorator</a></code> callback
+            to draw custom content representing sensor values.
+          </p>
+        </li>
+
+        <li>
+          <p>
+            Animating changed sensor values using <a href="https://github.com/tweenjs/tween.js/">tween.js</a>.
+          </p>
+        </li>
+
+        <li>
+          <p>
+            Implementing <code><a href="../api/index.html#onGroupDoubleClick">onGroupDoubleClick</a></code> callback
+            to zoom-in to a group on double click.
+          </p>
+        </li>
+
+        <li>
+          <p>
+            Loading and using custom web fonts to render FoamTree content.
+          </p>
+        </li>
+      </ul>
+
+      <hr />
+
+      <a href="http://codepen.io/carrotsearch/pen/aOeqNP" target="_blank">Experiment</a> with this code on CodePen.
+    </div>
+
+    <!-- Include FoamTree implementation. -->
+    <script src="../carrotsearch.foamtree.js"></script>
+
+    <!-- Include the loading indicator utility -->
+    <script src="../carrotsearch.foamtree.util.loading.js"></script>
+
+    <!-- Include Hammer.js for mobile interactions. Not required for desktop-only apps. -->
+    <script src="assets/js/carrotsearch.jsonp.js"></script>
+    <script src="assets/js/hammer.min.js"></script>
+    <script src="assets/js/tweenjs-0.6.1.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+
+    <script>
+      // Initialize FoamTree after the whole page loads to make sure
+      // the element has been laid out and has non-zero dimensions.
+      window.addEventListener("load", function() {
+        // Load custom fonts
+        WebFont.load({
+          google: { families: [ "Roboto Condensed" ] },
+          active: function() {
+            // Fonts loaded, initialize FoamTree.
+            var allReadoutGroups = [];
+            var foamtree = new CarrotSearchFoamTree({
+              // Identifier of the HTML element defined above
+              id: "visualization",
+
+              // Use a simple fade in/out animation
+              rolloutDuration: 0,
+              pullbackDuration: 0,
+              fadeDuration: 1000,
+
+              // Make all group levels visible
+              stacking: "flattened",
+              descriptionGroupSize: 0.05,
+
+              // Draw up to six levels of groups and labels
+              maxGroupLevelsDrawn: 6,
+              maxGroupLabelLevelsDrawn: 6,
+
+              // Use rectangular layout. Change to "relaxed" for Voronoi layout.
+              layout: "squarified",
+
+              // Use slightly lower than default border widths
+              groupBorderWidth: 2,
+              groupInsetWidth: 4,
+
+              // Extend the externally provided dataObject with some information
+              // we'll use for rendering and animation.
+              onModelChanging: function addReadouts(group, parent) {
+                if (!group) {
+                  return;
+                }
+
+                // Groups with weight 1 are simple switches, groups with weight 10
+                // are readouts with values ranging from 0 to 1.
+                // We also collect references to all groups representing readouts
+                // in a flat array, so that we can quickly set new values for them.
+                // Finally, we add references to the parent group.
+                switch (group.weight) {
+                  case 1:
+                    group.readout = {
+                      type: "boolean",
+                      alarm: group.label == "ALM",
+                      value: Math.random() < 0.02,
+                      changing: 0
+                    };
+                    allReadoutGroups.push(group);
+                    break;
+
+                  case 10:
+                    group.readout = {
+                      type: group.label == "Pos" ? "valve" : "level",
+                      value: Math.random(),
+                      changing: 0
+                    };
+                    allReadoutGroups.push(group);
+                    break;
+                }
+
+                // Add reference to parent group
+                group.parent = parent;
+
+                if (group.groups) {
+                  group.groups.forEach(function(g) {
+                    addReadouts(g, group);
+                  });
+                }
+              },
+
+              // Prevent group selection
+              onGroupClick: function (e) {
+                e.preventDefault();
+              },
+
+              // Zoom in on double click
+              onGroupDoubleClick: function(e) {
+                e.preventDefault();
+                var group = e.group;
+                var toZoom;
+                if (group) {
+                  toZoom = e.secondary ? group.parent : group;
+                } else {
+                  toZoom = this.get("dataObject");
+                }
+                this.zoom(toZoom);
+              },
+
+              // A group content decorator that draws all values for all sensors
+              groupContentDecorator: function (opts, props, vars) {
+                // Check if there's anything to draw
+                var readout = props.group.readout;
+                if (!readout || (readout.type != "level" && readout.type != "valve")) {
+                  return;
+                }
+
+                // If shape changed, compute the required geometry
+                if (props.shapeDirty) {
+                  switch (readout.type) {
+                    case "level":
+                      props.group.boundingBox = CarrotSearchFoamTree.geometry.boundingBox(props.polygon);
+                      break;
+
+                    case "valve":
+                      props.group.inscribedCircleRadius = CarrotSearchFoamTree.geometry.circleInPolygon(
+                          props.polygon, props.polygonCenterX, props.polygonCenterY);
+                  }
+                }
+
+                var boundingBox = props.group.boundingBox;
+
+                // Don't draw the default polygon. Instead, we'll draw a
+                // linear or radial gradient to represent the current readout value.
+                vars.groupPolygonDrawn = false;
+                var ctx = props.context;
+
+                var gradientThresholdWidth = 0.05;
+                var value = readout.value;
+                var gradient;
+                var hue;
+                switch (readout.type) {
+                  case "level":
+                    gradient = ctx.createLinearGradient(boundingBox.x, boundingBox.y + boundingBox.h, boundingBox.x, boundingBox.y);
+                    hue = (-10 + 110.0 * (1 - 2 * Math.abs(readout.value - 0.5)));
+                    break;
+
+                  case "valve":
+                    gradient = ctx.createRadialGradient(props.polygonCenterX, props.polygonCenterY, 0,
+                        props.polygonCenterX, props.polygonCenterY, props.group.inscribedCircleRadius);
+                    hue = 120;
+                    break;
+                }
+
+                var baseColor = "hsla(" + hue.toFixed(1) + ", "
+                    + (45 + readout.changing * 55 + (props.hovered ? 10 : 0)).toFixed(1) + "%, "
+                    + (20 + readout.changing * 20 + (props.hovered ? 20 : 0)).toFixed(1) + "%, 1.0)";
+                gradient.addColorStop(0, baseColor);
+                if (value > gradientThresholdWidth) {
+                  gradient.addColorStop(value - gradientThresholdWidth, baseColor);
+                }
+                gradient.addColorStop(readout.value, "rgba(0, 0, 0, 0.5)");
+                if (value + gradientThresholdWidth < 1) {
+                  gradient.addColorStop(value + gradientThresholdWidth, "rgba(0, 0, 0, 0.5)");
+                }
+
+                // Draw the polygon and fill it with the gradient
+                // The polygonContext property contains a buffer with the group's polygon path.
+                // We'll replay that buffer to our drawing context and the fill and stroke the path.
+                ctx.beginPath();
+                props.polygonContext.replay(ctx);
+                ctx.closePath();
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // If the value is outside of normal ranges, draw alarm outline
+                if (readout.type == "level" && (value <= 0.1 || value >= 0.9)) {
+                  var borderWidth = 1.75 * opts.groupBorderWidth * Math.pow(opts.groupBorderWidthScaling, props.level);
+                  ctx.strokeStyle = value < 0.05 || value > 0.95 ? "#ff0000" : "#ffbb00";
+                  ctx.lineWidth = borderWidth;
+                  ctx.stroke();
+                }
+              },
+              groupContentDecoratorTriggering: "onSurfaceDirty",
+
+              // Customize label colors
+              groupColorDecorator: function (opts, props, vars) {
+                var readout = props.group.readout;
+                if (readout) {
+                  vars.labelColor = "rgba(255, 255, 255, " + (0.7 +  (0.3 * readout.changing)).toFixed(3) + ")";
+                  if (readout.type == "boolean") {
+                    if (readout.value) {
+                      vars.groupColor = readout.alarm ? "hsla(0, 80%, 45%, 1.0)" : "hsla(120, 40%, 45%, 1.0)";
+                    } else {
+                      vars.groupColor = "#333333"
+                    }
+                  }
+                } else {
+                  // If the group has child groups and some of their values changed, highlight the parent group
+                  if (props.group.groups) {
+                    var averageChange = 0, changedChildren = 0;
+
+                    props.group.groups.forEach(function (group) {
+                      if (group.readout) {
+                        var changing = group.readout.changing;
+                        if (changing > 0) {
+                          changedChildren++;
+                        }
+                        averageChange += changing;
+                      }
+                    });
+
+                    averageChange /= Math.max(1, changedChildren);
+
+                    vars.groupColor.s = 0;
+                    vars.groupColor.l = 5 + 20 * averageChange;
+                    vars.groupColor.a = 1.0;
+                    vars.groupColor.model = "hsl";
+                    var baseAlpha = props.level == 0 ? 0.75 : 0.5;
+                    vars.labelColor = "rgba(255, 255, 255, " + (baseAlpha + (1 - baseAlpha) * averageChange).toFixed(3) + ")";
+                  } else {
+                    vars.groupColor = "#333333";
+                    vars.labelColor = "rgba(255, 255, 255, 0.5)";
+                  }
+                }
+              },
+
+              // Customize label layout on description groups
+              groupLabelLayoutDecorator: function (opts, params, vars) {
+                if (params.description) {
+                  vars.verticalPadding = 0.1;
+                  vars.maxTotalTextHeight = 1.0;
+                } else if (params.group.readout) {
+                  vars.maxFontSize = 16;
+                }
+              },
+
+              // Render readout value as the label
+              groupLabelDecorator: function (opts, params, vars) {
+                var readout = params.group.readout;
+                if (readout && readout.type != "boolean") {
+                  vars.labelText += "\n" + readout.value.toFixed(2);
+                }
+              },
+
+              // Use the web font
+              groupLabelFontFamily: "Roboto Condensed, sans-serif",
+              groupLabelMinFontSize: 4,
+
+              wireframeContentDecorationDrawing: "always",
+              wireframeLabelDrawing: "always",
+              attributionTheme: "dark"
+            });
+
+            // Create the loader instance. The utility will create the HTML container
+            // element for the indicator, we just need to provide its contents.
+            // We'll be the loader's methods in the loadDataSet() function below.
+            var foamtreeLoader = CarrotSearchFoamTree.loader(foamtree, "<div>Loading...</div>");
+
+            // Apply some random value changes. We'll use the TweenJS library to make value transitions.
+            var changeRate = 1000, changeProbabilityBase = 2, running = true;
+            window.setTimeout(function change() {
+              var changeProbability = changeProbabilityBase / allReadoutGroups.length;
+
+              allReadoutGroups.forEach(function (group) {
+                if (Math.random() < changeProbability) {
+                  var readout = group.readout;
+                  readout.changing = 1;
+                  var tween = createjs.Tween.get(readout, {
+                    onChange: function () {
+                      foamtree.redraw(true, [group]);
+                    }
+                  });
+
+                  switch (readout.type) {
+                    case "level":
+                    case "valve":
+                      // Tween to the target value
+                      tween.to({ value: Math.random() }, 1000, createjs.Ease.getPowInOut(4));
+                      break;
+
+                    case "boolean":
+                      readout.value = !readout.value;
+                      break;
+                  }
+
+                  // Used to draw the value changed background highlight
+                  tween.to({ changing: 0 }, 4000, createjs.Ease.getPowOut(4));
+                }
+              });
+              if (running) {
+                window.setTimeout(change, changeRate + Math.random() * changeRate * 3);
+              }
+            }, changeRate);
+
+            createjs.Ticker.setFPS(60);
+
+            // Handle clicks on customization links
+            document.body.addEventListener("click", function (e) {
+              if (e.target.hash) {
+                e.preventDefault();
+                switch (e.target.hash) {
+                  case "#rate-off": running = false; break;
+                  case "#rate-low": changeRate = 1000; running = true; break;
+                  case "#rate-medium": changeRate = 500; running = true; break;
+                  case "#rate-high": changeRate = 250; running = true; break;
+
+                  case "#probability-low": changeProbabilityBase = 2; break;
+                  case "#probability-medium": changeProbabilityBase = 5; break;
+                  case "#probability-high": changeProbabilityBase = 10; break;
+
+                  case "#layout-rectangular":
+                    updateLayout("squarified");
+                    break;
+
+                  case "#layout-polygonal":
+                    updateLayout("relaxed");
+                    break;
+                }
+              }
+
+              function updateLayout(layout) {
+                var dataObject = foamtree.get("dataObject");
+                foamtree.set({ layout: layout });
+                foamtreeLoader.started();
+                foamtreeLoader.complete(dataObject);
+              }
+            });
+
+            // Resize FoamTree on orientation change
+            window.addEventListener("orientationchange", foamtree.resize);
+
+            // Resize on window size changes
+            window.addEventListener("resize", (function () {
+              var timeout;
+              return function () {
+                window.clearTimeout(timeout);
+                timeout = window.setTimeout(foamtree.resize, 300);
+              }
+            })());
+
+            // Load the data
+            foamtreeLoader.started();
+            JSONP.load("assets/data/sensors.js", "modelDataAvailable", function (sensors) {
+              foamtreeLoader.complete(sensors);
+            });
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

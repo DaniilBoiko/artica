@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>We're always here to help you</h1>
+        <p>There are three ways to connect with us</p>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Email</h3>
+            </div>
+            <div class="card-body">
+                <p>
+                    You can write us about all issues you have with <b>artica</b>. If you have a technical issue,
+                    please, give us the information shown below.
+                </p>
+                <small>
+                    <p>
+                        Userid: {{ current_user.id }}
+                    </p>
+                    <p>
+                        Useremail: {{ current_user.email }}
+                    </p>
+                </small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Write us right here</h3>
+            </div>
+            <div class="card-body">
+                <form action="">
+                    <div class="form-group">
+                        <div class="row align-items-center">
+                            <label class="col-sm-2">Subject:</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <textarea rows="5" class="form-control"></textarea>
+                    <div class="btn-list mt-4 text-right">
+                        <button type="button" class="btn btn-secondary btn-space">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-space">Send message</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">or contact us in social networks</h3>
+            </div>
+            <div class="card-body">
+                <p>
+                    We're available nearly everywhere.
+                </p>
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-4 text-center">
+        <img src="{{ url_for('static', filename = 'images/help.svg') }}" class="mt-5"
+             style="width:100%; max-width: 150px;">
+    </div>
+
+</div>
+{% endblock %}

@@ -2,13 +2,12 @@ from flask import Flask
 from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_uploads import UploadSet, IMAGES, configure_uploads
 from config import Config
-from rq import Queue, get_current_job
-from rq.job import Job
-from worker import conn
 from elasticsearch import Elasticsearch
 import certifi
 import app, os
+from flask_login import LoginManager
 
 application = Flask(__name__)
 app = application
@@ -17,7 +16,11 @@ db = SQLAlchemy(app)
 db.configure_mappers()
 migrate = Migrate(app, db)
 bootstrap = Bootstrap(app)
-q = Queue(connection=conn)
+login = LoginManager(app)
+login.login_view = 'login'
+
+photos = UploadSet('photos', IMAGES)
+configure_uploads(app, photos)
 
 app.elasticsearch = Elasticsearch(hosts=[app.config['ELASTICSEARCH_URL']], use_ssl=True, ca_certs=certifi.where()) \
     if app.config['ELASTICSEARCH_URL'] else None
